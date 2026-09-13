@@ -34,12 +34,29 @@ MANIFEST_JSON = json.dumps({
 }, ensure_ascii=False)
 
 SW_JS = """
-// Service Worker отключён для стабильности
+const CACHE_NAME = 'azs-spb-v2';
 self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => { self.clients.claim(); });
 self.addEventListener('fetch', (e) => {
-  // Просто пропускаем все запросы без кэша
-  return;
+  // API запросы всегда идут в сеть, без кэша
+  if (e.request.url.includes('/api/')) return;
+  
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      return fetch(e.request).then((res) => {
+        if (res && res.status === 200) {
+          const responseToCache = res.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseToCache);
+          });
+        }
+        return res;
+      }).catch(() => {
+        // Если сеть недоступна, возвращаем кэш. Если кэша нет, возвращаем безопасный ответ, а НЕ undefined!
+        return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'text/plain' } });
+      });
+    })
+  );
 });
 """
 

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#14171A">
+<title>ГДЕ БЕНЗИН!? — Карта АЗС</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/leaflet.css">
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#14171A;color:#E8E6E1;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent}
+  #map{position:absolute;top:0;left:0;right:0;bottom:64px;background:#14171A}
+  .leaflet-container{background:#14171A}
+
+  /* ---------- TOP PANEL ---------- */
+  #top{position:absolute;top:0;left:0;right:0;z-index:1000;padding:10px 10px 0;
+    pointer-events:none;display:flex;flex-direction:column;gap:8px}
+  #top > *{pointer-events:auto}
+  .row{display:flex;gap:8px}
+  .ctrl{flex:1;min-width:0;background:#1A1D21;border:1px solid #262B31;color:#E8E6E1;
+    border-radius:12px;padding:11px 12px;font-size:14px;font-weight:600;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238A8F98' stroke-width='2' fill='none'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  .search{flex:1;min-width:0;background:#1A1D21;border:1px solid #262B31;color:#E8E6E1;
+    border-radius:12px;padding:11px 14px 11px 34px;font-size:14px;outline:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4.3-4.3'/></svg>");
+    background-repeat:no-repeat;background-position:12px center}
+  .icon-btn{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:#1A1D21;
+    border:1px solid #262B31;color:#FFB000;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:20px;line-height:1}
+  .icon-btn.active{background:#FFB000;color:#14171A;border-color:#FFB000}
+
+  /* Support button (little row under filters) */
+  #support-row{display:flex;gap:8px;align-items:center;font-size:12px;color:#B7BBC1}
+  #support-row .pill{background:#1A1D21;border:1px solid #262B31;border-radius:10px;
+    padding:6px 12px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  #support-row .pill b{color:#FFB000;font-weight:700}
+
+  /* ---------- BOTTOM PANEL ---------- */
+  #bottom{position:absolute;bottom:0;left:0;right:0;height:64px;background:#1A1D21;
+    border-top:1px solid #262B31;display:flex;align-items:center;justify-content:space-between;
+    padding:0 14px;z-index:1000;gap:10px}
+  .stat{font-size:13px;color:#B7BBC1;cursor:pointer;user-select:none;white-space:nowrap}
+  .stat b{color:#FFB000;font-size:17px;font-weight:700;margin-left:2px}
+  #missing-btn{padding:10px 14px;border-radius:12px;background:#1E2227;border:1px solid #2B3036;
+    color:#E8E6E1;font-size:13px;font-weight:700;cursor:pointer}
+  #missing-btn.active{background:#FFB000;color:#14171A;border-color:#FFB000}
+
+  /* ---------- POPUP ---------- */
+  .leaflet-popup-content-wrapper{background:#1A1D21;color:#E8E6E1;border-radius:14px;
+    box-shadow:0 8px 32px rgba(0,0,0,.6);border:1px solid #262B31}
+  .leaflet-popup-content{margin:14px 16px 14px 16px;min-width:260px;font-size:13px}
+  .leaflet-popup-tip{background:#1A1D21;border:1px solid #262B31}
+  .leaflet-container a.leaflet-popup-close-button{color:#8A8F98;font-size:20px;padding:8px}
+  .popup-title{font-size:15px;font-weight:700;margin-bottom:2px;display:flex;
+    align-items:center;justify-content:space-between;gap:8px}
+  .popup-addr{font-size:12px;color:#8A8F98;margin-bottom:12px}
+  .fav-star{cursor:pointer;font-size:20px;line-height:1;color:#FFB000;flex-shrink:0}
+  .fuel-block{padding:8px 0;border-top:1px solid #262B31}
+  .fuel-head{display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:6px;font-size:13px}
+  .fuel-time{font-size:11px;color:#8A8F98}
+  .fuel-btns{display:flex;gap:6px}
+  .sbtn{flex:1;padding:8px 0;border-radius:9px;border:1px solid #2B3036;background:#1E2227;
+    color:#B7BBC1;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .sbtn.ok{color:#1B8A4A;border-color:#1B8A4A55}
+  .sbtn.low{color:#C97C00;border-color:#C97C0055}
+  .sbtn.none{color:#C62828;border-color:#C6282855}
+  .sbtn.current{background:currentColor;color:#14171A!important;font-weight:700}
+  .sbtn.current.ok{background:#1B8A4A}
+  .sbtn.current.low{background:#C97C00}
+  .sbtn.current.none{background:#C62828;color:#fff!important}
+  .flags-row{display:flex;gap:6px;padding-top:8px;border-top:1px solid #262B31;margin-top:4px}
+  .flag-btn{flex:1;padding:8px 4px;border-radius:9px;border:1px solid #2B3036;background:#1E2227;
+    color:#B7BBC1;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .flag-btn.on{background:#FFB000;color:#14171A;border-color:#FFB000}
+  .popup-actions{margin-top:8px;padding-top:8px;border-top:1px solid #262B31}
+  .route-btn{width:100%;padding:9px 0;border-radius:9px;border:1px solid #2B3036;background:#1E2227;
+    color:#E8E6E1;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .issue-row{margin-top:8px}
+  .issue-btn{width:100%;padding:9px 0;border-radius:9px;border:1px solid #2B3036;background:transparent;
+    color:#8A8F98;font-size:12px;cursor:pointer;font-family:inherit}
+
+  /* ---------- MODAL ---------- */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal{background:#1A1D21;border:1px solid #262B31;border-radius:16px;
+    padding:20px;max-width:360px;width:100%;color:#E8E6E1}
+  .modal h3{margin:0 0 8px;font-size:17px;display:flex;align-items:center;gap:8px}
+  .modal p{margin:6px 0;font-size:13px;color:#B7BBC1;line-height:1.5}
+  .modal-btns{display:flex;gap:8px;margin-top:16px}
+  .modal-btns button{flex:1;padding:11px 0;border-radius:10px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit}
+  .modal-primary{background:#FFB000;color:#14171A;border:none}
+  .modal-secondary{background:#1E2227;color:#E8E6E1;border:1px solid #2B3036}
+  .toast{position:fixed;left:50%;bottom:82px;transform:translateX(-50%);
+    background:#232830;color:#E8E6E1;border:1px solid #3A3F45;border-radius:10px;
+    padding:10px 16px;font-size:13px;z-index:3000;opacity:0;transition:opacity .25s;
+    pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+
+  /* pin mode crosshair */
+  body.pin-mode #map{cursor:crosshair}
+  #pin-tip{position:fixed;left:50%;top:80px;transform:translateX(-50%);
+    background:#FFB000;color:#14171A;padding:8px 14px;border-radius:10px;
+    font-size:13px;font-weight:700;z-index:1500;display:none}
+  body.pin-mode #pin-tip{display:block}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="top">
+  <div class="row">
+    <select id="net-select" class="ctrl"><option value="all">Все сети</option></select>
+    <select id="fuel-select" class="ctrl"><option value="all">Любое топливо</option></select>
+  </div>
+  <div class="row">
+    <input id="search-input" class="search" type="search" placeholder="Поиск по адресу или сети…" autocomplete="off">
+    <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
+  </div>
+  <div id="support-row">
+    <div class="pill" id="reports-today">Отчётов за 24ч: <b id="stat-reports-24h">0</b></div>
+    <div class="pill" id="support-btn">☕ Поддержать</div>
+  </div>
+</div>
+
+<div id="bottom">
+  <div class="stat" id="stat-total-item">Станций: <b id="stat-total">0</b></div>
+  <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
+  <button id="missing-btn">+ Нет АЗС</button>
+</div>
+
+<div id="pin-tip">Тапните на карту, чтобы поставить булавку</div>
+<div id="toast" class="toast"></div>
+
+<script src="/leaflet.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ---------- CONSTANTS ----------
+  var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
+  var STATUS_LABEL = { ok:'Есть', low:'Мало', none:'Нет' };
+  var SEVERITY = { ok:0, low:1, none:2 };
+  var FLAG_SHORT = { flag_queue:'🚗 Очередь', flag_limit:'⛔ Лимит' };
+  var BOT_USERNAME = 'naidibenzin_bot';
+  var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
+  var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
+
+  // ---------- STATE ----------
+  var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+
+  var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+  var userId = user ? user.id : 0;
+  var username = user ? (user.username || user.first_name || '') : '';
+
+  var stationsData = [];
+  var fuelsData = [];           // [[key,label],...]
+  var statusesData = [];        // [[key,label],...]
+  var stationFlagsData = [];    // [[key,label],...]
+  var networksData = {};
+  var markers = {};
+  var activeFuel = 'all';
+  var activeNet = 'all';
+  var favOnly = false;
+  var proximityStationId = null;
+  var pinMode = false;
+  var searchQuery = '';
+
+  // ---------- FAVORITES (localStorage) ----------
+  function favKey(){ return 'azs_favs'; }
+  function getFavs(){
+    try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; }
+  }
+  function isFav(id){ return getFavs().indexOf(id) !== -1; }
+  function toggleFav(id){
+    var f = getFavs(), i = f.indexOf(id);
+    if (i === -1) f.push(id); else f.splice(i,1);
+    try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
+  }
+
+  // ---------- MAP ----------
+  var map = L.map('map', { zoomControl:false }).setView([59.94, 30.31], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', subdomains:'abc', maxZoom:19
+  }).addTo(map);
+
+  // ---------- HELPERS ----------
+  function statusFor(fuels, fuelKey){
+    if (fuelKey !== 'all'){
+      var f = fuels[fuelKey];
+      return (f && f.status !== 'unknown' && !f.stale) ? f.status : 'unknown';
+    }
+    var worst = -1, any = false;
+    for (var k in fuels){
+      var x = fuels[k];
+      if (x.status !== 'unknown' && !x.stale){ any = true; worst = Math.max(worst, SEVERITY[x.status]); }
+    }
+    if (!any) return 'unknown';
+    return worst === 0 ? 'ok' : worst === 1 ? 'low' : 'none';
+  }
+
+  function makeIcon(color){
+    return L.divIcon({
+      className:'',
+      html:'<div style="width:16px;height:16px;border-radius:50%;background:'+color+
+           ';border:2px solid #14171A;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>',
+      iconSize:[16,16], iconAnchor:[8,8]
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c];
+    });
+  }
+
+  function toast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+  }
+
+  // ---------- POPUP ----------
+  function popupHtml(s){
+    if (!fuelsData.length || !statusesData.length){
+      return '<div style="padding:20px;text-align:center;color:#8A8F98">Загрузка…</div>';
+    }
+    var rows = '';
+    fuelsData.forEach(function(pair){
+      var key = pair[0], label = pair[1];
+      var f = (s.fuels && s.fuels[key]) || {status:'unknown',ago:null,stale:false,confidence:null};
+      var known = f.status !== 'unknown' && !f.stale;
+      var timeText = f.status !== 'unknown' ? (f.stale ? 'устарело' : (f.ago || 'только что')) : 'нет данных';
+      var confText = (known && f.confidence != null) ? (' · ' + f.confidence + '%') : '';
+      var btns = '';
+      statusesData.forEach(function(sp){
+        var stKey = sp[0], stLabel = sp[1];
+        var short = STATUS_LABEL[stKey] || stLabel;
+        var cls = 'sbtn ' + stKey + (known && f.status === stKey ? ' current' : '');
+        btns += '<button class="'+cls+'" data-act="report" data-st="'+escapeHtml(s.id)+
+                '" data-fuel="'+escapeHtml(key)+'" data-status="'+escapeHtml(stKey)+'">'+
+                escapeHtml(short)+'</button>';
+      });
+      rows += '<div class="fuel-block">'+
+                '<div class="fuel-head"><b>'+escapeHtml(label)+'</b>'+
+                  '<span class="fuel-time">'+escapeHtml(timeText)+escapeHtml(confText)+'</span>'+
+                '</div>'+
+                '<div class="fuel-btns">'+btns+'</div>'+
+              '</div>';
+    });
+
+    var flagBtns = '';
+    (stationFlagsData || []).forEach(function(fp){
+      var fkey = fp[0], flabel = fp[1];
+      var fl = s.flags ? s.flags[fkey] : null;
+      var on = fl && fl.on;
+      var short = FLAG_SHORT[fkey] || flabel;
+      flagBtns += '<button class="flag-btn'+(on?' on':'')+'" data-act="flag" data-st="'+
+                  escapeHtml(s.id)+'" data-flag="'+escapeHtml(fkey)+'">'+escapeHtml(short)+'</button>';
+    });
+    if (flagBtns) rows += '<div class="flags-row">'+flagBtns+'</div>';
+
+    var star = isFav(s.id) ? '❤' : '☆';
+
+    rows += '<div class="popup-actions">'+
+              '<button class="route-btn" data-act="route" data-lat="'+s.lat+'" data-lng="'+s.lng+'">🧭 Маршрут</button>'+
+            '</div>'+
+            '<div class="issue-row">'+
+              '<button class="issue-btn" data-act="issue" data-st="'+escapeHtml(s.id)+'">⚠ Сообщить о неточности</button>'+
+            '</div>';
+
+    return '<div class="popup-title">'+escapeHtml(s.name)+
+             '<span class="fav-star" data-act="fav" data-st="'+escapeHtml(s.id)+'">'+star+'</span>'+
+           '</div>'+
+           '<div class="popup-addr">'+escapeHtml(s.addr)+'</div>'+
+           rows;
+  }
+
+  // Делегирование кликов внутри попапа
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-act]');
+    if (!t) return;
+    var act = t.getAttribute('data-act');
+    if (act === 'report'){
+      submitReport(t.getAttribute('data-st'), t.getAttribute('data-fuel'), t.getAttribute('data-status'), t);
+    } else if (act === 'flag'){
+      toggleFlag(t.getAttribute('data-st'), t.getAttribute('data-flag'), t);
+    } else if (act === 'route'){
+      openRoute(parseFloat(t.getAttribute('data-lat')), parseFloat(t.getAttribute('data-lng')));
+    } else if (act === 'issue'){
+      reportStationIssue(t.getAttribute('data-st'));
+    } else if (act === 'fav'){
+      var id = t.getAttribute('data-st');
+      toggleFav(id);
+      t.textContent = isFav(id) ? '❤' : '☆';
+      if (favOnly) renderMarkers();
+    }
+  });
+
+  // ---------- API CALLS ----------
+  async function submitReport(stationId, fuel, status, btn){
+    var block = btn.parentNode;
+    Array.prototype.forEach.call(block.children, function(b){ b.classList.remove('current'); });
+    btn.classList.add('current');
+    if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    try {
+      var res = await fetch('/api/report', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ station_id: stationId, fuel: fuel, status: status,
+                               user_id: userId, username: username })
+      });
+      var j = await res.json();
+      var s = stationsData.find(function(x){ return x.id === stationId; });
+      if (s && s.fuels[fuel]) { s.fuels[fuel].status = status; s.fuels[fuel].stale = false; s.fuels[fuel].ago = 'только что'; }
+      if (j && j.ok && j.points_earned) toast('+' + j.points_earned + ' баллов');
+      else toast('Статус обновлён');
+      updateMarkerFor(stationId);
+    } catch(e){ console.error(e); toast('Не удалось отправить'); }
+  }
+
+  async function toggleFlag(stationId, flagKey, btn){
+    var s = stationsData.find(function(x){ return x.id === stationId; });
+    var currentlyOn = s && s.flags && s.flags[flagKey] && s.flags[flagKey].on;
+    var newStatus = currentlyOn ? 'off' : 'on';
+    btn.classList.toggle('on', !currentlyOn);
+    try {
+      await fetch('/api/report', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ station_id: stationId, fuel: flagKey, status: newStatus,
+                               user_id: userId, username: username })
+      });
+      if (s) s.flags[flagKey] = { on: newStatus === 'on', label: s.flags[flagKey].label, ago:'только что' };
+      if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    } catch(e){ console.error(e); }
+  }
+
+  function openRoute(lat, lng){
+    var url = 'https://yandex.ru/maps/?rtext=~' + lat + ',' + lng + '&rtt=auto';
+    if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
+  }
+
+  function openBotDeepLink(payload){
+    var url = 'https://t.me/' + BOT_USERNAME + '?start=' + encodeURIComponent(payload);
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, '_blank');
+  }
+
+  function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
+
+  // ---------- RENDER ----------
+  function updateMarkerFor(stationId){
+    var s = stationsData.find(function(x){ return x.id === stationId; });
+    var m = markers[stationId];
+    if (!s || !m) return;
+    var st = statusFor(s.fuels, activeFuel);
+    m.setIcon(makeIcon(STATUS_COLOR[st]));
+    m.setPopupContent(popupHtml(s));
+  }
+
+  function renderMarkers(){
+    Object.keys(markers).forEach(function(k){ map.removeLayer(markers[k]); });
+    markers = {};
+    var q = searchQuery.trim().toLowerCase();
+    var reported = 0;
+
+    stationsData.forEach(function(s){
+      var st = statusFor(s.fuels, activeFuel);
+      if (st !== 'unknown') reported++;
+
+      if (activeNet !== 'all' && s.net !== activeNet) return;
+      if (favOnly && !isFav(s.id)) return;
+      if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
+
+      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st]) }).addTo(map);
+      m.bindPopup(popupHtml(s), {
+        maxWidth: 320, minWidth: 280,
+        autoPanPaddingTopLeft: L.point(16, 140),
+        autoPanPaddingBottomRight: L.point(16, 90)
+      });
+      m.on('popupclose', function(){
+        if (proximityStationId === s.id){ proximityStationId = null; }
+      });
+      markers[s.id] = m;
+    });
+
+    document.getElementById('stat-total').textContent = stationsData.length;
+    document.getElementById('stat-reported').textContent = reported;
+  }
+
+  function fillFilterOptions(){
+    var netSel = document.getElementById('net-select');
+    Object.keys(networksData).forEach(function(k){
+      var o = document.createElement('option');
+      o.value = k; o.textContent = networksData[k].label;
+      netSel.appendChild(o);
+    });
+    var fuelSel = document.getElementById('fuel-select');
+    fuelsData.forEach(function(p){
+      var o = document.createElement('option');
+      o.value = p[0]; o.textContent = p[1];
+      fuelSel.appendChild(o);
+    });
+  }
+
+  // ---------- LOAD ----------
+  async function loadStations(){
+    try {
+      var res = await fetch('/api/stations');
+      var data = await res.json();
+      stationsData = data.stations || [];
+      fuelsData = data.fuels || [];
+      statusesData = data.statuses || [];
+      stationFlagsData = data.station_flags || [];
+      networksData = data.networks || {};
+      document.getElementById('stat-reports-24h').textContent = data.reports_24h || 0;
+      fillFilterOptions();
+      renderMarkers();
+      var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
+      if (pts.length) map.fitBounds(pts, { padding:[30,30] });
+    } catch(e){
+      console.error('Ошибка загрузки:', e);
+      toast('Не удалось загрузить данные');
+    }
+  }
+
+  // ---------- UI EVENTS ----------
+  document.getElementById('net-select').addEventListener('change', function(e){
+    activeNet = e.target.value; renderMarkers();
+  });
+  document.getElementById('fuel-select').addEventListener('change', function(e){
+    activeFuel = e.target.value; renderMarkers();
+  });
+  document.getElementById('search-input').addEventListener('input', function(e){
+    searchQuery = e.target.value; renderMarkers();
+  });
+  document.getElementById('fav-toggle').addEventListener('click', function(e){
+    favOnly = !favOnly;
+    e.currentTarget.classList.toggle('active', favOnly);
+    renderMarkers();
+  });
+  document.getElementById('stat-total-item').addEventListener('click', function(){
+    document.getElementById('net-select').value = 'all';
+    document.getElementById('fuel-select').value = 'all';
+    document.getElementById('search-input').value = '';
+    activeNet='all'; activeFuel='all'; searchQuery='';
+    renderMarkers();
+    var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
+    if (pts.length) map.fitBounds(pts, { padding:[30,30] });
+  });
+  document.getElementById('stat-reported-item').addEventListener('click', function(){
+    var pts = stationsData.filter(function(s){ return statusFor(s.fuels, activeFuel) !== 'unknown'; })
+                          .map(function(s){ return [s.lat, s.lng]; });
+    if (pts.length) map.fitBounds(pts, { padding:[30,30] });
+  });
+
+  // Support modal
+  document.getElementById('support-btn').addEventListener('click', function(){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">'+
+        '<h3>☕ Поддержать проект</h3>'+
+        '<p>'+SUPPORT_TEXT+'</p>'+
+        '<p style="color:#E8E6E1;white-space:pre-line;font-size:13px;background:#14171A;padding:10px;border-radius:8px;margin-top:10px">'+escapeHtml(SUPPORT_REQ)+'</p>'+
+        '<div class="modal-btns">'+
+          '<button class="modal-primary" id="m-copy">Скопировать реквизиты</button>'+
+          '<button class="modal-secondary" id="m-close">Закрыть</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){
+      if (e.target === bg) bg.remove();
+    });
+    document.getElementById('m-close').addEventListener('click', function(){ bg.remove(); });
+    document.getElementById('m-copy').addEventListener('click', function(){
+      navigator.clipboard.writeText(SUPPORT_REQ).then(function(){ toast('Реквизиты скопированы'); })
+        .catch(function(){ toast('Не удалось скопировать'); });
+      setTimeout(function(){ bg.remove(); }, 400);
+    });
+  });
+
+  // Missing station pin mode
+  document.getElementById('missing-btn').addEventListener('click', function(){
+    pinMode = !pinMode;
+    this.classList.toggle('active', pinMode);
+    document.body.classList.toggle('pin-mode', pinMode);
+    if (pinMode) map.closePopup();
+  });
+  map.on('click', function(e){
+    if (!pinMode) return;
+    var lat = e.latlng.lat.toFixed(6), lng = e.latlng.lng.toFixed(6);
+    pinMode = false;
+    document.getElementById('missing-btn').classList.remove('active');
+    document.body.classList.remove('pin-mode');
+    var coordSlug = String(Math.round(e.latlng.lat * 1e6)) + '_' + String(Math.round(e.latlng.lng * 1e6));
+    openBotDeepLink('missing_' + coordSlug);
+  });
+
+  // ---------- INIT ----------
+  loadStations();
+
+  // Автообновление раз в 2 минуты (только когда вкладка видима)
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) loadStations();
+  });
+
+})();
+</script>
+</body>
+</html>

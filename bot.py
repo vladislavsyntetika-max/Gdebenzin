@@ -55,29 +55,13 @@ NETWORKS = {
     "other": {"label": "Независимые АЗС", "dot": "⚪"},
 }
 
-FUELS = [
-    ("f92", "АИ-92"),
-    ("f95", "АИ-95"),
-    ("f98", "АИ-98"),
-    ("dt", "ДТ"),
-]
+FUELS = [("f92","АИ-92"),("f95","АИ-95"),("f98","АИ-98"),("dt","ДТ")]
 
-STATUSES = [
-    ("ok", "✅ Есть"),
-    ("low", "🟡 Мало"),
-    ("none", "❌ Нет"),
-]
+STATUSES = [("ok","✅ Есть"),("low","🟡 Мало"),("none","❌ Нет")]
 STATUS_LABEL = {k: v for k, v in STATUSES}
 
-STATION_FLAGS = [
-    ("flag_queue", "🚗 Очередь"),
-    ("flag_limit", "⛔ Лимит на литры"),
-]
+STATION_FLAGS = [("flag_queue","🚗 Очередь"),("flag_limit","⛔ Лимит на литры")]
 STATION_FLAG_LABEL = {k: v for k, v in STATION_FLAGS}
-
-# ---------------------------------------------------------------------------
-# Геймификация
-# ---------------------------------------------------------------------------
 
 POINTS_REPORT = 2
 POINTS_SCOUT_BONUS = 5
@@ -295,7 +279,6 @@ STATION_BY_ID = {s[0]: s for s in STATIONS}
 
 
 def _load_custom_to_cache():
-    """Подмешивает custom_stations из БД в STATION_BY_ID, чтобы бот их видел."""
     try:
         for row in get_custom_stations():
             sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
@@ -305,7 +288,6 @@ def _load_custom_to_cache():
 
 
 def get_station(sid):
-    """Возвращает tuple станции (id, name, net, addr, lat, lng) или None."""
     if sid in STATION_BY_ID:
         return STATION_BY_ID[sid]
     try:
@@ -326,27 +308,15 @@ def station_exists(sid) -> bool:
     return get_station(sid) is not None
 
 
-# ---------------------------------------------------------------------------
-# Районы
-# ---------------------------------------------------------------------------
-
 DISTRICT_CENTROIDS = [
-    ("Адмиралтейский", 59.9250, 30.3130),
-    ("Василеостровский", 59.9450, 30.2530),
-    ("Выборгский", 60.0380, 30.3150),
-    ("Калининский", 59.9880, 30.3960),
-    ("Кировский", 59.8680, 30.2460),
-    ("Колпинский", 59.7410, 30.5880),
-    ("Красногвардейский", 59.9550, 30.4340),
-    ("Красносельский", 59.8360, 30.1000),
-    ("Московский", 59.8600, 30.3190),
-    ("Невский", 59.8770, 30.4430),
-    ("Петроградский", 59.9620, 30.3080),
-    ("Приморский", 60.0020, 30.2710),
-    ("Пушкинский", 59.7160, 30.4090),
-    ("Фрунзенский", 59.8570, 30.3730),
-    ("Центральный", 59.9320, 30.3600),
-    ("Всеволожский район", 60.0200, 30.6300),
+    ("Адмиралтейский", 59.9250, 30.3130),("Василеостровский", 59.9450, 30.2530),
+    ("Выборгский", 60.0380, 30.3150),("Калининский", 59.9880, 30.3960),
+    ("Кировский", 59.8680, 30.2460),("Колпинский", 59.7410, 30.5880),
+    ("Красногвардейский", 59.9550, 30.4340),("Красносельский", 59.8360, 30.1000),
+    ("Московский", 59.8600, 30.3190),("Невский", 59.8770, 30.4430),
+    ("Петроградский", 59.9620, 30.3080),("Приморский", 60.0020, 30.2710),
+    ("Пушкинский", 59.7160, 30.4090),("Фрунзенский", 59.8570, 30.3730),
+    ("Центральный", 59.9320, 30.3600),("Всеволожский район", 60.0200, 30.6300),
 ]
 
 
@@ -376,32 +346,20 @@ def get_user_top_district(user_id: int):
     return counter.most_common(1)[0][0]
 
 
-# ---------------------------------------------------------------------------
-# База данных
-# ---------------------------------------------------------------------------
-
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS reports (
-            station_id TEXT NOT NULL,
-            fuel TEXT NOT NULL,
-            status TEXT NOT NULL,
-            ts INTEGER NOT NULL,
-            user_id INTEGER,
-            username TEXT,
+            station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
+            ts INTEGER NOT NULL, user_id INTEGER, username TEXT,
             PRIMARY KEY (station_id, fuel)
         )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS feed (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts INTEGER NOT NULL,
-            station_id TEXT NOT NULL,
-            fuel TEXT NOT NULL,
-            status TEXT NOT NULL,
-            user_id INTEGER,
-            username TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
+            station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
+            user_id INTEGER, username TEXT
         )
     """)
     for table in ("reports", "feed"):
@@ -411,85 +369,51 @@ def db():
             pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS issue_reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts INTEGER NOT NULL,
-            station_id TEXT,
-            user_id INTEGER NOT NULL,
-            username TEXT,
-            text TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'open'
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
+            station_id TEXT, user_id INTEGER NOT NULL, username TEXT,
+            text TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open'
         )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS user_points (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            total_points INTEGER NOT NULL DEFAULT 0,
-            last_report_date TEXT,
-            streak_days INTEGER NOT NULL DEFAULT 0,
-            streak3_awarded INTEGER NOT NULL DEFAULT 0,
+            user_id INTEGER PRIMARY KEY, username TEXT,
+            total_points INTEGER NOT NULL DEFAULT 0, last_report_date TEXT,
+            streak_days INTEGER NOT NULL DEFAULT 0, streak3_awarded INTEGER NOT NULL DEFAULT 0,
             streak7_awarded INTEGER NOT NULL DEFAULT 0
         )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS points_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            ts INTEGER NOT NULL,
-            points INTEGER NOT NULL,
-            reason TEXT NOT NULL,
-            station_id TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            ts INTEGER NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, station_id TEXT
         )
     """)
     try:
         conn.execute("ALTER TABLE points_log ADD COLUMN station_id TEXT")
     except sqlite3.OperationalError:
         pass
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS bot_state (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    """)
-    # --- НОВЫЕ ТАБЛИЦЫ ---
+    conn.execute("""CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)""")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS custom_stations (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            net TEXT NOT NULL,
-            addr TEXT,
-            lat REAL NOT NULL,
-            lng REAL NOT NULL,
-            created_ts INTEGER NOT NULL,
-            created_by INTEGER NOT NULL
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
+            lat REAL NOT NULL, lng REAL NOT NULL,
+            created_ts INTEGER NOT NULL, created_by INTEGER NOT NULL
         )
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS photos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            station_id TEXT NOT NULL,
-            file_path TEXT NOT NULL,
-            user_id INTEGER,
-            username TEXT,
-            ts INTEGER NOT NULL
+            id INTEGER PRIMARY KEY AUTOINCREMENT, station_id TEXT NOT NULL,
+            file_path TEXT NOT NULL, user_id INTEGER, username TEXT, ts INTEGER NOT NULL
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_photos_station ON photos(station_id, ts DESC)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS pending_stations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            net TEXT NOT NULL,
-            lat REAL NOT NULL,
-            lng REAL NOT NULL,
-            fuels TEXT,
-            user_id INTEGER NOT NULL,
-            username TEXT,
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_ts INTEGER NOT NULL
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, net TEXT NOT NULL,
+            lat REAL NOT NULL, lng REAL NOT NULL, fuels TEXT, user_id INTEGER NOT NULL,
+            username TEXT, status TEXT NOT NULL DEFAULT 'pending', created_ts INTEGER NOT NULL
         )
     """)
-    # --- ИНДЕКСЫ ---
     conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_ts ON reports(ts)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_ts ON feed(ts)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_station_fuel ON feed(station_id, fuel, ts DESC)")
@@ -497,25 +421,24 @@ def db():
     return conn
 
 
-def get_state(key: str):
+def get_state(key):
     conn = db()
     row = conn.execute("SELECT value FROM bot_state WHERE key=?", (key,)).fetchone()
     conn.close()
     return row[0] if row else None
 
 
-def set_state(key: str, value: str):
+def set_state(key, value):
     conn = db()
     conn.execute(
-        "INSERT INTO bot_state (key, value) VALUES (?, ?) "
-        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        "INSERT INTO bot_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, value),
     )
     conn.commit()
     conn.close()
 
 
-def save_report(station_id: str, fuel: str, status: str, user_id: int, username: str = None):
+def save_report(station_id, fuel, status, user_id, username=None):
     now = int(time.time())
     conn = db()
     conn.execute(
@@ -532,11 +455,9 @@ def save_report(station_id: str, fuel: str, status: str, user_id: int, username:
     conn.close()
 
 
-def get_station_reports(station_id: str):
+def get_station_reports(station_id):
     conn = db()
-    rows = conn.execute(
-        "SELECT fuel, status, ts FROM reports WHERE station_id=?", (station_id,)
-    ).fetchall()
+    rows = conn.execute("SELECT fuel, status, ts FROM reports WHERE station_id=?", (station_id,)).fetchall()
     conn.close()
     return {fuel: (status, ts) for fuel, status, ts in rows}
 
@@ -548,16 +469,6 @@ def get_recent_feed(limit=12):
     ).fetchall()
     conn.close()
     return rows
-
-
-def reports_today_count():
-    day_ago = int(time.time()) - 86400
-    conn = db()
-    row = conn.execute(
-        "SELECT COUNT(DISTINCT station_id) FROM feed WHERE ts > ?", (day_ago,)
-    ).fetchone()
-    conn.close()
-    return row[0] if row else 0
 
 
 def save_issue(station_id, user_id, username, text):
@@ -608,20 +519,10 @@ def get_recent_statuses_for_fuel(station_id, fuel, limit=5):
     return [r[0] for r in rows]
 
 
-def get_confidence(station_id, fuel, current_status):
-    recent = get_recent_statuses_for_fuel(station_id, fuel, limit=5)
-    if not recent:
-        return None
-    matches = sum(1 for s in recent if s == current_status)
-    return round(matches / len(recent) * 100)
-
-
 def get_user_stats(user_id):
     conn = db()
     total = conn.execute("SELECT COUNT(*) FROM feed WHERE user_id=?", (user_id,)).fetchone()[0]
-    stations = conn.execute(
-        "SELECT COUNT(DISTINCT station_id) FROM feed WHERE user_id=?", (user_id,)
-    ).fetchone()[0]
+    stations = conn.execute("SELECT COUNT(DISTINCT station_id) FROM feed WHERE user_id=?", (user_id,)).fetchone()[0]
     conn.close()
     return {"total": total, "stations": stations}
 
@@ -634,16 +535,13 @@ def _ensure_user_row(conn, user_id, username):
     )
 
 
-def award_points(user_id: int, username: str, points: int, reason: str, station_id: str = None):
+def award_points(user_id, username, points, reason, station_id=None):
     if user_id == 0 or points == 0:
         return
     now = int(time.time())
     conn = db()
     _ensure_user_row(conn, user_id, username)
-    conn.execute(
-        "UPDATE user_points SET total_points = total_points + ? WHERE user_id=?",
-        (points, user_id),
-    )
+    conn.execute("UPDATE user_points SET total_points = total_points + ? WHERE user_id=?", (points, user_id))
     conn.execute(
         "INSERT INTO points_log (user_id, ts, points, reason, station_id) VALUES (?,?,?,?,?)",
         (user_id, now, points, reason, station_id),
@@ -655,7 +553,7 @@ def award_points(user_id: int, username: str, points: int, reason: str, station_
 POINTS_COOLDOWN_SECONDS = 3600
 
 
-def can_award_station_points(user_id: int, station_id: str) -> bool:
+def can_award_station_points(user_id, station_id) -> bool:
     if user_id == 0:
         return True
     hour_ago = int(time.time()) - POINTS_COOLDOWN_SECONDS
@@ -669,7 +567,7 @@ def can_award_station_points(user_id: int, station_id: str) -> bool:
     return row[0] == 0
 
 
-def record_daily_activity(user_id: int, username: str):
+def record_daily_activity(user_id, username):
     if user_id == 0:
         return
     today = time.strftime("%Y-%m-%d", time.gmtime())
@@ -681,32 +579,27 @@ def record_daily_activity(user_id: int, username: str):
         (user_id,),
     ).fetchone()
     last_date, streak_days, s3, s7 = row if row else (None, 0, 0, 0)
-
     if last_date == today:
         conn.close()
         return
-
     if last_date == yesterday:
         streak_days += 1
     else:
         streak_days = 1
         s3 = 0
         s7 = 0
-
     conn.execute(
         "UPDATE user_points SET last_report_date=?, streak_days=? WHERE user_id=?",
         (today, streak_days, user_id),
     )
     conn.commit()
     conn.close()
-
     if streak_days >= 3 and not s3:
         award_points(user_id, username, POINTS_STREAK_3, "streak_3")
         conn = db()
         conn.execute("UPDATE user_points SET streak3_awarded=1 WHERE user_id=?", (user_id,))
         conn.commit()
         conn.close()
-
     if streak_days >= 7 and not s7:
         award_points(user_id, username, POINTS_STREAK_7, "streak_7")
         conn = db()
@@ -715,7 +608,7 @@ def record_daily_activity(user_id: int, username: str):
         conn.close()
 
 
-def is_scouting_report(station_id: str) -> bool:
+def is_scouting_report(station_id):
     rep = get_station_reports(station_id)
     for key, _label in FUELS:
         if key in rep:
@@ -725,11 +618,9 @@ def is_scouting_report(station_id: str) -> bool:
     return True
 
 
-def get_points_profile(user_id: int):
+def get_points_profile(user_id):
     conn = db()
-    row = conn.execute(
-        "SELECT total_points, streak_days FROM user_points WHERE user_id=?", (user_id,)
-    ).fetchone()
+    row = conn.execute("SELECT total_points, streak_days FROM user_points WHERE user_id=?", (user_id,)).fetchone()
     conn.close()
     total_points, streak_days = row if row else (0, 0)
     return {"total_points": total_points, "streak_days": streak_days, "rank": get_rank(total_points)}
@@ -738,35 +629,22 @@ def get_points_profile(user_id: int):
 def get_weekly_leaderboard(limit=10):
     week_ago = int(time.time()) - 7 * 86400
     conn = db()
-    rows = conn.execute(
-        """
+    rows = conn.execute("""
         SELECT p.user_id, COALESCE(u.username, 'id' || p.user_id) AS username, SUM(p.points) AS week_points
-        FROM points_log p
-        LEFT JOIN user_points u ON u.user_id = p.user_id
-        WHERE p.ts > ?
-        GROUP BY p.user_id
-        ORDER BY week_points DESC
-        LIMIT ?
-        """,
-        (week_ago, limit),
-    ).fetchall()
+        FROM points_log p LEFT JOIN user_points u ON u.user_id = p.user_id
+        WHERE p.ts > ? GROUP BY p.user_id ORDER BY week_points DESC LIMIT ?
+    """, (week_ago, limit)).fetchall()
     conn.close()
     return rows
 
 
-def get_weekly_position(user_id: int):
+def get_weekly_position(user_id):
     week_ago = int(time.time()) - 7 * 86400
     conn = db()
-    rows = conn.execute(
-        """
-        SELECT user_id, SUM(points) AS week_points
-        FROM points_log
-        WHERE ts > ?
-        GROUP BY user_id
-        ORDER BY week_points DESC
-        """,
-        (week_ago,),
-    ).fetchall()
+    rows = conn.execute("""
+        SELECT user_id, SUM(points) AS week_points FROM points_log
+        WHERE ts > ? GROUP BY user_id ORDER BY week_points DESC
+    """, (week_ago,)).fetchall()
     conn.close()
     for i, (uid, pts) in enumerate(rows, start=1):
         if uid == user_id:
@@ -774,15 +652,7 @@ def get_weekly_position(user_id: int):
     return None, 0
 
 
-def get_reports_last_24h():
-    day_ago = int(time.time()) - 86400
-    conn = db()
-    row = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ?", (day_ago,)).fetchone()
-    conn.close()
-    return row[0] if row else 0
-
-
-def time_ago(ts: int) -> str:
+def time_ago(ts):
     diff = max(0, int(time.time()) - ts)
     minutes = diff // 60
     if minutes < 1:
@@ -796,15 +666,13 @@ def time_ago(ts: int) -> str:
     return f"{days} дн назад"
 
 
-def is_stale(ts: int) -> bool:
+def is_stale(ts):
     return (int(time.time()) - ts) > 8 * 3600
 
 
-# ---------------------------------------------------------------------------
-# НОВОЕ: custom_stations, photos, pending_stations — хелперы
-# ---------------------------------------------------------------------------
+# ---------- custom_stations / photos / pending_stations ----------
 
-def add_custom_station(name: str, net: str, addr: str, lat: float, lng: float, user_id: int) -> str:
+def add_custom_station(name, net, addr, lat, lng, user_id):
     now = int(time.time())
     station_id = f"custom-{now}"
     conn = db()
@@ -828,7 +696,20 @@ def get_custom_stations():
     return rows
 
 
-def save_photo(station_id: str, file_path: str, user_id: int, username: str = None):
+def delete_custom_station(station_id):
+    """Удаляет custom-станцию и все связанные отчёты. Только для custom- id."""
+    if not station_id.startswith("custom-"):
+        return
+    conn = db()
+    conn.execute("DELETE FROM custom_stations WHERE id=?", (station_id,))
+    conn.execute("DELETE FROM reports WHERE station_id=?", (station_id,))
+    conn.execute("DELETE FROM feed WHERE station_id=?", (station_id,))
+    conn.commit()
+    conn.close()
+    STATION_BY_ID.pop(station_id, None)
+
+
+def save_photo(station_id, file_path, user_id, username=None):
     conn = db()
     conn.execute(
         "INSERT INTO photos (station_id, file_path, user_id, username, ts) VALUES (?,?,?,?,?)",
@@ -838,17 +719,7 @@ def save_photo(station_id: str, file_path: str, user_id: int, username: str = No
     conn.close()
 
 
-def get_last_photo(station_id: str):
-    conn = db()
-    row = conn.execute(
-        "SELECT file_path, username, ts FROM photos WHERE station_id=? ORDER BY ts DESC LIMIT 1",
-        (station_id,),
-    ).fetchone()
-    conn.close()
-    return row
-
-
-def save_pending_station(name, net, lat, lng, fuels_json: str, user_id, username) -> int:
+def save_pending_station(name, net, lat, lng, fuels_json, user_id, username):
     conn = db()
     cur = conn.execute(
         "INSERT INTO pending_stations (name, net, lat, lng, fuels, user_id, username, created_ts) "
@@ -861,7 +732,7 @@ def save_pending_station(name, net, lat, lng, fuels_json: str, user_id, username
     return pid
 
 
-def get_pending_station(pid: int):
+def get_pending_station(pid):
     conn = db()
     row = conn.execute(
         "SELECT id, name, net, lat, lng, fuels, user_id, username, status FROM pending_stations WHERE id=?",
@@ -871,7 +742,7 @@ def get_pending_station(pid: int):
     return row
 
 
-def approve_pending_station(pid: int, admin_id: int):
+def approve_pending_station(pid, admin_id):
     row = get_pending_station(pid)
     if not row:
         return None
@@ -893,16 +764,14 @@ def approve_pending_station(pid: int, admin_id: int):
     return station_id
 
 
-def reject_pending_station(pid: int):
+def reject_pending_station(pid):
     conn = db()
     conn.execute("UPDATE pending_stations SET status='rejected' WHERE id=?", (pid,))
     conn.commit()
     conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Клавиатуры и текстовые карточки
-# ---------------------------------------------------------------------------
+# ---------- Клавиатуры ----------
 
 def kb_main():
     rows = [[InlineKeyboardButton(text=f"{v['dot']} {v['label']}", callback_data=f"net:{k}")]
@@ -914,14 +783,14 @@ def kb_main():
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def kb_stations(net_key: str):
+def kb_stations(net_key):
     stations = [s for s in STATIONS if s[2] == net_key]
     rows = [[InlineKeyboardButton(text=s[3], callback_data=f"stn:{s[0]}")] for s in stations]
     rows.append([InlineKeyboardButton(text="⬅️ Назад к сетям", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def kb_station_card(station_id: str):
+def kb_station_card(station_id):
     rep = get_station_reports(station_id)
     rows = [[InlineKeyboardButton(text=f"Сообщить: {label}", callback_data=f"fuel:{station_id}:{key}")]
             for key, label in FUELS]
@@ -938,14 +807,14 @@ def kb_station_card(station_id: str):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def kb_status_pick(station_id: str, fuel_key: str):
+def kb_status_pick(station_id, fuel_key):
     rows = [[InlineKeyboardButton(text=label, callback_data=f"rep:{station_id}:{fuel_key}:{status}")]
             for status, label in STATUSES]
     rows.append([InlineKeyboardButton(text="⬅️ Отмена", callback_data=f"stn:{station_id}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def station_card_text(station_id: str) -> str:
+def station_card_text(station_id):
     s = get_station(station_id)
     if not s:
         return "Станция не найдена."
@@ -972,10 +841,6 @@ def station_card_text(station_id: str) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# НОВОЕ: клавиатуры для диплинка add_
-# ---------------------------------------------------------------------------
-
 def kb_brand_pick():
     rows = []
     line = []
@@ -990,7 +855,7 @@ def kb_brand_pick():
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def kb_fuel_pick(fuels_state: dict):
+def kb_fuel_pick(fuels_state):
     rows = []
     for key, label in FUELS:
         cur = fuels_state.get(key)
@@ -1006,20 +871,17 @@ def kb_fuel_pick(fuels_state: dict):
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-# ---------------------------------------------------------------------------
-# Хендлеры
-# ---------------------------------------------------------------------------
+# ---------- Хендлеры ----------
 
 dp = Dispatcher()
-pending_issue = {}       # user_id -> station_id | "missing:lat:lng"
-pending_add = {}         # user_id -> {"lat", "lng", "net", "fuels", "step"}
+pending_issue = {}
+pending_add = {}
 
 
 @dp.message(CommandStart())
 async def on_start(message: Message, command: CommandObject):
     payload = command.args
     if payload:
-        # --- старый формат: err_ / missing_ ---
         if payload.startswith("err_"):
             station_id = payload[len("err_"):].replace("_", "-")
             if station_exists(station_id):
@@ -1040,7 +902,6 @@ async def on_start(message: Message, command: CommandObject):
                     "(координаты я уже приложу автоматически)."
                 )
                 return
-        # --- НОВЫЙ формат: add_<lat>_<lng> ---
         elif payload.startswith("add_"):
             parts = payload[len("add_"):].split("_")
             if len(parts) == 2 and all(p.isdigit() or (p.startswith("-") and p[1:].isdigit()) for p in parts):
@@ -1048,8 +909,7 @@ async def on_start(message: Message, command: CommandObject):
                 lng = int(parts[1]) / 1e6
                 pending_add[message.from_user.id] = {"lat": lat, "lng": lng, "net": None, "fuels": {}}
                 await message.answer(
-                    f"📍 Добавляем АЗС по координатам <b>{lat:.5f}, {lng:.5f}</b>\n\n"
-                    "Выберите бренд:",
+                    f"📍 Добавляем АЗС по координатам <b>{lat:.5f}, {lng:.5f}</b>\n\nВыберите бренд:",
                     reply_markup=kb_brand_pick(),
                 )
                 return
@@ -1064,8 +924,6 @@ async def on_start(message: Message, command: CommandObject):
     await message.answer(text, reply_markup=kb_main())
 
 
-# --- НОВОЕ: обработчики диплинка add_ ---
-
 @dp.callback_query(F.data.startswith("addb:"))
 async def cb_add_brand(cq: CallbackQuery):
     user_id = cq.from_user.id
@@ -1077,7 +935,6 @@ async def cb_add_brand(cq: CallbackQuery):
         await cq.answer("Неизвестный бренд.")
         return
     pending_add[user_id]["net"] = net_key
-    pending_add[user_id]["step"] = "fuels"
     label = NETWORKS[net_key]["label"]
     try:
         await cq.message.edit_text(
@@ -1093,7 +950,7 @@ async def cb_add_brand(cq: CallbackQuery):
 async def cb_add_fuel(cq: CallbackQuery):
     user_id = cq.from_user.id
     if user_id not in pending_add:
-        await cq.answer("Сессия истекла, откройте карту заново.", show_alert=True)
+        await cq.answer("Сессия истекла.", show_alert=True)
         return
     _, fuel_key, status = cq.data.split(":")
     if fuel_key not in dict(FUELS) or status not in dict(STATUSES):
@@ -1115,7 +972,7 @@ async def cb_add_fuel(cq: CallbackQuery):
 async def cb_add_save(cq: CallbackQuery):
     user_id = cq.from_user.id
     if user_id not in pending_add:
-        await cq.answer("Сессия истекла, откройте карту заново.", show_alert=True)
+        await cq.answer("Сессия истекла.", show_alert=True)
         return
     data = pending_add.pop(user_id)
     if not data.get("net"):
@@ -1125,23 +982,16 @@ async def cb_add_save(cq: CallbackQuery):
     name = NETWORKS[net_key]["label"]
     username = display_name(cq.from_user)
     pid = save_pending_station(
-        name=name,
-        net=net_key,
-        lat=data["lat"],
-        lng=data["lng"],
-        fuels_json=json.dumps(data["fuels"]),
-        user_id=user_id,
-        username=username,
+        name=name, net=net_key, lat=data["lat"], lng=data["lng"],
+        fuels_json=json.dumps(data["fuels"]), user_id=user_id, username=username,
     )
     try:
         await cq.message.edit_text(
-            "✅ Заявка отправлена на модерацию. Как только автор проверит — точка появится на карте.\n\n"
-            "Спасибо, что помогаете!"
+            "✅ Заявка отправлена на модерацию. Как только автор проверит — точка появится на карте."
         )
     except TelegramBadRequest:
         pass
     await cq.answer("Отправлено")
-    # Уведомляем админа
     if ADMIN_ID:
         fuels_lines = []
         for key, label in FUELS:
@@ -1155,12 +1005,10 @@ async def cb_add_save(cq: CallbackQuery):
             f"Топливо:\n{fuels_text}\n\n"
             f"От: {format_display(username)} (id {user_id})"
         )
-        mod_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
-                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
-            ]
-        ])
+        mod_kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
+            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
+        ]])
         try:
             await cq.bot.send_message(ADMIN_ID, admin_text, reply_markup=mod_kb)
         except TelegramBadRequest:
@@ -1177,8 +1025,6 @@ async def cb_add_cancel(cq: CallbackQuery):
     await cq.answer()
 
 
-# --- Модерация ---
-
 @dp.callback_query(F.data.startswith("appmod:"))
 async def cb_moderate(cq: CallbackQuery):
     if not ADMIN_ID or cq.from_user.id != ADMIN_ID:
@@ -1189,7 +1035,7 @@ async def cb_moderate(cq: CallbackQuery):
     if action == "approve":
         station_id = approve_pending_station(pid, cq.from_user.id)
         if not station_id:
-            await cq.answer("Заявка уже обработана или не найдена.")
+            await cq.answer("Заявка уже обработана.")
             return
         await cq.answer("Одобрено")
         try:
@@ -1199,10 +1045,7 @@ async def cb_moderate(cq: CallbackQuery):
         row = get_pending_station(pid)
         if row and row[6]:
             try:
-                await cq.bot.send_message(
-                    row[6],
-                    "🎉 Ваша заявка на новую АЗС одобрена и уже на карте! Спасибо.",
-                )
+                await cq.bot.send_message(row[6], "🎉 Ваша заявка на новую АЗС одобрена и уже на карте!")
             except TelegramBadRequest:
                 pass
     elif action == "reject":
@@ -1220,8 +1063,6 @@ async def cb_moderate(cq: CallbackQuery):
                 pass
 
 
-# --- старые хендлеры ---
-
 @dp.message(Command("recent"))
 async def on_recent_cmd(message: Message):
     await message.answer(feed_text(), reply_markup=kb_main())
@@ -1233,12 +1074,12 @@ async def on_contribution_cmd(message: Message):
     stats = get_user_stats(message.from_user.id)
     lines = ["📊 <b>Ваш вклад</b>", ""]
     if stats["total"] == 0:
-        lines.append("Пока нет отчётов о топливе. Отметьте статус на любой станции — это займёт 10 секунд!")
+        lines.append("Пока нет отчётов. Отметьте статус на любой станции — это займёт 10 секунд!")
     else:
         lines.append(f"Отчётов о топливе: <b>{stats['total']}</b>")
-        lines.append(f"Станций, по которым вы отчитывались: <b>{stats['stations']}</b>")
+        lines.append(f"Станций: <b>{stats['stations']}</b>")
     if fixed:
-        lines.append(f"Подтверждённых исправлений неточностей: <b>{fixed}</b> 🙌")
+        lines.append(f"Подтверждённых исправлений: <b>{fixed}</b> 🙌")
     lines.append("")
     lines.append("Баллы и звание — команда /профиль")
     await message.answer("\n".join(lines), reply_markup=kb_main())
@@ -1252,18 +1093,15 @@ async def on_profile_cmd(message: Message):
     _ensure_user_row(conn, user_id, name)
     conn.commit()
     conn.close()
-
     profile = get_points_profile(user_id)
     stats = get_user_stats(user_id)
     fixed = user_fixed_issues_count(user_id)
     week_place, week_points = get_weekly_position(user_id)
-
     rank_display = profile["rank"]
     if profile["rank"] == "Смотритель района":
         top_district = get_user_top_district(user_id)
         if top_district:
             rank_display = f"Смотритель района «{top_district}»"
-
     lines = [f"🏅 <b>Профиль {format_display(name)}</b>", ""]
     lines.append(f"Баллы: <b>{profile['total_points']}</b>")
     lines.append(f"Звание: <b>{rank_display}</b>")
@@ -1286,10 +1124,7 @@ async def on_profile_cmd(message: Message):
 async def on_top_cmd(message: Message):
     rows = get_weekly_leaderboard(10)
     if not rows:
-        await message.answer(
-            "Пока нет отчётов за неделю. Станьте первым в топе — отметьте статус на любой станции!",
-            reply_markup=kb_main(),
-        )
+        await message.answer("Пока нет отчётов за неделю.", reply_markup=kb_main())
         return
     text = format_leaderboard_text(rows, title="🏆 <b>Топ-10 недели</b>")
     await message.answer(text, reply_markup=kb_main())
@@ -1300,21 +1135,16 @@ async def on_rules_cmd(message: Message):
     text = (
         "📋 <b>Правила и конфиденциальность</b>\n\n"
         "Это открытый некоммерческий проект, не связанный с сетями АЗС официально.\n\n"
-        "<b>Что мы храним:</b> ваш Telegram ID, публичный username (если он у вас задан) или имя, "
-        "отметки о топливе и сообщения о неточностях с их временем. Точные координаты сохраняются "
-        "только если вы сами сообщаете об отсутствующей станции — иначе геолокация используется "
-        "только на вашем устройстве и никуда не передаётся. Username/имя используются для очков, "
-        "звания и топа недели, а также могут упоминаться в благодарностях в канале проекта.\n\n"
-        "<b>Зачем это нужно:</b> чтобы можно было связать статус с историей отчётов "
-        "и защититься от накрутки/спама.\n\n"
-        "<b>Кому передаются данные:</b> никому. Нет рекламы, нет продажи данных третьим лицам.\n\n"
-        "<b>Ответственность:</b> данные вносят сами водители, точность не гарантируется "
-        "официально — это дополнение к, а не замена вашей осторожности на дороге."
+        "<b>Что мы храним:</b> Telegram ID, username (если задан), отметки о топливе "
+        "и сообщения о неточностях. Точные координаты — только если вы сами сообщаете "
+        "об отсутствующей станции.\n\n"
+        "<b>Кому передаются данные:</b> никому. Нет рекламы, нет продажи третьим лицам.\n\n"
+        "<b>Ответственность:</b> данные вносят сами водители, точность не гарантируется."
     )
     await message.answer(text, reply_markup=kb_main())
 
 
-def feed_text() -> str:
+def feed_text():
     rows = get_recent_feed(12)
     if not rows:
         return "Пока нет отчётов. Станьте первым — выберите станцию через /start."
@@ -1383,7 +1213,6 @@ async def cb_report(cq: CallbackQuery):
     allow_points = can_award_station_points(cq.from_user.id, station_id)
     name = display_name(cq.from_user)
     save_report(station_id, fuel_key, status, cq.from_user.id, name)
-
     points_earned = 0
     if allow_points:
         points_earned = POINTS_REPORT + (POINTS_SCOUT_BONUS if scouting else 0)
@@ -1391,18 +1220,15 @@ async def cb_report(cq: CallbackQuery):
         if scouting:
             award_points(cq.from_user.id, name, POINTS_SCOUT_BONUS, "scout_bonus", station_id)
     record_daily_activity(cq.from_user.id, name)
-
     await safe_edit(cq, station_card_text(station_id), kb_station_card(station_id))
     if allow_points:
         bonus_note = " (+5 за разведку 🔭)" if scouting else ""
         await cq.answer(f"Спасибо! +{points_earned} баллов{bonus_note}. Статус: {STATUS_LABEL[status]}")
     else:
-        await cq.answer(
-            f"Статус обновлён: {STATUS_LABEL[status]}. Баллы за эту станцию уже начислялись в этот час."
-        )
+        await cq.answer(f"Статус обновлён: {STATUS_LABEL[status]}. Баллы уже начислялись в этот час.")
 
 
-async def safe_edit(cq: CallbackQuery, text: str, markup: InlineKeyboardMarkup):
+async def safe_edit(cq, text, markup):
     try:
         await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
     except TelegramBadRequest:
@@ -1416,9 +1242,9 @@ async def cb_report_issue(cq: CallbackQuery):
     if station_id:
         s = get_station(station_id)
         name = s[1] if s else station_id
-        prompt = f"Опишите, что не так на станции <b>{name}</b> (адрес, сеть, статус, координаты — что угодно). Просто напишите одним сообщением."
+        prompt = f"Опишите, что не так на станции <b>{name}</b> — одним сообщением."
     else:
-        prompt = "Опишите, что не так в боте или на карте — одним сообщением. Мы разберёмся как можно быстрее."
+        prompt = "Опишите, что не так в боте или на карте — одним сообщением."
     await cq.message.answer(prompt)
     await cq.answer()
 
@@ -1438,9 +1264,7 @@ async def on_free_text(message: Message):
         station_id = raw
         text_for_db = message.text
     issue_id = save_issue(station_id, user_id, username, text_for_db)
-    await message.answer(
-        "Спасибо! Заявка передана, разберёмся как можно быстрее. Вы помогаете делать карту точнее — это тоже учитывается 🙌"
-    )
+    await message.answer("Спасибо! Заявка передана, разберёмся как можно быстрее. 🙌")
     if ADMIN_ID:
         station_line = ""
         if station_id:
@@ -1451,12 +1275,11 @@ async def on_free_text(message: Message):
         safe_text = html.escape(text_for_db)
         admin_text = (
             f"⚠️ Новое сообщение о неточности #{issue_id}\n"
-            f"От: {safe_username} (id {user_id}){station_line}\n\n"
-            f"{safe_text}"
+            f"От: {safe_username} (id {user_id}){station_line}\n\n{safe_text}"
         )
-        fix_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Исправлено", callback_data=f"fix:{issue_id}")]
-        ])
+        fix_kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="✅ Исправлено", callback_data=f"fix:{issue_id}")
+        ]])
         try:
             await message.bot.send_message(ADMIN_ID, admin_text, reply_markup=fix_kb)
         except TelegramBadRequest:
@@ -1478,7 +1301,7 @@ async def cb_mark_fixed(cq: CallbackQuery):
     try:
         await cq.message.bot.send_message(
             reporter_id,
-            "Ваше сообщение о неточности разобрали и исправили — спасибо, что помогаете делать карту точнее! 🙌"
+            "Ваше сообщение о неточности разобрали и исправили — спасибо! 🙌"
         )
     except TelegramBadRequest:
         pass
@@ -1486,11 +1309,7 @@ async def cb_mark_fixed(cq: CallbackQuery):
     await cq.answer("Отмечено, автор уведомлён.")
 
 
-# ---------------------------------------------------------------------------
-# Автопост топа недели
-# ---------------------------------------------------------------------------
-
-def format_leaderboard_text(rows, title="🏆 <b>Топ разведчиков недели</b>") -> str:
+def format_leaderboard_text(rows, title="🏆 <b>Топ разведчиков недели</b>"):
     medals = ["🥇", "🥈", "🥉"]
     lines = [title, ""]
     for i, (uid, username, pts) in enumerate(rows):
@@ -1498,11 +1317,11 @@ def format_leaderboard_text(rows, title="🏆 <b>Топ разведчиков �
         display = format_display(username, uid)
         lines.append(f"{mark} {display} — {pts} баллов")
     lines.append("")
-    lines.append("Спасибо всем, кто отмечает топливо! Присоединяйтесь: @naidibenzin_bot")
+    lines.append("Спасибо всем! Присоединяйтесь: @naidibenzin_bot")
     return "\n".join(lines)
 
 
-async def post_weekly_leaderboard(bot: Bot) -> bool:
+async def post_weekly_leaderboard(bot: Bot):
     if not CHANNEL_ID:
         return False
     rows = get_weekly_leaderboard(10)
@@ -1538,10 +1357,9 @@ async def weekly_leaderboard_task(bot: Bot):
 
 async def main():
     if not BOT_TOKEN:
-        raise RuntimeError("Не задан BOT_TOKEN. Создайте .env с BOT_TOKEN=... или переменную окружения на хостинге.")
+        raise RuntimeError("Не задан BOT_TOKEN.")
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
 
-    # Прогреваем кеш кастомных станций из БД
     _load_custom_to_cache()
 
     class IPv4OnlySession(AiohttpSession):

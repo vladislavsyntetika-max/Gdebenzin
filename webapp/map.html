@@ -4,144 +4,341 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#14171A">
-<title>ГДЕ БЕНЗИН!? — Карта АЗС</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>ГДЕ БЕНЗИН!?</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/leaflet.css">
 <style>
-  html, body { margin:0; padding:0; height:100%; background:#14171A; color:#E8E6E1;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    -webkit-tap-highlight-color:transparent; overscroll-behavior:none; }
-  #map { position:absolute; top:0; left:0; right:0; bottom:64px; background:#14171A; }
-  .leaflet-container { background:#14171A; }
+  html, body {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    margin: 0; padding: 0; overflow: hidden;
+    background: #14171A; color: #E8E6E1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none; touch-action: none;
+  }
+  #map { position: absolute; top: 0; left: 0; right: 0; bottom: 92px; background: #14171A; }
+  .leaflet-container { background: #14171A; touch-action: none; }
 
-  #top { position:absolute; top:0; left:0; right:0; z-index:1000; padding:10px 10px 0;
-    pointer-events:none; display:flex; flex-direction:column; gap:8px; }
-  #top > * { pointer-events:auto; }
-  .row { display:flex; gap:8px; }
-  .ctrl { flex:1; min-width:0; background:#1A1D21; border:1px solid #262B31; color:#E8E6E1;
-    border-radius:12px; padding:11px 12px; font-size:14px; font-weight:600;
-    appearance:none; -webkit-appearance:none;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238A8F98' stroke-width='2' fill='none'/></svg>");
-    background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
-  .search { flex:1; min-width:0; background:#1A1D21; border:1px solid #262B31; color:#E8E6E1;
-    border-radius:12px; padding:11px 14px 11px 34px; font-size:14px; outline:none;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4.3-4.3'/></svg>");
-    background-repeat:no-repeat; background-position:12px center; }
-  .icon-btn { width:44px; height:44px; flex-shrink:0; border-radius:12px; background:#1A1D21;
-    border:1px solid #262B31; color:#FFB000; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:20px; line-height:1; padding:0; font-family:inherit; }
-  .icon-btn.active { background:#FFB000; color:#14171A; border-color:#FFB000; }
+  #top {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+    padding: 8px 8px 0; pointer-events: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  #top > * { pointer-events: auto; }
+  .row { display: flex; gap: 6px; align-items: stretch; }
+  .ctrl, .search {
+    background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1;
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    padding: 9px 10px; height: 40px; box-sizing: border-box;
+    appearance: none; -webkit-appearance: none;
+  }
+  .ctrl {
+    flex: 0 0 auto; max-width: 130px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238A8F98' stroke-width='2' fill='none'/></svg>");
+    background-repeat: no-repeat; background-position: right 8px center;
+    padding-right: 24px;
+  }
+  .search {
+    flex: 1 1 auto; min-width: 0; padding-left: 30px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4.3-4.3'/></svg>");
+    background-repeat: no-repeat; background-position: 10px center;
+    outline: none;
+  }
+  .icon-btn {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px;
+    background: #1A1D21; border: 1px solid #262B31; color: #FFB000;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; padding: 0; font-family: inherit;
+  }
+  .icon-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
 
-  #support-row { display:flex; gap:8px; align-items:center; font-size:12px; color:#B7BBC1; }
-  #support-row .pill { background:#1A1D21; border:1px solid #262B31; border-radius:10px;
-    padding:6px 12px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
-  #support-row .pill b { color:#FFB000; font-weight:700; }
+  #side-tools {
+    position: absolute; right: 10px; bottom: 108px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+  }
+  .tool-btn {
+    width: 60px; height: 60px; border-radius: 14px;
+    background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1;
+    cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.45);
+    font-size: 26px; font-weight: 700; line-height: 1; font-family: inherit;
+  }
+  .tool-btn:active { transform: scale(0.96); }
+  .tool-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
+  .tool-btn svg { width: 26px; height: 26px; display: block; }
 
-  #side-tools { position:absolute; right:10px; bottom:78px; z-index:1000;
-    display:flex; flex-direction:column; gap:10px; pointer-events:auto; }
-  .tool-btn { width:66px; height:66px; border-radius:16px; background:#1A1D21;
-    border:1px solid #262B31; color:#E8E6E1; cursor:pointer; padding:0;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 16px rgba(0,0,0,.45); }
-  .tool-btn:active { transform:scale(0.96); }
-  .tool-btn.active { background:#FFB000; color:#14171A; border-color:#FFB000; }
-  .tool-btn svg { width:28px; height:28px; display:block; }
-  .tool-btn.zoom { font-size:28px; font-weight:700; line-height:1; font-family:inherit; }
+  #bottom {
+    position: absolute; bottom: 0; left: 0; right: 0; min-height: 92px;
+    background: #1A1D21; border-top: 1px solid #262B31; z-index: 1000;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0));
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .bottom-row { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+  .stat { font-size: 12px; color: #B7BBC1; cursor: pointer; user-select: none; white-space: nowrap; }
+  .stat b { color: #FFB000; font-size: 14px; font-weight: 700; margin-left: 2px; }
+  .pill-btn {
+    padding: 8px 10px; border-radius: 10px;
+    background: #1E2227; border: 1px solid #2B3036; color: #E8E6E1;
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    white-space: nowrap; flex: 1 1 auto;
+  }
+  .pill-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; flex: 0 0 auto; }
+  .pill-btn.nearby { color: #FFB000; border-color: #FFB00055; }
 
-  #bottom { position:absolute; bottom:0; left:0; right:0; height:64px; background:#1A1D21;
-    border-top:1px solid #262B31; display:flex; align-items:center; justify-content:space-between;
-    padding:0 14px; z-index:1000; gap:10px; }
-  .stat { font-size:13px; color:#B7BBC1; cursor:pointer; user-select:none; white-space:nowrap; }
-  .stat b { color:#FFB000; font-size:17px; font-weight:700; margin-left:2px; }
-  #add-station-btn { padding:10px 14px; border-radius:12px; background:#1E2227; border:1px solid #2B3036;
-    color:#E8E6E1; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  /* ---------- POPUP ---------- */
+  .leaflet-popup-content-wrapper {
+    background: #1A1D21; color: #E8E6E1;
+    border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.7);
+    border: 1px solid #262B31;
+  }
+  .leaflet-popup-content {
+    margin: 10px 12px 12px; min-width: 210px; max-width: 250px;
+    font-size: 15px; max-height: none; overflow: visible;
+  }
+  .leaflet-popup-tip { background: #1A1D21; border: 1px solid #262B31; }
+  .leaflet-container a.leaflet-popup-close-button { display: none !important; }
 
-  .leaflet-popup-content-wrapper { background:#1A1D21; color:#E8E6E1; border-radius:14px;
-    box-shadow:0 8px 32px rgba(0,0,0,.6); border:1px solid #262B31; }
-  .leaflet-popup-content { margin:14px 16px; min-width:260px; font-size:13px; }
-  .leaflet-popup-tip { background:#1A1D21; border:1px solid #262B31; }
-  .leaflet-container a.leaflet-popup-close-button { color:#8A8F98; font-size:20px; padding:8px; }
-  .popup-title { font-size:15px; font-weight:700; margin-bottom:2px; display:flex;
-    align-items:center; justify-content:space-between; gap:8px; }
-  .popup-addr { font-size:12px; color:#8A8F98; margin-bottom:12px; }
-  .fav-star { cursor:pointer; font-size:20px; line-height:1; color:#FFB000; flex-shrink:0; }
-  .fuel-block { padding:8px 0; border-top:1px solid #262B31; }
-  .fuel-head { display:flex; justify-content:space-between; align-items:baseline;
-    margin-bottom:6px; font-size:13px; }
-  .fuel-time { font-size:11px; color:#8A8F98; }
-  .fuel-btns { display:flex; gap:6px; }
-  .sbtn { flex:1; padding:8px 0; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
-    color:#B7BBC1; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
-  .sbtn.ok { color:#1B8A4A; border-color:#1B8A4A55; }
-  .sbtn.low { color:#C97C00; border-color:#C97C0055; }
-  .sbtn.none { color:#C62828; border-color:#C6282855; }
-  .sbtn.current { background:currentColor; color:#14171A!important; font-weight:700; }
-  .sbtn.current.ok { background:#1B8A4A; }
-  .sbtn.current.low { background:#C97C00; }
-  .sbtn.current.none { background:#C62828; color:#fff!important; }
-  .flags-row { display:flex; gap:6px; padding-top:8px; border-top:1px solid #262B31; margin-top:4px; }
-  .flag-btn { flex:1; padding:8px 4px; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
-    color:#B7BBC1; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
-  .flag-btn.on { background:#FFB000; color:#14171A; border-color:#FFB000; }
-  .popup-actions { margin-top:8px; padding-top:8px; border-top:1px solid #262B31; }
-  .route-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
-    color:#E8E6E1; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; }
-  .photo-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
-    color:#E8E6E1; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:6px; }
-  .issue-row { margin-top:8px; }
-  .issue-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:transparent;
-    color:#8A8F98; font-size:12px; cursor:pointer; font-family:inherit; }
+  .popup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .popup-brand { font-size: 28px; font-weight: 800; line-height: 1.05; color: #E8E6E1; letter-spacing: -0.5px; }
+  .popup-close-x {
+    flex: 0 0 auto; width: 40px; height: 40px;
+    border-radius: 10px; border: 1px solid #2B3036; background: #1E2227;
+    color: #E8E6E1; font-size: 22px; line-height: 1;
+    cursor: pointer; font-family: inherit; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .popup-close-x:active { background: #FFB000; color: #14171A; }
+  .popup-addr { font-size: 12px; color: #8A8F98; margin-bottom: 8px; line-height: 1.3; }
 
-  /* ---------- ФОТО В ПОПАПЕ ---------- */
-  .photo-block { margin-top:10px; padding-top:10px; border-top:1px solid #262B31; }
-  .stell-photo { width:100%; border-radius:10px; display:block; cursor:zoom-in;
-    background:#0F1215; min-height:80px; }
-  .photo-meta { font-size:11px; color:#8A8F98; margin-top:6px; line-height:1.3; }
-  .photo-meta b { color:#B7BBC1; }
+  .flags-row {
+    display: flex; gap: 6px; padding: 6px 0;
+    border-top: 1px solid #262B31; border-bottom: 1px solid #262B31; margin-bottom: 8px;
+  }
+  .flag-btn {
+    flex: 1; padding: 8px 4px; border-radius: 8px;
+    border: 1px solid #2B3036; background: #1E2227;
+    color: #B7BBC1; font-size: 11.5px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .flag-btn.on { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; }
 
-  /* ---------- МОДАЛКА ПОЛНОЭКРАННОГО ФОТО ---------- */
-  .photo-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:5000;
-    display:flex; align-items:center; justify-content:center; padding:20px; }
-  .photo-lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
-  .photo-lightbox .close-x { position:absolute; top:14px; right:14px;
-    width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,.6);
-    color:#fff; border:none; font-size:24px; cursor:pointer; }
+  .popup-scroll { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -12px; padding: 0 12px; }
 
-  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2000;
-    display:flex; align-items:center; justify-content:center; padding:20px; }
-  .modal { background:#1A1D21; border:1px solid #262B31; border-radius:16px;
-    padding:20px; max-width:380px; width:100%; color:#E8E6E1; max-height:90vh; overflow-y:auto; }
-  .modal h3 { margin:0 0 8px; font-size:17px; }
-  .modal p { margin:6px 0; font-size:13px; color:#B7BBC1; line-height:1.5; }
-  .modal-btns { display:flex; gap:8px; margin-top:16px; }
-  .modal-btns button { flex:1; padding:11px 0; border-radius:10px; font-size:14px; font-weight:700;
-    cursor:pointer; font-family:inherit; }
-  .modal-primary { background:#FFB000; color:#14171A; border:none; }
-  .modal-secondary { background:#1E2227; color:#E8E6E1; border:1px solid #2B3036; }
-  .brand-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
-  .brand-btn { padding:12px 8px; border-radius:10px; border:1px solid #2B3036; background:#1E2227;
-    color:#E8E6E1; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; text-align:center; }
-  .brand-btn.selected { background:#FFB000; color:#14171A; border-color:#FFB000; }
-  .fuel-line { display:flex; align-items:center; gap:8px; margin-top:8px; }
-  .fuel-line label { font-size:13px; width:60px; color:#B7BBC1; }
-  .fuel-line .btns { display:flex; gap:6px; flex:1; }
-  .fuel-line button { flex:1; padding:8px 0; border-radius:8px; border:1px solid #2B3036;
-    background:#1E2227; color:#B7BBC1; font-size:12px; cursor:pointer; font-family:inherit; }
-  .fuel-line button.ok.selected { background:#1B8A4A; color:#fff; border-color:#1B8A4A; }
-  .fuel-line button.low.selected { background:#C97C00; color:#fff; border-color:#C97C00; }
-  .fuel-line button.none.selected { background:#C62828; color:#fff; border-color:#C62828; }
+  .fuel-row {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 6px;
+    padding: 6px 0; border-bottom: 1px solid #232830;
+  }
+  .fuel-row:last-child { border-bottom: none; }
+  .fuel-btn {
+    padding: 12px 4px; border-radius: 9px;
+    border: 1px solid #2B3036; background: #1E2227;
+    color: #B7BBC1; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; min-height: 48px;
+  }
+  .fuel-btn.ok { color: #1B8A4A; border-color: #1B8A4A55; }
+  .fuel-btn.none { color: #C62828; border-color: #C6282855; }
+  .fuel-btn.current.ok { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
+  .fuel-btn.current.none { background: #C62828; color: #fff; border-color: #C62828; }
+  .fuel-btn.current.low { background: #C97C00; color: #fff; border-color: #C97C00; }
 
-  .toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%);
-    background:#232830; color:#E8E6E1; border:1px solid #3A3F45; border-radius:10px;
-    padding:10px 16px; font-size:13px; z-index:3000; opacity:0; transition:opacity .25s;
-    pointer-events:none; max-width:90vw; text-align:center; }
-  .toast.show { opacity:1; }
+  .fuel-num-wrap { text-align: center; min-width: 76px; }
+  .fuel-num {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 44px; font-weight: 700; color: #E8E6E1;
+    line-height: 1; letter-spacing: -1px;
+  }
+  .fuel-num.dt { font-size: 32px; letter-spacing: 0; }
+  .fuel-fresh {
+    font-size: 10px; color: #8A8F98; margin-top: 3px;
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+    white-space: nowrap;
+  }
+  .fuel-fresh .dot {
+    width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+
+  .popup-actions-fixed {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid #262B31;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .action-btn {
+    width: 100%; padding: 11px 6px; border-radius: 9px;
+    border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .action-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
+  .action-btn.fav-on { color: #FF5E5E; border-color: #FF5E5E55; }
+  .action-btn.danger { color: #E5484D; border-color: #E5484D33; font-size: 12px; font-weight: 600; }
+  .action-btn.issue { color: #8A8F98; font-size: 12px; font-weight: 600; }
+
+  .photo-block { margin-top: 10px; padding-top: 10px; border-top: 1px solid #262B31; }
+  .stell-photo { width: 100%; max-height: 140px; object-fit: cover; border-radius: 10px; display: block; cursor: zoom-in; background: #0F1215; }
+  .photo-meta { font-size: 11px; color: #8A8F98; margin-top: 6px; }
+
+  .photo-lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.94);
+    z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .photo-lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  .photo-lightbox .close-x {
+    position: absolute; top: 14px; right: 14px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0,0,0,.6); color: #fff; border: none; font-size: 24px; cursor: pointer;
+  }
+
+  /* камера */
+  .photo-capture { position: fixed; inset: 0; background: #000; z-index: 7000; display: flex; align-items: center; justify-content: center; }
+  .capture-frame { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .capture-frame video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+  .capture-controls {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0));
+  }
+  .capture-close, .capture-shoot {
+    border-radius: 50%; border: none; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .capture-close { width: 48px; height: 48px; background: rgba(255,255,255,.2); color: #fff; font-size: 26px; }
+  .capture-shoot { width: 78px; height: 78px; background: #FFB000; color: #14171A; font-size: 15px; font-weight: 700; box-shadow: 0 4px 16px rgba(255,176,0,.5); }
+  .capture-hint {
+    position: absolute; top: 16px; left: 0; right: 0;
+    text-align: center; color: #fff; font-size: 13px;
+    text-shadow: 0 1px 4px rgba(0,0,0,.7); padding: 0 16px; pointer-events: none;
+  }
+
+  /* модалки */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal {
+    background: #1A1D21; border: 1px solid #262B31; border-radius: 16px;
+    padding: 18px; max-width: 380px; width: 100%; color: #E8E6E1;
+    max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .modal h3 { margin: 0 0 8px; font-size: 17px; }
+  .modal p { margin: 6px 0; font-size: 13px; color: #B7BBC1; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-btns button { flex: 1; padding: 11px 0; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .modal-primary { background: #FFB000; color: #14171A; border: none; }
+  .modal-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
+  .big-choice { width: 100%; padding: 16px 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; text-align: center; border: none; }
+
+  .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .brand-btn { padding: 12px 8px; border-radius: 10px; border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
+  .brand-btn.selected { background: #FFB000; color: #14171A; border-color: #FFB000; }
+  .fuel-line { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .fuel-line label { font-size: 13px; width: 55px; color: #B7BBC1; }
+  .fuel-line .btns { display: flex; gap: 6px; flex: 1; }
+  .fuel-line button { flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid #2B3036; background: #1E2227; color: #B7BBC1; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .fuel-line button.ok.selected { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
+  .fuel-line button.none.selected { background: #C62828; color: #fff; border-color: #C62828; }
+
+  /* ---------- BOTTOM SHEET «Что рядом» ---------- */
+  .nearby-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: #1A1D21; border-top-left-radius: 20px; border-top-right-radius: 20px;
+    z-index: 4500;
+    max-height: 78vh;
+    display: flex; flex-direction: column;
+    transform: translateY(110%);
+    transition: transform .3s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-shadow: 0 -8px 32px rgba(0,0,0,.7);
+    border-top: 1px solid #262B31;
+  }
+  .nearby-sheet.show { transform: translateY(0); }
+  .nearby-handle {
+    width: 40px; height: 4px; border-radius: 2px;
+    background: #3A3F45; margin: 8px auto 0;
+  }
+  .nearby-header {
+    padding: 12px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #262B31;
+  }
+  .nearby-header h3 { margin: 0; font-size: 17px; font-weight: 700; }
+  .nearby-close {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #232830; color: #E8E6E1; border: none;
+    font-size: 20px; cursor: pointer; padding: 0; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nearby-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 12px; }
+  .nearby-empty { padding: 32px 20px; text-align: center; color: #8A8F98; font-size: 13px; line-height: 1.5; }
+
+  .nearby-item {
+    padding: 14px 18px; display: flex; gap: 12px; align-items: center;
+    cursor: pointer; border-bottom: 1px solid #1F2226;
+  }
+  .nearby-item:last-child { border-bottom: none; }
+  .nearby-item:active { background: #232830; }
+  .nearby-item .ni-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .nearby-item .ni-main { flex: 1; min-width: 0; }
+  .nearby-item .ni-name { font-size: 15px; font-weight: 700; color: #E8E6E1; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nearby-item .ni-meta { font-size: 12px; color: #8A8F98; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nearby-item .ni-dist { font-size: 14px; font-weight: 700; color: #FFB000; text-align: right; flex-shrink: 0; }
+
+  /* ---------- PIN TOOLBAR ---------- */
+  #pin-toolbar {
+    position: absolute; left: 12px; right: 12px; bottom: 110px;
+    z-index: 3500; background: #1A1D21; border: 1px solid #262B31;
+    border-radius: 14px; padding: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.6);
+    display: none;
+  }
+  #pin-toolbar.show { display: block; }
+  #pin-toolbar .pin-text { font-size: 13px; color: #E8E6E1; font-weight: 600; margin-bottom: 10px; text-align: center; }
+  #pin-toolbar .pin-btns { display: flex; gap: 8px; }
+  #pin-toolbar .pin-btns button { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1; }
+  #pin-toolbar .pin-btns button.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 106px; transform: translateX(-50%);
+    background: #232830; color: #E8E6E1; border: 1px solid #3A3F45; border-radius: 10px;
+    padding: 10px 16px; font-size: 13px; z-index: 8000;
+    opacity: 0; transition: opacity .25s;
+    pointer-events: none; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; }
 
   .me-marker {
-    width:20px; height:20px; border-radius:50%;
-    background:#1E88E5; border:3px solid #ffffff;
-    box-shadow:0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
-    box-sizing:border-box;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #1E88E5; border: 3px solid #fff;
+    box-shadow: 0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
+    box-sizing: border-box;
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    #top { padding: 4px 6px 0; gap: 4px; }
+    .ctrl, .search, .icon-btn { height: 34px; font-size: 12px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
+    .ctrl { padding-right: 20px; max-width: 110px; }
+    .search { padding-left: 26px; }
+    .icon-btn { width: 34px; height: 34px; font-size: 15px; }
+    #bottom {
+      min-height: 44px; flex-direction: row; align-items: center;
+      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 8px;
+    }
+    .bottom-row { justify-content: flex-start; gap: 6px; flex: 0 0 auto; flex: 1; }
+    .bottom-row:first-child { overflow: hidden; }
+    .bottom-row:last-child { margin-left: auto; flex: 0 0 auto; }
+    .stat { font-size: 11px; }
+    .stat b { font-size: 12px; margin-left: 1px; }
+    .stat:nth-child(3) { display: none; }
+    .pill-btn { padding: 6px 8px; font-size: 11px; border-radius: 8px; flex: 0 0 auto; }
+    #map { bottom: 44px; }
+    #side-tools { bottom: 54px; gap: 6px; }
+    .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
+    .tool-btn svg { width: 20px; height: 20px; }
+    .popup-scroll { max-height: 30vh; }
+    #pin-toolbar { bottom: 60px; }
+    .nearby-sheet { max-height: 90vh; }
   }
 </style>
 </head>
@@ -152,16 +349,10 @@
 <div id="top">
   <div class="row">
     <select id="net-select" class="ctrl"><option value="all">Все сети</option></select>
-    <select id="fuel-select" class="ctrl"><option value="all">Любое топливо</option></select>
-  </div>
-  <div class="row">
-    <input id="search-input" class="search" type="search" placeholder="Поиск по адресу или сети…" autocomplete="off">
+    <select id="fuel-select" class="ctrl"><option value="all">Топливо</option></select>
+    <input id="search-input" class="search" type="search" placeholder="Поиск…" autocomplete="off">
     <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
-    <button id="install-btn" class="icon-btn" title="Установить на телефон" style="display:none;">⤓</button>
-  </div>
-  <div id="support-row">
-    <div class="pill">Отчётов за 24ч: <b id="stat-reports-24h">0</b></div>
-    <div class="pill" id="support-btn">☕ Поддержать</div>
+    <button id="install-btn" class="icon-btn" title="Установить" style="display:none;">⤓</button>
   </div>
 </div>
 
@@ -178,14 +369,38 @@
       <path d="M14 10l3 3v6a2 2 0 0 0 4 0v-8l-3-3"/>
     </svg>
   </button>
-  <button class="tool-btn zoom" id="btn-zoom-in" title="Приблизить">+</button>
-  <button class="tool-btn zoom" id="btn-zoom-out" title="Отдалить">−</button>
+  <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
+  <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
 
 <div id="bottom">
-  <div class="stat" id="stat-total-item">Станций: <b id="stat-total">0</b></div>
-  <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
-  <button id="add-station-btn">+ Добавить АЗС</button>
+  <div class="bottom-row">
+    <div class="stat" id="stat-total-item">Станций: <b id="stat-total">0</b></div>
+    <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
+    <div class="stat" id="stat-reports-24h-item">За 24ч: <b id="stat-reports-24h">0</b></div>
+  </div>
+  <div class="bottom-row">
+    <button class="pill-btn nearby" id="nearby-btn">🎯 Что рядом</button>
+    <button class="pill-btn" id="support-btn">☕</button>
+    <button class="pill-btn primary" id="add-station-btn">+ АЗС</button>
+  </div>
+</div>
+
+<div id="pin-toolbar">
+  <div class="pin-text">📍 Перетащите булавку в точку АЗС</div>
+  <div class="pin-btns">
+    <button id="pin-cancel">Отмена</button>
+    <button id="pin-confirm" class="primary">✔ Подтвердить</button>
+  </div>
+</div>
+
+<div class="nearby-sheet" id="nearby-sheet">
+  <div class="nearby-handle"></div>
+  <div class="nearby-header">
+    <h3>🎯 Что рядом</h3>
+    <button class="nearby-close" id="nearby-close" aria-label="Закрыть">✕</button>
+  </div>
+  <div class="nearby-list" id="nearby-list"></div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -195,20 +410,25 @@
 (function(){
   'use strict';
 
+  var FUEL_SHORT = { f92: '92', f95: '95', f98: '98', dt: 'ДТ' };
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
-  var STATUS_LABEL = { ok:'Есть', low:'Мало', none:'Нет' };
   var SEVERITY = { ok:0, low:1, none:2 };
   var FLAG_SHORT = { flag_queue:'🚗 Очередь', flag_limit:'⛔ Лимит' };
   var BOT_USERNAME = 'naidibenzin_bot';
   var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
   var ADMIN_ID = 2145359728;
-  var PROXIMITY_OPEN_M = 100;
-  var PROXIMITY_CLOSE_M = 150;
-  var PROXIMITY_IDLE_MS = 4000;
+  var PROXIMITY_OPEN_M = 200;
+  var PROXIMITY_CLOSE_M = 250;
+  var PROXIMITY_IDLE_MS = 5000;
+  var NEARBY_MAX_KM = 30;
 
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+  if (tg) {
+    try { tg.ready(); tg.expand(); } catch(e){}
+    if (tg.requestFullscreen) { try { tg.requestFullscreen(); } catch(e){} }
+    if (tg.disableVerticalSwipes) { try { tg.disableVerticalSwipes(); } catch(e){} }
+  }
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
   var userId = user ? user.id : 0;
@@ -228,10 +448,14 @@
   var meMarker = null;
   var watchId = null;
   var locateActive = false;
+  var followMode = false;
   var lastPosition = null;
 
   var autoPopupStationId = null;
   var autoPopupIdleTimer = null;
+
+  var pinMarker = null;
+  var pinResolve = null;
 
   function favKey(){ return 'azs_favs'; }
   function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; } }
@@ -242,20 +466,28 @@
     try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
   }
 
-  var map = L.map('map', { zoomControl:false }).setView([59.94, 30.31], 12);
+  var map = L.map('map', { zoomControl:false, tap:true }).setView([59.94, 30.31], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', subdomains:'abc', maxZoom:19
   }).addTo(map);
 
+  map.on('dragstart', function(){ followMode = false; });
+  map.on('zoomend', applyMarkerOpacity);
+
   function statusFor(fuels, fuelKey){
     if (fuelKey !== 'all'){
       var f = fuels[fuelKey];
-      return (f && f.status !== 'unknown' && !f.stale) ? f.status : 'unknown';
+      if (!f || f.status === 'unknown' || f.stale) return 'unknown';
+      return f.status === 'low' ? 'ok' : f.status;
     }
     var worst = -1, any = false;
     for (var k in fuels){
       var x = fuels[k];
-      if (x.status !== 'unknown' && !x.stale){ any = true; worst = Math.max(worst, SEVERITY[x.status]); }
+      if (x.status !== 'unknown' && !x.stale){
+        any = true;
+        var sev = x.status === 'low' ? 0 : SEVERITY[x.status];
+        worst = Math.max(worst, sev);
+      }
     }
     if (!any) return 'unknown';
     return worst === 0 ? 'ok' : worst === 1 ? 'low' : 'none';
@@ -303,33 +535,56 @@
     return { station: best, distance: bestD };
   }
 
+  function freshnessInfo(ts){
+    if (!ts) return { color: '#6B6F76', label: 'нет данных', level: 4 };
+    var diffMin = (Date.now() / 1000 - ts) / 60;
+    if (diffMin < 30) return { color: '#4CAF7D', label: 'только что', level: 0 };
+    if (diffMin < 120) return { color: '#8BC34A', label: Math.round(diffMin) + ' мин', level: 1 };
+    if (diffMin < 480) return { color: '#FFC107', label: Math.round(diffMin / 60) + ' ч', level: 2 };
+    if (diffMin < 1440) return { color: '#FF9800', label: 'вчера', level: 3 };
+    return { color: '#6B6F76', label: 'давно', level: 4 };
+  }
+
+  // ---------- POPUP ----------
   function popupHtml(s){
     if (!fuelsData.length || !statusesData.length){
       return '<div style="padding:20px;text-align:center;color:#8A8F98">Загрузка…</div>';
     }
-    var rows = '';
+
+    var scrollContent = '';
+
     fuelsData.forEach(function(pair){
-      var key = pair[0], label = pair[1];
-      var f = (s.fuels && s.fuels[key]) || {status:'unknown',ago:null,stale:false,confidence:null};
-      var known = f.status !== 'unknown' && !f.stale;
-      var timeText = f.status !== 'unknown' ? (f.stale ? 'устарело' : (f.ago || 'только что')) : 'нет данных';
-      var confText = (known && f.confidence != null) ? (' · ' + f.confidence + '%') : '';
-      var btns = '';
-      statusesData.forEach(function(sp){
-        var stKey = sp[0], stLabel = sp[1];
-        var short = STATUS_LABEL[stKey] || stLabel;
-        var cls = 'sbtn ' + stKey + (known && f.status === stKey ? ' current' : '');
-        btns += '<button class="'+cls+'" data-act="report" data-st="'+escapeHtml(s.id)+
-                '" data-fuel="'+escapeHtml(key)+'" data-status="'+escapeHtml(stKey)+'">'+
-                escapeHtml(short)+'</button>';
-      });
-      rows += '<div class="fuel-block">'+
-                '<div class="fuel-head"><b>'+escapeHtml(label)+'</b>'+
-                  '<span class="fuel-time">'+escapeHtml(timeText)+escapeHtml(confText)+'</span>'+
-                '</div>'+
-                '<div class="fuel-btns">'+btns+'</div>'+
-              '</div>';
+      var key = pair[0];
+      var shortLabel = FUEL_SHORT[key] || pair[1];
+      var f = (s.fuels && s.fuels[key]) || {status:'unknown', ts: 0};
+      var rawStatus = f.status;
+      var displayStatus = (rawStatus === 'low') ? 'ok' : rawStatus;
+      var isKnown = rawStatus !== 'unknown' && !f.stale;
+
+      var numCls = 'fuel-num' + (key === 'dt' ? ' dt' : '');
+      var okCls = 'fuel-btn ok' + (isKnown && displayStatus === 'ok' ? ' current' : '');
+      var noneCls = 'fuel-btn none' + (isKnown && displayStatus === 'none' ? ' current' : '');
+
+      var fi = isKnown ? freshnessInfo(f.ts) : freshnessInfo(0);
+
+      scrollContent += '<div class="fuel-row">' +
+        '<button class="'+okCls+'" data-act="report" data-st="'+escapeHtml(s.id)+'" data-fuel="'+escapeHtml(key)+'" data-status="ok">Есть</button>' +
+        '<div class="fuel-num-wrap">' +
+          '<div class="'+numCls+'">'+escapeHtml(shortLabel)+'</div>' +
+          '<div class="fuel-fresh"><span class="dot" style="background:'+fi.color+'"></span>'+escapeHtml(fi.label)+'</div>' +
+        '</div>' +
+        '<button class="'+noneCls+'" data-act="report" data-st="'+escapeHtml(s.id)+'" data-fuel="'+escapeHtml(key)+'" data-status="none">Нет</button>' +
+      '</div>';
     });
+
+    if (s.last_photo && s.last_photo.url){
+      var cacheBust = s.last_photo.ts ? ('?v=' + s.last_photo.ts) : '';
+      scrollContent += '<div class="photo-block">' +
+        '<img src="'+escapeHtml(s.last_photo.url + cacheBust)+'" class="stell-photo" ' +
+        'data-act="view-photo" data-url="'+escapeHtml(s.last_photo.url)+'" alt="Стелла" loading="lazy">' +
+        '<div class="photo-meta">📷 Стелла · '+escapeHtml(s.last_photo.ago||'')+'</div>' +
+      '</div>';
+    }
 
     var flagBtns = '';
     (stationFlagsData || []).forEach(function(fp){
@@ -340,32 +595,34 @@
       flagBtns += '<button class="flag-btn'+(on?' on':'')+'" data-act="flag" data-st="'+
                   escapeHtml(s.id)+'" data-flag="'+escapeHtml(fkey)+'">'+escapeHtml(short)+'</button>';
     });
-    if (flagBtns) rows += '<div class="flags-row">'+flagBtns+'</div>';
+    var flagsHtml = flagBtns ? '<div class="flags-row">'+flagBtns+'</div>' : '';
 
-    // --- Фото стеллы (если есть) ---
-    if (s.last_photo && s.last_photo.url){
-      var who = s.last_photo.username ? ' · ' + escapeHtml(s.last_photo.username) : '';
-      rows += '<div class="photo-block">'+
-                '<img src="'+escapeHtml(s.last_photo.url)+'" class="stell-photo" '+
-                'data-act="view-photo" data-url="'+escapeHtml(s.last_photo.url)+'" alt="Стелла" loading="lazy">'+
-                '<div class="photo-meta">📷 Стелла · <b>'+escapeHtml(s.last_photo.ago||'только что')+'</b>'+who+'</div>'+
-              '</div>';
-    }
+    var isFavNow = isFav(s.id);
+    var favCls = 'action-btn' + (isFavNow ? ' fav-on' : '');
+    var favText = isFavNow ? '❤ В избранном' : '☆ В избранное';
 
-    var star = isFav(s.id) ? '❤' : '☆';
-    rows += '<div class="popup-actions">'+
-              '<button class="route-btn" data-act="route" data-lat="'+s.lat+'" data-lng="'+s.lng+'">🧭 Маршрут</button>'+
-              '<button class="photo-btn" data-act="photo" data-st="'+escapeHtml(s.id)+'">📷 '+(s.last_photo ? 'Обновить фото стеллы' : 'Добавить фото стеллы')+'</button>'+
-            '</div>'+
-            '<div class="issue-row">'+
-              '<button class="issue-btn" data-act="issue" data-st="'+escapeHtml(s.id)+'">⚠ Сообщить о неточности</button>'+
-            '</div>';
+    var isCustom = (s.id + '').indexOf('custom-') === 0;
+    var adminDelete = (userId === ADMIN_ID && isCustom)
+      ? '<button class="action-btn danger" data-act="delete-station" data-st="'+escapeHtml(s.id)+'">🗑 Удалить станцию</button>'
+      : '';
 
-    return '<div class="popup-title">'+escapeHtml(s.name)+
-             '<span class="fav-star" data-act="fav" data-st="'+escapeHtml(s.id)+'">'+star+'</span>'+
-           '</div>'+
-           '<div class="popup-addr">'+escapeHtml(s.addr)+'</div>'+
-           rows;
+    return '' +
+      '<div class="popup-head">' +
+        '<div class="popup-brand">'+escapeHtml(s.name)+'</div>' +
+        '<button class="popup-close-x" data-act="close-popup" aria-label="Закрыть">✕</button>' +
+      '</div>' +
+      '<div class="popup-addr">'+escapeHtml(s.addr)+'</div>' +
+      flagsHtml +
+      '<div class="popup-scroll">' + scrollContent + '</div>' +
+      '<div class="popup-actions-fixed">' +
+        '<div class="action-row">' +
+          '<button class="action-btn" data-act="route" data-lat="'+s.lat+'" data-lng="'+s.lng+'">🧭 Маршрут</button>' +
+          '<button class="action-btn primary" data-act="photo" data-st="'+escapeHtml(s.id)+'">📷 Фото</button>' +
+        '</div>' +
+        '<button class="'+favCls+'" data-act="fav" data-st="'+escapeHtml(s.id)+'">'+favText+'</button>' +
+        '<button class="action-btn issue" data-act="issue" data-st="'+escapeHtml(s.id)+'">⚠ Сообщить о неточности</button>' +
+        adminDelete +
+      '</div>';
   }
 
   document.addEventListener('click', function(e){
@@ -376,12 +633,25 @@
     else if (act === 'flag') toggleFlag(t.getAttribute('data-st'), t.getAttribute('data-flag'), t);
     else if (act === 'route') openRoute(parseFloat(t.getAttribute('data-lat')), parseFloat(t.getAttribute('data-lng')));
     else if (act === 'issue') reportStationIssue(t.getAttribute('data-st'));
-    else if (act === 'photo') pickAndUploadPhoto(t.getAttribute('data-st'));
+    else if (act === 'photo') openPhotoSourceChooser(t.getAttribute('data-st'));
     else if (act === 'view-photo') openLightbox(t.getAttribute('data-url'));
+    else if (act === 'close-popup') { closeAutoPopup(); map.closePopup(); }
+    else if (act === 'delete-station') confirmDeleteStation(t.getAttribute('data-st'));
+    else if (act === 'nearby-goto'){
+      var sid = t.getAttribute('data-st');
+      closeNearbySheet();
+      var s = stationsData.find(function(x){ return x.id === sid; });
+      if (s){
+        map.setView([s.lat, s.lng], 16, { animate:true });
+        setTimeout(function(){ if (markers[sid]) markers[sid].openPopup(); }, 400);
+      }
+    }
     else if (act === 'fav'){
       var id = t.getAttribute('data-st');
       toggleFav(id);
-      t.textContent = isFav(id) ? '❤' : '☆';
+      var nowFav = isFav(id);
+      t.classList.toggle('fav-on', nowFav);
+      t.textContent = nowFav ? '❤ В избранном' : '☆ В избранное';
       if (favOnly) renderMarkers();
     }
   });
@@ -389,8 +659,7 @@
   function openLightbox(url){
     var bg = document.createElement('div');
     bg.className = 'photo-lightbox';
-    bg.innerHTML = '<button class="close-x" aria-label="Закрыть">×</button>'+
-                   '<img src="'+escapeHtml(url)+'" alt="Стелла">';
+    bg.innerHTML = '<button class="close-x" aria-label="Закрыть">×</button><img src="'+escapeHtml(url)+'" alt="Стелла">';
     document.body.appendChild(bg);
     bg.addEventListener('click', function(e){
       if (e.target === bg || e.target.classList.contains('close-x')) bg.remove();
@@ -412,13 +681,7 @@
     autoPopupStationId = station.id;
     var m = markers[station.id];
     if (!m) return;
-    var targetZoom = Math.max(map.getZoom(), 15);
-    map.flyTo([station.lat, station.lng], targetZoom, { duration: 0.6 });
-    setTimeout(function(){
-      if (autoPopupStationId === station.id && markers[station.id]) {
-        markers[station.id].openPopup();
-      }
-    }, 350);
+    m.openPopup();
     resetAutoIdle();
   }
 
@@ -432,8 +695,8 @@
   }
 
   async function submitReport(stationId, fuel, status, btn){
-    var block = btn.parentNode;
-    Array.prototype.forEach.call(block.children, function(b){ b.classList.remove('current'); });
+    var row = btn.parentNode;
+    Array.prototype.forEach.call(row.querySelectorAll('.fuel-btn'), function(b){ b.classList.remove('current'); });
     btn.classList.add('current');
     if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     try {
@@ -444,11 +707,16 @@
       });
       var j = await res.json();
       var s = stationsData.find(function(x){ return x.id === stationId; });
-      if (s && s.fuels[fuel]) { s.fuels[fuel].status = status; s.fuels[fuel].stale = false; s.fuels[fuel].ago = 'только что'; }
+      if (s && s.fuels[fuel]){
+        s.fuels[fuel].status = status;
+        s.fuels[fuel].stale = false;
+        s.fuels[fuel].ago = 'только что';
+        s.fuels[fuel].ts = Math.floor(Date.now()/1000);
+      }
       if (j && j.ok && j.points_earned) toast('+' + j.points_earned + ' баллов');
       else toast('Статус обновлён');
       updateMarkerFor(stationId);
-      if (autoPopupStationId === stationId) setTimeout(closeAutoPopup, 500);
+      if (autoPopupStationId === stationId) setTimeout(closeAutoPopup, 900);
     } catch(e){ console.error(e); toast('Не удалось отправить'); }
   }
 
@@ -463,9 +731,8 @@
         body: JSON.stringify({ station_id: stationId, fuel: flagKey, status: newStatus,
                                user_id: userId, username: username })
       });
-      if (s) s.flags[flagKey] = { on: newStatus === 'on', label: s.flags[flagKey].label, ago:'только что' };
+      if (s) s.flags[flagKey] = { on: newStatus === 'on', label: s.flags[flagKey].label, ago:'только что', ts: Math.floor(Date.now()/1000) };
       if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
-      resetAutoIdle();
     } catch(e){ console.error(e); }
   }
 
@@ -480,13 +747,112 @@
     window.open(url, '_blank');
   }
 
-  function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
+  function reportStationIssue(id){
+    toast('Открываю бота…');
+    setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
+  }
 
-  function pickAndUploadPhoto(stationId){
+  function confirmDeleteStation(stationId){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">'+
+        '<h3>🗑 Удалить станцию?</h3>'+
+        '<p>Станция <b>'+escapeHtml(stationId)+'</b> будет удалена со всеми отчётами. Действие необратимо.</p>'+
+        '<div class="modal-btns">'+
+          '<button class="modal-secondary" id="del-cancel">Отмена</button>'+
+          '<button class="modal-primary" id="del-ok">Удалить</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#del-cancel').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#del-ok').addEventListener('click', function(){ bg.remove(); deleteStation(stationId); });
+  }
+
+  async function deleteStation(stationId){
+    toast('Удаляю…');
+    try {
+      var res = await fetch('/api/delete-station', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ station_id: stationId, user_id: userId })
+      });
+      var j = await res.json();
+      if (j && j.ok){ toast('Станция удалена'); map.closePopup(); await loadStations(); }
+      else toast('Не удалось: ' + (j.error || ''));
+    } catch(e){ console.error(e); toast('Ошибка удаления'); }
+  }
+
+  function openPhotoSourceChooser(stationId){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">'+
+        '<h3>📷 Фото стеллы</h3>'+
+        '<p style="margin-bottom:4px;">Выберите источник:</p>'+
+        '<button type="button" class="big-choice modal-primary" id="ph-cam">📸 Снять на камеру</button>'+
+        '<button type="button" class="big-choice modal-secondary" id="ph-file">🖼 Выбрать из галереи</button>'+
+        '<div class="modal-btns"><button class="modal-secondary" id="ph-cancel">Отмена</button></div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#ph-cam').addEventListener('click', function(){ bg.remove(); openCamera(stationId); });
+    bg.querySelector('#ph-file').addEventListener('click', function(){ bg.remove(); openFileInput(stationId); });
+    bg.querySelector('#ph-cancel').addEventListener('click', function(){ bg.remove(); });
+  }
+
+  function openCamera(stationId){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      toast('Камера недоступна — открываю галерею');
+      openFileInput(stationId);
+      return;
+    }
+    var stream = null;
+    var bg = document.createElement('div');
+    bg.className = 'photo-capture';
+    bg.innerHTML =
+      '<div class="capture-frame">' +
+        '<video autoplay playsinline muted></video>' +
+        '<div class="capture-hint">Наведите камеру на стеллу</div>' +
+        '<div class="capture-controls">' +
+          '<button class="capture-close" aria-label="Закрыть">×</button>' +
+          '<button class="capture-shoot">📸 Снять</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(bg);
+    var video = bg.querySelector('video');
+    function stopStream(){ if (stream){ try { stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} stream = null; } }
+    function closeCapture(){ stopStream(); bg.remove(); }
+    bg.querySelector('.capture-close').addEventListener('click', closeCapture);
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).then(function(s){ stream = s; video.srcObject = s; try { video.play(); } catch(e){} })
+     .catch(function(err){
+      console.warn('getUserMedia failed:', err);
+      closeCapture();
+      toast('Камера недоступна — выберите фото из галереи');
+      openFileInput(stationId);
+    });
+    bg.querySelector('.capture-shoot').addEventListener('click', function(){
+      if (!video.videoWidth){ toast('Камера ещё не готова…'); return; }
+      var canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(function(blob){
+        if (!blob){ toast('Не удалось сделать снимок'); return; }
+        stopStream(); bg.remove();
+        var file = new File([blob], 'stell.jpg', { type: 'image/jpeg' });
+        uploadPhoto(stationId, file);
+      }, 'image/jpeg', 0.85);
+    });
+  }
+
+  function openFileInput(stationId){
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
     input.addEventListener('change', function(){
       var file = input.files && input.files[0];
       if (!file) return;
@@ -506,22 +872,51 @@
       fd.append('photo', file, 'photo.jpg');
       var res = await fetch('/api/upload-photo', { method:'POST', body: fd });
       var j = await res.json();
+      console.log('[upload-photo] ответ:', j);
       if (j && j.ok){
         toast('Фото добавлено');
         var s = stationsData.find(function(x){ return x.id === stationId; });
         if (s){
-          s.last_photo = {
-            url: j.photo_url,
-            username: username || null,
-            ago: 'только что',
-            ts: j.ts || Math.floor(Date.now()/1000)
-          };
-          if (markers[stationId]) markers[stationId].setPopupContent(popupHtml(s));
+          s.last_photo = { url: j.photo_url, username: username || null, ago: 'только что', ts: j.ts || Math.floor(Date.now()/1000) };
+          var m = markers[stationId];
+          if (m){
+            var wasOpen = m.isPopupOpen();
+            m.setPopupContent(popupHtml(s));
+            if (wasOpen){ m.closePopup(); setTimeout(function(){ m.openPopup(); }, 80); }
+          }
         }
       } else {
-        toast('Не удалось загрузить: ' + (j.error || ''));
+        toast('Не удалось: ' + (j.error || ''));
       }
     } catch(e){ console.error(e); toast('Ошибка загрузки'); }
+  }
+
+  // ---------- СВЕЖЕСТЬ МАРКЕРОВ ----------
+  function applyMarkerOpacity(){
+    var z = map.getZoom();
+    if (z < 13){
+      Object.keys(markers).forEach(function(sid){
+        if (markers[sid]) markers[sid].setOpacity(1);
+      });
+      return;
+    }
+    var now = Date.now() / 1000;
+    stationsData.forEach(function(s){
+      var m = markers[s.id];
+      if (!m) return;
+      var maxTs = 0;
+      for (var k in s.fuels){
+        var t = s.fuels[k].ts || 0;
+        if (t > maxTs) maxTs = t;
+      }
+      if (!maxTs){ m.setOpacity(0.25); return; }
+      var diffHr = (now - maxTs) / 3600;
+      var op = 1;
+      if (diffHr >= 24) op = 0.2;
+      else if (diffHr >= 8) op = 0.45;
+      else if (diffHr >= 2) op = 0.75;
+      m.setOpacity(op);
+    });
   }
 
   function updateMarkerFor(stationId){
@@ -531,6 +926,7 @@
     var st = statusFor(s.fuels, activeFuel);
     m.setIcon(makeIcon(STATUS_COLOR[st]));
     m.setPopupContent(popupHtml(s));
+    applyMarkerOpacity();
   }
 
   function renderMarkers(){
@@ -549,15 +945,17 @@
 
       var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st]) }).addTo(map);
       m.bindPopup(popupHtml(s), {
-        maxWidth: 320, minWidth: 280,
-        autoPanPaddingTopLeft: L.point(16, 140),
-        autoPanPaddingBottomRight: L.point(90, 90)
+        maxWidth: 270, minWidth: 220,
+        autoPanPaddingTopLeft: L.point(12, 90),
+        autoPanPaddingBottomRight: L.point(80, 120),
+        closeButton: false, autoClose: true, closeOnClick: true
       });
       markers[s.id] = m;
     });
 
     document.getElementById('stat-total').textContent = stationsData.length;
     document.getElementById('stat-reported').textContent = reported;
+    applyMarkerOpacity();
   }
 
   function fillFilterOptions(){
@@ -570,7 +968,7 @@
     var fuelSel = document.getElementById('fuel-select');
     fuelsData.forEach(function(p){
       var o = document.createElement('option');
-      o.value = p[0]; o.textContent = p[1];
+      o.value = p[0]; o.textContent = FUEL_SHORT[p[0]] || p[1];
       fuelSel.appendChild(o);
     });
   }
@@ -588,26 +986,18 @@
       fillFilterOptions();
       renderMarkers();
       var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
-      if (pts.length) map.fitBounds(pts, { padding:[30,30] });
+      if (pts.length && !lastPosition) map.fitBounds(pts, { padding:[30,30] });
     } catch(e){
       console.error('Ошибка загрузки:', e);
       toast('Не удалось загрузить данные');
     }
   }
 
-  document.getElementById('net-select').addEventListener('change', function(e){
-    activeNet = e.target.value; renderMarkers();
-  });
-  document.getElementById('fuel-select').addEventListener('change', function(e){
-    activeFuel = e.target.value; renderMarkers();
-  });
-  document.getElementById('search-input').addEventListener('input', function(e){
-    searchQuery = e.target.value; renderMarkers();
-  });
+  document.getElementById('net-select').addEventListener('change', function(e){ activeNet = e.target.value; renderMarkers(); });
+  document.getElementById('fuel-select').addEventListener('change', function(e){ activeFuel = e.target.value; renderMarkers(); });
+  document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
   document.getElementById('fav-toggle').addEventListener('click', function(e){
-    favOnly = !favOnly;
-    e.currentTarget.classList.toggle('active', favOnly);
-    renderMarkers();
+    favOnly = !favOnly; e.currentTarget.classList.toggle('active', favOnly); renderMarkers();
   });
   document.getElementById('stat-total-item').addEventListener('click', function(){
     document.getElementById('net-select').value = 'all';
@@ -627,10 +1017,16 @@
   document.getElementById('btn-zoom-in').addEventListener('click', function(){ map.zoomIn(); });
   document.getElementById('btn-zoom-out').addEventListener('click', function(){ map.zoomOut(); });
 
+  // ---------- GPS ----------
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
-    if (watchId !== null) return;
+    if (watchId !== null){
+      followMode = true;
+      if (lastPosition) map.setView([lastPosition.lat, lastPosition.lng], Math.max(map.getZoom(), 15), { animate:true });
+      return;
+    }
     locateActive = true;
+    followMode = true;
     document.getElementById('btn-locate').classList.add('active');
     watchId = navigator.geolocation.watchPosition(
       function(pos){
@@ -638,14 +1034,13 @@
         lastPosition = { lat: lat, lng: lng };
         if (!meMarker){
           meMarker = L.marker([lat, lng], {
-            icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>',
-                              iconSize:[20,20], iconAnchor:[10,10] }),
+            icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>', iconSize:[18,18], iconAnchor:[9,9] }),
             interactive:false, zIndexOffset:1000
           }).addTo(map);
         } else {
           meMarker.setLatLng([lat, lng]);
         }
-        map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate:true });
+        if (followMode) map.setView([lat, lng], map.getZoom(), { animate:false });
 
         var near = findNearestStation(lat, lng);
         if (near.station && near.distance <= PROXIMITY_OPEN_M){
@@ -660,66 +1055,114 @@
         toast('Не удалось определить местоположение');
         stopLocate();
       },
-      { enableHighAccuracy:true, maximumAge:3000, timeout:15000 }
+      { enableHighAccuracy:true, maximumAge:3000, timeout:20000 }
     );
   }
 
   function stopLocate(){
     if (watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
     locateActive = false;
+    followMode = false;
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
     closeAutoPopup();
   }
 
   document.getElementById('btn-locate').addEventListener('click', function(){
-    if (locateActive) stopLocate(); else startLocate();
+    if (locateActive){
+      if (!followMode && lastPosition){
+        followMode = true;
+        map.setView([lastPosition.lat, lastPosition.lng], Math.max(map.getZoom(), 15), { animate:true });
+        toast('Слежение включено');
+      } else {
+        stopLocate();
+        toast('Слежение выключено');
+      }
+    } else {
+      startLocate();
+    }
   });
 
   document.getElementById('btn-route').addEventListener('click', function(){
     if (!stationsData.length){ toast('Данные ещё загружаются'); return; }
-    var from = lastPosition || (meMarker ? meMarker.getLatLng() : map.getCenter());
-    var candidates = stationsData.filter(function(s){
-      return statusFor(s.fuels, activeFuel) === 'ok';
-    });
-    if (!candidates.length){
-      candidates = stationsData.filter(function(s){
-        return statusFor(s.fuels, activeFuel) === 'low';
-      });
-    }
-    if (!candidates.length){ toast('Нет АЗС с топливом по этому фильтру'); return; }
+    var from = lastPosition || map.getCenter();
+    var candidates = stationsData.filter(function(s){ return statusFor(s.fuels, activeFuel) === 'ok'; });
+    if (!candidates.length) candidates = stationsData.filter(function(s){ return statusFor(s.fuels, activeFuel) !== 'unknown'; });
+    if (!candidates.length){ toast('Нет АЗС с топливом'); return; }
     var best = null, bestD = Infinity;
     candidates.forEach(function(s){
       var d = haversine(from.lat, from.lng, s.lat, s.lng);
       if (d < bestD){ bestD = d; best = s; }
     });
     if (!best){ toast('Не найдено'); return; }
-    var distKm = (bestD / 1000).toFixed(1);
-    toast('Ближайшая: ' + best.name + ' — ' + distKm + ' км');
+    toast('Ближайшая: ' + best.name + ' — ' + (bestD/1000).toFixed(1) + ' км');
     var url = 'https://yandex.ru/maps/?rtext=' +
               from.lat.toFixed(6) + ',' + from.lng.toFixed(6) + '~' +
               best.lat.toFixed(6) + ',' + best.lng.toFixed(6) + '&rtt=auto';
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  (function initAddStationBtn(){
-    var btn = document.getElementById('add-station-btn') || document.getElementById('missing-btn');
-    if (!btn){ console.warn('add-station-btn не найдена в DOM'); return; }
-    btn.addEventListener('click', function(){
+  // ---------- PIN MODE ----------
+  function startPinMode(initialLat, initialLng){
+    return new Promise(function(resolve){
+      pinResolve = resolve;
+      pinMarker = L.marker([initialLat, initialLng], {
+        draggable: true,
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="width:36px;height:36px;border-radius:50%;background:#FFB000;' +
+                'border:3px solid #14171A;box-shadow:0 4px 16px rgba(255,176,0,.7);' +
+                'display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>',
+          iconSize: [36, 36], iconAnchor: [18, 18]
+        }),
+        zIndexOffset: 2000
+      }).addTo(map);
+      map.setView([initialLat, initialLng], Math.max(map.getZoom(), 16), { animate:true });
+      document.getElementById('pin-toolbar').classList.add('show');
+    });
+  }
+
+  function endPinMode(confirm){
+    if (!pinMarker){ return; }
+    var result = confirm ? pinMarker.getLatLng() : null;
+    map.removeLayer(pinMarker);
+    pinMarker = null;
+    document.getElementById('pin-toolbar').classList.remove('show');
+    var cb = pinResolve;
+    pinResolve = null;
+    if (cb) cb(result);
+  }
+
+  document.getElementById('pin-cancel').addEventListener('click', function(){ endPinMode(false); });
+  document.getElementById('pin-confirm').addEventListener('click', function(){ endPinMode(true); });
+
+  // ---------- ADD STATION ----------
+  document.getElementById('add-station-btn').addEventListener('click', async function(){
+    if (userId === ADMIN_ID){
       var lat, lng;
       if (lastPosition){ lat = lastPosition.lat; lng = lastPosition.lng; }
       else { var c = map.getCenter(); lat = c.lat; lng = c.lng; }
 
-      if (userId === ADMIN_ID){
-        try { openAddStationDialog(lat, lng); }
-        catch(err){ console.error(err); toast('Ошибка диалога: ' + err.message); }
-      } else {
-        var payload = 'add_' + Math.round(lat * 1e6) + '_' + Math.round(lng * 1e6);
-        openBotDeepLink(payload);
-        setTimeout(function(){ toast('Если бот не открылся — нажмите ещё раз'); }, 100);
-      }
-    });
-  })();
+      var wasFollowing = followMode;
+      followMode = false;
+
+      var pos = await startPinMode(lat, lng);
+      followMode = false;  // не восстанавливаем, чтобы карта не «убегала»
+      if (wasFollowing) { /* оставляем выключенным */ }
+
+      if (!pos){ toast('Отменено'); return; }
+
+      try { openAddStationDialog(pos.lat, pos.lng); }
+      catch(err){ console.error(err); toast('Ошибка диалога: ' + err.message); }
+    } else {
+      var lat2, lng2;
+      if (lastPosition){ lat2 = lastPosition.lat; lng2 = lastPosition.lng; }
+      else { var c2 = map.getCenter(); lat2 = c2.lat; lng2 = c2.lng; }
+      var payload = 'add_' + Math.round(lat2 * 1e6) + '_' + Math.round(lng2 * 1e6);
+      toast('Открываю бота…');
+      setTimeout(function(){ openBotDeepLink(payload); }, 150);
+    }
+  });
 
   function openAddStationDialog(lat, lng){
     var brands = [
@@ -749,11 +1192,11 @@
     html += '</div>';
     html += '<p style="font-weight:700;margin-top:16px;">2. Топливо (по желанию)</p>';
     fuelsData.forEach(function(p){
+      var short = FUEL_SHORT[p[0]] || p[1];
       html += '<div class="fuel-line" data-fuel="'+p[0]+'">'+
-        '<label>'+p[1]+'</label>'+
+        '<label>'+short+'</label>'+
         '<div class="btns">'+
           '<button type="button" class="ok" data-status="ok">Есть</button>'+
-          '<button type="button" class="low" data-status="low">Мало</button>'+
           '<button type="button" class="none" data-status="none">Нет</button>'+
         '</div>'+
       '</div>';
@@ -772,7 +1215,6 @@
         selectedBrand = btn.getAttribute('data-brand');
       });
     });
-
     bg.querySelectorAll('.fuel-line').forEach(function(line){
       var fuelKey = line.getAttribute('data-fuel');
       line.querySelectorAll('button').forEach(function(btn){
@@ -784,18 +1226,12 @@
         });
       });
     });
-
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     bg.querySelector('#as-cancel').addEventListener('click', function(){ bg.remove(); });
     bg.querySelector('#as-save').addEventListener('click', function(){
       if (!selectedBrand){ toast('Выберите бренд'); return; }
-      saveNewStation({
-        lat: lat, lng: lng,
-        net: selectedBrand,
-        fuels: fuelStates,
-        user_id: userId,
-        username: username || ''
-      });
+      saveNewStation({ lat: lat, lng: lng, net: selectedBrand, fuels: fuelStates,
+                       user_id: userId, username: username || '' });
       bg.remove();
     });
   }
@@ -803,22 +1239,103 @@
   async function saveNewStation(payload){
     try {
       var res = await fetch('/api/add-station', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
       var j = await res.json();
-      if (j && j.ok){
-        toast('АЗС добавлена: ' + ((j.station && j.station.name) || ''));
-        await loadStations();
-      } else {
-        toast('Не удалось добавить: ' + (j.error || ''));
-      }
-    } catch(e){
-      console.error(e);
-      toast('Ошибка отправки');
-    }
+      if (j && j.ok){ toast('АЗС добавлена'); await loadStations(); }
+      else toast('Не удалось добавить: ' + (j.error || ''));
+    } catch(e){ console.error(e); toast('Ошибка отправки'); }
   }
 
+  // ---------- NEARBY (Что рядом) ----------
+  function computeScore(s, from){
+    var distKm = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
+    // Свежесть: минуты самого свежего отчёта
+    var now = Date.now() / 1000;
+    var bestFreshTs = 0;
+    for (var k in s.fuels){
+      var t = s.fuels[k].ts || 0;
+      if (t > bestFreshTs) bestFreshTs = t;
+    }
+    var freshness = 0;
+    if (bestFreshTs){
+      var hrs = (now - bestFreshTs) / 3600;
+      if (hrs < 0.5) freshness = 1.0;
+      else if (hrs < 8) freshness = 1.0 - (hrs - 0.5) / 7.5;
+      else if (hrs < 24) freshness = -0.3 * (hrs - 8) / 16;
+      else freshness = -1.0;
+    } else {
+      freshness = -1.0;
+    }
+    var proximity = Math.max(0, 1 - distKm / NEARBY_MAX_KM);
+    var fuelOk = statusFor(s.fuels, 'all') === 'ok' ? 1.0 : (statusFor(s.fuels, 'all') === 'low' ? 0.5 : 0);
+    var hasQueue = s.flags && s.flags.flag_queue && s.flags.flag_queue.on ? 1 : 0;
+    var hasLimit = s.flags && s.flags.flag_limit && s.flags.flag_limit.on ? 1 : 0;
+    return 3.0 * freshness + 2.0 * proximity + 2.5 * fuelOk - 1.0 * hasQueue - 0.5 * hasLimit;
+  }
+
+  function openNearbySheet(){
+    var from = lastPosition;
+    if (!from){
+      toast('Включите геолокацию (🎯 в подвале)');
+      return;
+    }
+    var list = document.getElementById('nearby-list');
+    list.innerHTML = '';
+    var scored = stationsData.map(function(s){
+      var d = haversine(from.lat, from.lng, s.lat, s.lng);
+      return { s: s, dist: d, score: computeScore(s, from) };
+    }).filter(function(x){
+      if (x.dist > NEARBY_MAX_KM * 1000) return false;
+      var st = statusFor(x.s.fuels, 'all');
+      if (st === 'none') return false;
+      return true;
+    }).sort(function(a, b){ return b.score - a.score; }).slice(0, 12);
+
+    if (!scored.length){
+      list.innerHTML = '<div class="nearby-empty">Пока нет станций с топливом в радиусе ' + NEARBY_MAX_KM + ' км. Попробуйте расширить зону или включить фильтры.</div>';
+    } else {
+      scored.forEach(function(x){
+        var s = x.s;
+        var st = statusFor(s.fuels, 'all');
+        var color = STATUS_COLOR[st] || '#8A8F98';
+        var distStr = x.dist < 950 ? Math.round(x.dist) + ' м' : (x.dist / 1000).toFixed(1) + ' км';
+        var fu = [];
+        for (var fk in s.fuels){
+          if (s.fuels[fk].status === 'ok' && !s.fuels[fk].stale){
+            fu.push(FUEL_SHORT[fk] || fk);
+          }
+        }
+        var fuelLine = fu.length ? fu.join(' · ') + ' ✅' : 'нет данных';
+        var flags = [];
+        if (s.flags && s.flags.flag_queue && s.flags.flag_queue.on) flags.push('🚗 очередь');
+        if (s.flags && s.flags.flag_limit && s.flags.flag_limit.on) flags.push('⛔ лимит');
+        var flagStr = flags.length ? ' · ' + flags.join(' · ') : '';
+        var item = document.createElement('div');
+        item.className = 'nearby-item';
+        item.setAttribute('data-act', 'nearby-goto');
+        item.setAttribute('data-st', s.id);
+        item.innerHTML =
+          '<span class="ni-dot" style="background:'+color+'"></span>' +
+          '<div class="ni-main">' +
+            '<div class="ni-name">'+escapeHtml(s.name)+'</div>' +
+            '<div class="ni-meta">'+escapeHtml(s.addr)+' · '+escapeHtml(fuelLine)+flagStr+'</div>' +
+          '</div>' +
+          '<div class="ni-dist">'+distStr+'</div>';
+        list.appendChild(item);
+      });
+    }
+    document.getElementById('nearby-sheet').classList.add('show');
+  }
+
+  function closeNearbySheet(){
+    document.getElementById('nearby-sheet').classList.remove('show');
+  }
+
+  document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
+  document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
+
+  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -836,45 +1353,36 @@
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     document.getElementById('m-close').addEventListener('click', function(){ bg.remove(); });
     document.getElementById('m-copy').addEventListener('click', function(){
-      navigator.clipboard.writeText(SUPPORT_REQ).then(function(){ toast('Реквизиты скопированы'); })
+      navigator.clipboard.writeText(SUPPORT_REQ).then(function(){ toast('Скопировано'); })
         .catch(function(){ toast('Не удалось скопировать'); });
       setTimeout(function(){ bg.remove(); }, 400);
     });
   });
 
+  // ---------- PWA ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                    || window.navigator.standalone === true;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
   function showInstallButton(){ if (!isStandalone) installBtn.style.display = 'flex'; }
-
   window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    showInstallButton();
+    e.preventDefault(); deferredInstallPrompt = e; showInstallButton();
   });
-
   if (isIOS && !isStandalone) showInstallButton();
-
   window.addEventListener('appinstalled', function(){
-    installBtn.style.display = 'none';
-    deferredInstallPrompt = null;
+    installBtn.style.display = 'none'; deferredInstallPrompt = null;
     toast('Спасибо! Иконка на рабочем столе');
   });
 
   function showIOSInstructions(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
-    bg.innerHTML =
-      '<div class="modal">'+
-        '<h3>📲 Установить на iPhone</h3>'+
-        '<p>1. Нажмите <b>Поделиться</b> <span style="color:#FFB000;">⬆</span> внизу Safari.</p>'+
-        '<p>2. Выберите <b>«На экран „Домой“»</b>.</p>'+
-        '<p>3. Нажмите <b>«Добавить»</b>.</p>'+
-        '<div class="modal-btns"><button class="modal-secondary" id="ios-close">Понятно</button></div>'+
-      '</div>';
+    bg.innerHTML = '<div class="modal"><h3>📲 Установить на iPhone</h3>'+
+      '<p>1. Нажмите <b>Поделиться</b> ⬆ внизу Safari.</p>'+
+      '<p>2. Выберите <b>«На экран „Домой“»</b>.</p>'+
+      '<p>3. Нажмите <b>«Добавить»</b>.</p>'+
+      '<div class="modal-btns"><button class="modal-secondary" id="ios-close">Понятно</button></div></div>';
     document.body.appendChild(bg);
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     document.getElementById('ios-close').addEventListener('click', function(){ bg.remove(); });
@@ -886,14 +1394,12 @@
       deferredInstallPrompt.prompt();
       deferredInstallPrompt.userChoice.then(function(choice){
         if (choice.outcome === 'accepted') toast('Установлено!');
-        deferredInstallPrompt = null;
-        installBtn.style.display = 'none';
+        deferredInstallPrompt = null; installBtn.style.display = 'none';
       });
     }
   });
 
   try { loadStations(); } catch(e){ console.error('init error', e); }
-
   document.addEventListener('visibilitychange', function(){
     if (!document.hidden) loadStations();
   });

@@ -98,7 +98,7 @@ async def handle_stations(request):
             "SELECT COUNT(*) FROM feed WHERE ts > ?", (day_ago,)
         ).fetchone()[0]
 
-        # --- Последнее фото по каждой станции ---
+        # Последнее фото по каждой станции
         photos_by_station = {}
         try:
             photo_rows = conn.execute("""
@@ -111,7 +111,6 @@ async def handle_stations(request):
             for sid, fpath, uname, pts in photo_rows:
                 photos_by_station[sid] = (fpath, uname, pts)
         except Exception:
-            # таблицы photos может не быть — не падаем
             pass
     finally:
         conn.close()
@@ -143,20 +142,24 @@ async def handle_stations(request):
             if key in rep:
                 status, ts = rep[key]
                 fuels[key] = {
-                    "status": status, "label": label,
+                    "status": status,
+                    "label": label,
                     "ago": core.time_ago(ts),
                     "stale": core.is_stale(ts),
+                    "ts": ts,
                     "confidence": confidence_for(sid, key, status),
                 }
             else:
-                fuels[key] = {"status": "unknown", "label": label, "ago": None, "stale": False, "confidence": None}
+                fuels[key] = {"status": "unknown", "label": label, "ago": None,
+                              "stale": False, "ts": 0, "confidence": None}
         flags = {}
         for key, label in core.STATION_FLAGS:
             if key in rep:
                 status, ts = rep[key]
-                flags[key] = {"on": status == "on" and not core.is_stale(ts), "label": label, "ago": core.time_ago(ts)}
+                flags[key] = {"on": status == "on" and not core.is_stale(ts),
+                              "label": label, "ago": core.time_ago(ts), "ts": ts}
             else:
-                flags[key] = {"on": False, "label": label, "ago": None}
+                flags[key] = {"on": False, "label": label, "ago": None, "ts": 0}
         return {
             "id": sid, "name": name, "net": net, "addr": addr,
             "lat": lat, "lng": lng, "fuels": fuels, "flags": flags,
@@ -266,25 +269,16 @@ async def handle_add_station(request):
 
     if net not in core.NETWORKS:
         return web.json_response({"ok": False, "error": "unknown_network"}, status=400)
-
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
         return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
 
     try:
         station_id = core.add_custom_station(
-            name=core.NETWORKS[net]["label"],
-            net=net,
-            addr="Добавлено с карты",
-            lat=lat,
-            lng=lng,
-            user_id=user_id,
+            name=core.NETWORKS[net]["label"], net=net,
+            addr="Добавлено с карты", lat=lat, lng=lng, user_id=user_id,
         )
     except AttributeError:
-        return web.json_response(
-            {"ok": False, "error": "bot_not_updated",
-             "detail": "add_custom_station() отсутствует в bot.py"},
-            status=500,
-        )
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
 
     for fuel_key, status_val in (fuels or {}).items():
         if fuel_key in dict(core.FUELS) and status_val in dict(core.STATUSES):
@@ -294,6 +288,34 @@ async def handle_add_station(request):
         "ok": True,
         "station": {"id": station_id, "name": core.NETWORKS[net]["label"]},
     })
+
+
+async def handle_delete_station(request):
+    """
+    POST /api/delete-station
+    Тело JSON: { station_id, user_id }
+    Удаляет только custom-станции (с префиксом custom-). Только для админа.
+    """
+    try:
+        data = await request.json()
+        station_id = str(data["station_id"])
+        user_id = int(data.get("user_id") or 0)
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    admin_id = getattr(core, "ADMIN_ID", 0)
+    if not admin_id or user_id != admin_id:
+        return web.json_response({"ok": False, "error": "forbidden"}, status=403)
+
+    if not station_id.startswith("custom-"):
+        return web.json_response({"ok": False, "error": "only_custom_stations"}, status=400)
+
+    try:
+        core.delete_custom_station(station_id)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    return web.json_response({"ok": True})
 
 
 async def handle_upload_photo(request):
@@ -334,7 +356,6 @@ async def handle_upload_photo(request):
         exists = station_id in core.STATION_BY_ID if station_id else False
     if not exists:
         return web.json_response({"ok": False, "error": "unknown_station"}, status=404)
-
     if not photo_bytes:
         return web.json_response({"ok": False, "error": "no_photo"}, status=400)
 
@@ -402,6 +423,7 @@ def build_app() -> web.Application:
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/add-station", handle_add_station)
+    app.router.add_post("/api/delete-station", handle_delete_station)
     app.router.add_post("/api/upload-photo", handle_upload_photo)
     app.router.add_get("/api/photo/{station_id}/{filename}", handle_get_photo)
     app.router.add_route("OPTIONS", "/api/{tail:.*}", lambda request: web.Response())

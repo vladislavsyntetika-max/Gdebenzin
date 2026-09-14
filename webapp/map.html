@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#14171A">
 <title>ГДЕ БЕНЗИН!? — Карта АЗС</title>
+<link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/leaflet.css">
 <style>
   html, body { margin:0; padding:0; height:100%; background:#14171A; color:#E8E6E1;
@@ -29,7 +30,7 @@
     background-repeat:no-repeat; background-position:12px center; }
   .icon-btn { width:44px; height:44px; flex-shrink:0; border-radius:12px; background:#1A1D21;
     border:1px solid #262B31; color:#FFB000; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:20px; line-height:1; padding:0; }
+    cursor:pointer; font-size:20px; line-height:1; padding:0; font-family:inherit; }
   .icon-btn.active { background:#FFB000; color:#14171A; border-color:#FFB000; }
 
   #support-row { display:flex; gap:8px; align-items:center; font-size:12px; color:#B7BBC1; }
@@ -38,16 +39,16 @@
   #support-row .pill b { color:#FFB000; font-weight:700; }
 
   /* ---------- RIGHT SIDE TOOLBAR ---------- */
-  #side-tools { position:absolute; right:10px; top:140px; z-index:1000;
-    display:flex; flex-direction:column; gap:8px; pointer-events:auto; }
-  .tool-btn { width:44px; height:44px; border-radius:12px; background:#1A1D21;
+  #side-tools { position:absolute; right:10px; bottom:78px; z-index:1000;
+    display:flex; flex-direction:column; gap:10px; pointer-events:auto; }
+  .tool-btn { width:66px; height:66px; border-radius:16px; background:#1A1D21;
     border:1px solid #262B31; color:#E8E6E1; cursor:pointer; padding:0;
     display:flex; align-items:center; justify-content:center;
-    font-size:22px; font-weight:700; line-height:1; font-family:inherit;
-    box-shadow:0 4px 12px rgba(0,0,0,.35); }
+    box-shadow:0 6px 16px rgba(0,0,0,.45); }
   .tool-btn:active { transform:scale(0.96); }
   .tool-btn.active { background:#FFB000; color:#14171A; border-color:#FFB000; }
-  .tool-btn.route { font-size:20px; }
+  .tool-btn svg { width:28px; height:28px; display:block; }
+  .tool-btn.zoom { font-size:28px; font-weight:700; line-height:1; font-family:inherit; }
 
   /* ---------- BOTTOM PANEL ---------- */
   #bottom { position:absolute; bottom:0; left:0; right:0; height:64px; background:#1A1D21;
@@ -55,7 +56,7 @@
     padding:0 14px; z-index:1000; gap:10px; }
   .stat { font-size:13px; color:#B7BBC1; cursor:pointer; user-select:none; white-space:nowrap; }
   .stat b { color:#FFB000; font-size:17px; font-weight:700; margin-left:2px; }
-  #missing-btn { padding:10px 14px; border-radius:12px; background:#1E2227; border:1px solid #2B3036;
+  #add-station-btn { padding:10px 14px; border-radius:12px; background:#1E2227; border:1px solid #2B3036;
     color:#E8E6E1; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
 
   /* ---------- POPUP ---------- */
@@ -89,6 +90,8 @@
   .popup-actions { margin-top:8px; padding-top:8px; border-top:1px solid #262B31; }
   .route-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
     color:#E8E6E1; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .photo-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:#1E2227;
+    color:#E8E6E1; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:6px; }
   .issue-row { margin-top:8px; }
   .issue-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:transparent;
     color:#8A8F98; font-size:12px; cursor:pointer; font-family:inherit; }
@@ -97,7 +100,7 @@
   .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2000;
     display:flex; align-items:center; justify-content:center; padding:20px; }
   .modal { background:#1A1D21; border:1px solid #262B31; border-radius:16px;
-    padding:20px; max-width:360px; width:100%; color:#E8E6E1; }
+    padding:20px; max-width:380px; width:100%; color:#E8E6E1; max-height:90vh; overflow-y:auto; }
   .modal h3 { margin:0 0 8px; font-size:17px; }
   .modal p { margin:6px 0; font-size:13px; color:#B7BBC1; line-height:1.5; }
   .modal-btns { display:flex; gap:8px; margin-top:16px; }
@@ -105,6 +108,18 @@
     cursor:pointer; font-family:inherit; }
   .modal-primary { background:#FFB000; color:#14171A; border:none; }
   .modal-secondary { background:#1E2227; color:#E8E6E1; border:1px solid #2B3036; }
+  .brand-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .brand-btn { padding:12px 8px; border-radius:10px; border:1px solid #2B3036; background:#1E2227;
+    color:#E8E6E1; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; text-align:center; }
+  .brand-btn.selected { background:#FFB000; color:#14171A; border-color:#FFB000; }
+  .fuel-line { display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .fuel-line label { font-size:13px; width:60px; color:#B7BBC1; }
+  .fuel-line .btns { display:flex; gap:6px; flex:1; }
+  .fuel-line button { flex:1; padding:8px 0; border-radius:8px; border:1px solid #2B3036;
+    background:#1E2227; color:#B7BBC1; font-size:12px; cursor:pointer; font-family:inherit; }
+  .fuel-line button.ok.selected { background:#1B8A4A; color:#fff; border-color:#1B8A4A; }
+  .fuel-line button.low.selected { background:#C97C00; color:#fff; border-color:#C97C00; }
+  .fuel-line button.none.selected { background:#C62828; color:#fff; border-color:#C62828; }
 
   /* ---------- TOAST ---------- */
   .toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%);
@@ -115,9 +130,9 @@
 
   /* ---------- MY LOCATION MARKER ---------- */
   .me-marker {
-    width:16px; height:16px; border-radius:50%;
+    width:20px; height:20px; border-radius:50%;
     background:#1E88E5; border:3px solid #ffffff;
-    box-shadow:0 0 0 2px rgba(30,136,229,.35), 0 0 10px rgba(30,136,229,.7);
+    box-shadow:0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
     box-sizing:border-box;
   }
 </style>
@@ -134,6 +149,7 @@
   <div class="row">
     <input id="search-input" class="search" type="search" placeholder="Поиск по адресу или сети…" autocomplete="off">
     <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
+    <button id="install-btn" class="icon-btn" title="Установить на телефон" style="display:none;">⤓</button>
   </div>
   <div id="support-row">
     <div class="pill">Отчётов за 24ч: <b id="stat-reports-24h">0</b></div>
@@ -142,16 +158,24 @@
 </div>
 
 <div id="side-tools">
-  <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
-  <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
-  <button class="tool-btn" id="btn-locate" title="Моё местоположение">◎</button>
-  <button class="tool-btn route" id="btn-route" title="Маршрут до АЗС с топливом">🧭</button>
+  <button class="tool-btn" id="btn-locate" title="Моё местоположение">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M12 2 L19 22 L12 17 L5 22 Z" fill="currentColor" stroke="currentColor"/>
+    </svg>
+  </button>
+  <button class="tool-btn" id="btn-route" title="Маршрут до АЗС с топливом">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 11l18-8-8 18-2-8-8-2z"/>
+    </svg>
+  </button>
+  <button class="tool-btn zoom" id="btn-zoom-in" title="Приблизить">+</button>
+  <button class="tool-btn zoom" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
 
 <div id="bottom">
   <div class="stat" id="stat-total-item">Станций: <b id="stat-total">0</b></div>
   <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
-  <button id="missing-btn">+ Нет АЗС</button>
+  <button id="add-station-btn">+ Добавить АЗС</button>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -169,6 +193,10 @@
   var BOT_USERNAME = 'naidibenzin_bot';
   var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
+  var ADMIN_ID = 2145359728;
+  var PROXIMITY_OPEN_M = 100;    // метров — открыть попап
+  var PROXIMITY_CLOSE_M = 150;   // метров — закрыть попап
+  var PROXIMITY_IDLE_MS = 4000;  // мс — закрыть после паузы
 
   // ---------- STATE ----------
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -193,6 +221,11 @@
   var meMarker = null;
   var watchId = null;
   var locateActive = false;
+  var lastPosition = null; // {lat, lng}
+
+  // Автопоказ попапа
+  var autoPopupStationId = null;
+  var autoPopupIdleTimer = null;
 
   // ---------- FAVORITES ----------
   function favKey(){ return 'azs_favs'; }
@@ -249,13 +282,22 @@
   }
 
   function haversine(lat1, lon1, lat2, lon2){
-    var R = 6371;
+    var R = 6371000; // метры
     var dLat = (lat2 - lat1) * Math.PI / 180;
     var dLon = (lon2 - lon1) * Math.PI / 180;
     var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
             Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
             Math.sin(dLon/2) * Math.sin(dLon/2);
     return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function findNearestStation(lat, lng){
+    var best = null, bestD = Infinity;
+    stationsData.forEach(function(s){
+      var d = haversine(lat, lng, s.lat, s.lng);
+      if (d < bestD){ bestD = d; best = s; }
+    });
+    return { station: best, distance: bestD };
   }
 
   // ---------- POPUP ----------
@@ -301,6 +343,7 @@
     var star = isFav(s.id) ? '❤' : '☆';
     rows += '<div class="popup-actions">'+
               '<button class="route-btn" data-act="route" data-lat="'+s.lat+'" data-lng="'+s.lng+'">🧭 Маршрут</button>'+
+              '<button class="photo-btn" data-act="photo" data-st="'+escapeHtml(s.id)+'">📷 Добавить фото стеллы</button>'+
             '</div>'+
             '<div class="issue-row">'+
               '<button class="issue-btn" data-act="issue" data-st="'+escapeHtml(s.id)+'">⚠ Сообщить о неточности</button>'+
@@ -321,6 +364,7 @@
     else if (act === 'flag') toggleFlag(t.getAttribute('data-st'), t.getAttribute('data-flag'), t);
     else if (act === 'route') openRoute(parseFloat(t.getAttribute('data-lat')), parseFloat(t.getAttribute('data-lng')));
     else if (act === 'issue') reportStationIssue(t.getAttribute('data-st'));
+    else if (act === 'photo') pickAndUploadPhoto(t.getAttribute('data-st'));
     else if (act === 'fav'){
       var id = t.getAttribute('data-st');
       toggleFav(id);
@@ -328,6 +372,45 @@
       if (favOnly) renderMarkers();
     }
   });
+
+  // Сброс авто-idle таймера при любом взаимодействии с попапом
+  document.addEventListener('input', resetAutoIdle);
+  document.addEventListener('touchstart', resetAutoIdle, { passive:true });
+
+  function resetAutoIdle(){
+    if (!autoPopupStationId) return;
+    if (autoPopupIdleTimer) clearTimeout(autoPopupIdleTimer);
+    autoPopupIdleTimer = setTimeout(closeAutoPopup, PROXIMITY_IDLE_MS);
+  }
+
+  function openAutoPopup(station){
+    if (autoPopupStationId === station.id) return;
+    // Уже открыт другой — закроем его
+    if (autoPopupStationId) closeAutoPopup();
+    autoPopupStationId = station.id;
+    var m = markers[station.id];
+    if (!m) return;
+    // A+B: центрируем карту на станции с плавным зумом (если сейчас далеко)
+    var targetZoom = Math.max(map.getZoom(), 15);
+    map.flyTo([station.lat, station.lng], targetZoom, { duration: 0.6 });
+    // Открываем попап после начала движения карты
+    setTimeout(function(){
+      if (autoPopupStationId === station.id && markers[station.id]) {
+        markers[station.id].openPopup();
+      }
+    }, 350);
+    // Автозакрытие через 4 секунды паузы
+    resetAutoIdle();
+  }
+
+  function closeAutoPopup(){
+    if (autoPopupIdleTimer) { clearTimeout(autoPopupIdleTimer); autoPopupIdleTimer = null; }
+    if (autoPopupStationId){
+      var m = markers[autoPopupStationId];
+      if (m && m.isPopupOpen()) m.closePopup();
+      autoPopupStationId = null;
+    }
+  }
 
   // ---------- API ----------
   async function submitReport(stationId, fuel, status, btn){
@@ -347,6 +430,10 @@
       if (j && j.ok && j.points_earned) toast('+' + j.points_earned + ' баллов');
       else toast('Статус обновлён');
       updateMarkerFor(stationId);
+      // Закрываем попап, если это авто-попап (данные внесены)
+      if (autoPopupStationId === stationId) {
+        setTimeout(closeAutoPopup, 500);
+      }
     } catch(e){ console.error(e); toast('Не удалось отправить'); }
   }
 
@@ -363,6 +450,7 @@
       });
       if (s) s.flags[flagKey] = { on: newStatus === 'on', label: s.flags[flagKey].label, ago:'только что' };
       if (tg && tg.HapticFeedback) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      resetAutoIdle();
     } catch(e){ console.error(e); }
   }
 
@@ -378,6 +466,50 @@
   }
 
   function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
+
+  // ---------- PHOTO (MVP) ----------
+  function pickAndUploadPhoto(stationId){
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment');
+    input.addEventListener('change', function(){
+      var file = input.files && input.files[0];
+      if (!file) return;
+      uploadPhoto(stationId, file);
+    });
+    input.click();
+  }
+
+  async function uploadPhoto(stationId, file){
+    if (file.size > 5 * 1024 * 1024){
+      toast('Фото слишком большое (макс. 5 МБ)');
+      return;
+    }
+    toast('Загрузка фото…');
+    try {
+      var fd = new FormData();
+      fd.append('station_id', stationId);
+      fd.append('user_id', String(userId));
+      fd.append('username', username || '');
+      fd.append('photo', file, 'photo.jpg');
+      var res = await fetch('/api/upload-photo', { method:'POST', body: fd });
+      var j = await res.json();
+      if (j && j.ok){
+        toast('Фото добавлено');
+        // обновим попап, чтобы подтянуть свежие данные
+        var s = stationsData.find(function(x){ return x.id === stationId; });
+        if (s && markers[stationId]) {
+          markers[stationId].setPopupContent(popupHtml(s));
+        }
+      } else {
+        toast('Не удалось загрузить');
+      }
+    } catch(e){
+      console.error(e);
+      toast('Ошибка загрузки');
+    }
+  }
 
   // ---------- RENDER ----------
   function updateMarkerFor(stationId){
@@ -407,7 +539,7 @@
       m.bindPopup(popupHtml(s), {
         maxWidth: 320, minWidth: 280,
         autoPanPaddingTopLeft: L.point(16, 140),
-        autoPanPaddingBottomRight: L.point(70, 90)
+        autoPanPaddingBottomRight: L.point(90, 90)
       });
       markers[s.id] = m;
     });
@@ -486,7 +618,7 @@
   document.getElementById('btn-zoom-in').addEventListener('click', function(){ map.zoomIn(); });
   document.getElementById('btn-zoom-out').addEventListener('click', function(){ map.zoomOut(); });
 
-  // Геолокация
+  // ---------- GEOLOCATION ----------
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
     if (watchId !== null) return;
@@ -495,39 +627,55 @@
     watchId = navigator.geolocation.watchPosition(
       function(pos){
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        lastPosition = { lat: lat, lng: lng };
         if (!meMarker){
           meMarker = L.marker([lat, lng], {
             icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>',
-                              iconSize:[16,16], iconAnchor:[8,8] }),
+                              iconSize:[20,20], iconAnchor:[10,10] }),
             interactive:false, zIndexOffset:1000
           }).addTo(map);
         } else {
           meMarker.setLatLng([lat, lng]);
         }
         map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate:true });
+
+        // --- автопоказ попапа ---
+        var near = findNearestStation(lat, lng);
+        if (near.station && near.distance <= PROXIMITY_OPEN_M){
+          if (autoPopupStationId !== near.station.id){
+            openAutoPopup(near.station);
+          } else {
+            resetAutoIdle();
+          }
+        } else if (autoPopupStationId && near.distance > PROXIMITY_CLOSE_M){
+          closeAutoPopup();
+        }
       },
       function(err){
         console.warn('geolocation error', err);
         toast('Не удалось определить местоположение');
         stopLocate();
       },
-      { enableHighAccuracy:true, maximumAge:5000, timeout:15000 }
+      { enableHighAccuracy:true, maximumAge:3000, timeout:15000 }
     );
   }
+
   function stopLocate(){
     if (watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
     locateActive = false;
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
+    closeAutoPopup();
   }
+
   document.getElementById('btn-locate').addEventListener('click', function(){
     if (locateActive) stopLocate(); else startLocate();
   });
 
-  // Маршрут до ближайшей АЗС с топливом (по текущему фильтру)
+  // ---------- ROUTE ----------
   document.getElementById('btn-route').addEventListener('click', function(){
     if (!stationsData.length){ toast('Данные ещё загружаются'); return; }
-    var from = meMarker ? meMarker.getLatLng() : map.getCenter();
+    var from = lastPosition || (meMarker ? meMarker.getLatLng() : map.getCenter());
     var candidates = stationsData.filter(function(s){
       return statusFor(s.fuels, activeFuel) === 'ok';
     });
@@ -543,7 +691,7 @@
       if (d < bestD){ bestD = d; best = s; }
     });
     if (!best){ toast('Не найдено'); return; }
-    var distKm = bestD.toFixed(1);
+    var distKm = (bestD / 1000).toFixed(1);
     toast('Ближайшая: ' + best.name + ' — ' + distKm + ' км');
     var url = 'https://yandex.ru/maps/?rtext=' +
               from.lat.toFixed(6) + ',' + from.lng.toFixed(6) + '~' +
@@ -551,7 +699,126 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  // Поддержать
+  // ---------- ADD STATION ----------
+  document.getElementById('add-station-btn').addEventListener('click', function(){
+    // Координаты — из GPS, если есть. Иначе — центр карты.
+    var lat, lng;
+    if (lastPosition){ lat = lastPosition.lat; lng = lastPosition.lng; }
+    else { var c = map.getCenter(); lat = c.lat; lng = c.lng; }
+
+    if (userId === ADMIN_ID){
+      // Админ-режим: диалог прямо здесь
+      openAddStationDialog(lat, lng);
+    } else {
+      // Обычный пользователь: deep-link в бота с координатами
+      var payload = 'add_' +
+        Math.round(lat * 1e6) + '_' +
+        Math.round(lng * 1e6);
+      openBotDeepLink(payload);
+    }
+  });
+
+  // ---------- ADMIN ADD-STATION DIALOG ----------
+  function openAddStationDialog(lat, lng){
+    var brands = [
+      { key:'gpn', label:'Газпромнефть' },
+      { key:'lukoil', label:'Лукойл' },
+      { key:'rosneft', label:'Роснефть' },
+      { key:'tatneft', label:'Татнефть' },
+      { key:'ptk', label:'ПТК' },
+      { key:'kirishi', label:'Киришиавтосервис' },
+      { key:'teboil', label:'Teboil' },
+      { key:'faeton', label:'Фаэтон' },
+      { key:'other', label:'Другое' }
+    ];
+    var selectedBrand = null;
+    var fuelStates = {};
+
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    var html = '<div class="modal">'+
+      '<h3>➕ Добавить АЗС</h3>'+
+      '<p style="font-size:12px;color:#8A8F98;">Координаты: '+lat.toFixed(5)+', '+lng.toFixed(5)+'</p>'+
+      '<p style="font-weight:700;margin-top:12px;">1. Бренд</p>'+
+      '<div class="brand-grid" id="brand-grid">';
+    brands.forEach(function(b){
+      html += '<button type="button" class="brand-btn" data-brand="'+b.key+'">'+b.label+'</button>';
+    });
+    html += '</div>';
+    html += '<p style="font-weight:700;margin-top:16px;">2. Топливо (по желанию)</p>';
+    fuelsData.forEach(function(p){
+      html += '<div class="fuel-line" data-fuel="'+p[0]+'">'+
+        '<label>'+p[1]+'</label>'+
+        '<div class="btns">'+
+          '<button type="button" class="ok" data-status="ok">Есть</button>'+
+          '<button type="button" class="low" data-status="low">Мало</button>'+
+          '<button type="button" class="none" data-status="none">Нет</button>'+
+        '</div>'+
+      '</div>';
+    });
+    html += '<div class="modal-btns">'+
+      '<button type="button" class="modal-secondary" id="as-cancel">Отмена</button>'+
+      '<button type="button" class="modal-primary" id="as-save">Сохранить</button>'+
+      '</div></div>';
+    bg.innerHTML = html;
+    document.body.appendChild(bg);
+
+    bg.querySelectorAll('.brand-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        bg.querySelectorAll('.brand-btn').forEach(function(b){ b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        selectedBrand = btn.getAttribute('data-brand');
+      });
+    });
+
+    bg.querySelectorAll('.fuel-line').forEach(function(line){
+      var fuelKey = line.getAttribute('data-fuel');
+      line.querySelectorAll('button').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var status = btn.getAttribute('data-status');
+          line.querySelectorAll('button').forEach(function(b){ b.classList.remove('selected'); });
+          btn.classList.add('selected');
+          fuelStates[fuelKey] = status;
+        });
+      });
+    });
+
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#as-cancel').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#as-save').addEventListener('click', function(){
+      if (!selectedBrand){ toast('Выберите бренд'); return; }
+      var payload = {
+        lat: lat, lng: lng,
+        net: selectedBrand,
+        fuels: fuelStates,
+        user_id: userId,
+        username: username || ''
+      };
+      saveNewStation(payload);
+      bg.remove();
+    });
+  }
+
+  async function saveNewStation(payload){
+    try {
+      var res = await fetch('/api/add-station', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      var j = await res.json();
+      if (j && j.ok){
+        toast('АЗС добавлена: ' + (j.station && j.station.name || ''));
+        await loadStations();
+      } else {
+        toast('Не удалось добавить: ' + (j.error || ''));
+      }
+    } catch(e){
+      console.error(e);
+      toast('Ошибка отправки');
+    }
+  }
+
+  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -575,10 +842,58 @@
     });
   });
 
-  // Добавить АЗС (pin mode) — упрощённый вариант с deep-link в бота
-  document.getElementById('missing-btn').addEventListener('click', function(){
-    toast('Откройте бота, чтобы добавить АЗС');
-    openBotDeepLink('missing');
+  // ---------- PWA INSTALL ----------
+  var deferredInstallPrompt = null;
+  var installBtn = document.getElementById('install-btn');
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+
+  function showInstallButton(){
+    if (isStandalone) return;
+    installBtn.style.display = 'flex';
+  }
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallButton();
+  });
+
+  if (isIOS && !isStandalone) showInstallButton();
+
+  window.addEventListener('appinstalled', function(){
+    installBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+    toast('Спасибо! Иконка на рабочем столе');
+  });
+
+  function showIOSInstructions(){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">'+
+        '<h3>📲 Установить на iPhone</h3>'+
+        '<p>1. Нажмите <b>Поделиться</b> <span style="color:#FFB000;">⬆</span> внизу Safari.</p>'+
+        '<p>2. Выберите <b>«На экран „Домой“»</b>.</p>'+
+        '<p>3. Нажмите <b>«Добавить»</b>.</p>'+
+        '<div class="modal-btns"><button class="modal-secondary" id="ios-close">Понятно</button></div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    document.getElementById('ios-close').addEventListener('click', function(){ bg.remove(); });
+  }
+
+  installBtn.addEventListener('click', function(){
+    if (isIOS) { showIOSInstructions(); return; }
+    if (deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function(choice){
+        if (choice.outcome === 'accepted') toast('Установлено!');
+        deferredInstallPrompt = null;
+        installBtn.style.display = 'none';
+      });
+    }
   });
 
   // ---------- INIT ----------

@@ -88,7 +88,7 @@
   }
   .pill-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; }
 
-  /* ---------- POPUP: КНОПКИ ФИКСИРОВАНЫ ВНИЗУ ---------- */
+  /* ---------- POPUP ---------- */
   .leaflet-popup-content-wrapper {
     background: #1A1D21; color: #E8E6E1;
     border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.65);
@@ -107,19 +107,13 @@
   .popup-addr { font-size: 12px; color: #8A8F98; margin-bottom: 10px; }
   .fav-star { cursor: pointer; font-size: 20px; line-height: 1; color: #FFB000; flex-shrink: 0; }
 
-  /* Середина попапа — то, что может скроллиться */
   .popup-scroll {
-    max-height: 38vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    margin: 0 -14px;
-    padding: 0 14px;
+    max-height: 36vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    margin: 0 -14px; padding: 0 14px;
   }
 
-  /* Кнопки внизу — всегда видны */
   .popup-actions-fixed {
-    margin-top: 10px; padding-top: 10px;
-    border-top: 1px solid #262B31;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid #262B31;
   }
 
   .fuel-block { padding: 8px 0; border-top: 1px solid #262B31; }
@@ -202,8 +196,7 @@
     font-size: 26px; line-height: 1;
   }
   .capture-shoot {
-    width: 78px; height: 78px;
-    background: #FFB000; color: #14171A;
+    width: 78px; height: 78px; background: #FFB000; color: #14171A;
     font-size: 15px; font-weight: 700;
     box-shadow: 0 4px 16px rgba(255,176,0,.5);
   }
@@ -233,6 +226,12 @@
   }
   .modal-primary { background: #FFB000; color: #14171A; border: none; }
   .modal-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
+  .big-choice {
+    width: 100%; padding: 16px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    margin-top: 8px; text-align: center; border: none;
+  }
+
   .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .brand-btn {
     padding: 12px 8px; border-radius: 10px; border: 1px solid #2B3036;
@@ -269,14 +268,41 @@
     box-sizing: border-box;
   }
 
+  /* ---------- LANDSCAPE: минимальный подвал в одну строку ---------- */
   @media (orientation: landscape) and (max-height: 500px) {
-    #top { padding: 6px 8px 0; gap: 4px; }
-    .ctrl, .search, .icon-btn { height: 34px; font-size: 12px; padding-top: 6px; padding-bottom: 6px; }
-    #side-tools { bottom: 96px; }
-    .tool-btn { width: 52px; height: 52px; font-size: 22px; border-radius: 12px; }
-    .tool-btn svg { width: 22px; height: 22px; }
-    #map { bottom: 84px; }
-    #bottom { min-height: 84px; }
+    #top { padding: 4px 6px 0; gap: 4px; }
+    .ctrl, .search, .icon-btn {
+      height: 34px; font-size: 12px;
+      padding-top: 5px; padding-bottom: 5px;
+      border-radius: 8px;
+    }
+    .ctrl { padding-right: 20px; max-width: 110px; }
+    .search { padding-left: 26px; }
+    .icon-btn { width: 34px; height: 34px; font-size: 15px; }
+
+    /* Подвал: одна строка, всё помещается */
+    #bottom {
+      min-height: 44px;
+      flex-direction: row;
+      align-items: center;
+      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0));
+      gap: 8px;
+    }
+    .bottom-row {
+      justify-content: flex-start;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .bottom-row:last-child { margin-left: auto; }
+    .stat { font-size: 11px; }
+    .stat b { font-size: 12px; margin-left: 1px; }
+    .pill-btn { padding: 6px 8px; font-size: 11px; border-radius: 8px; }
+
+    #map { bottom: 44px; }
+    #side-tools { bottom: 54px; gap: 6px; }
+    .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
+    .tool-btn svg { width: 20px; height: 20px; }
+
     .popup-scroll { max-height: 30vh; }
   }
 </style>
@@ -482,8 +508,10 @@
 
     if (s.last_photo && s.last_photo.url){
       var who = s.last_photo.username ? ' · ' + escapeHtml(s.last_photo.username) : '';
+      var cacheBust = s.last_photo.ts ? ('?v=' + s.last_photo.ts) : '';
+      var fullUrl = s.last_photo.url + cacheBust;
       scrollContent += '<div class="photo-block">'+
-                '<img src="'+escapeHtml(s.last_photo.url)+'" class="stell-photo" '+
+                '<img src="'+escapeHtml(fullUrl)+'" class="stell-photo" '+
                 'data-act="view-photo" data-url="'+escapeHtml(s.last_photo.url)+'" alt="Стелла" loading="lazy">'+
                 '<div class="photo-meta">📷 Стелла · <b>'+escapeHtml(s.last_photo.ago||'только что')+'</b>'+who+'</div>'+
               '</div>';
@@ -491,7 +519,6 @@
 
     var star = isFav(s.id) ? '❤' : '☆';
 
-    // Верх заголовка + кнопки внизу фиксированные, середина скроллится
     return '<div class="popup-title">'+escapeHtml(s.name)+
              '<span class="fav-star" data-act="fav" data-st="'+escapeHtml(s.id)+'">'+star+'</span>'+
            '</div>'+
@@ -512,7 +539,7 @@
     else if (act === 'flag') toggleFlag(t.getAttribute('data-st'), t.getAttribute('data-flag'), t);
     else if (act === 'route') openRoute(parseFloat(t.getAttribute('data-lat')), parseFloat(t.getAttribute('data-lng')));
     else if (act === 'issue') reportStationIssue(t.getAttribute('data-st'));
-    else if (act === 'photo') openPhotoCapture(t.getAttribute('data-st'));
+    else if (act === 'photo') openPhotoSourceChooser(t.getAttribute('data-st'));
     else if (act === 'view-photo') openLightbox(t.getAttribute('data-url'));
     else if (act === 'fav'){
       var id = t.getAttribute('data-st');
@@ -612,9 +639,36 @@
 
   function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
 
-  // ---------- КАМЕРА ----------
-  function openPhotoCapture(stationId){
+  // ---------- ВЫБОР ИСТОЧНИКА ФОТО ----------
+  function openPhotoSourceChooser(stationId){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">'+
+        '<h3>📷 Фото стеллы</h3>'+
+        '<p style="margin-bottom:4px;">Выберите источник:</p>'+
+        '<button type="button" class="big-choice modal-primary" id="ph-cam">📸 Снять на камеру</button>'+
+        '<button type="button" class="big-choice modal-secondary" id="ph-file">🖼 Выбрать из галереи</button>'+
+        '<div class="modal-btns">'+
+          '<button class="modal-secondary" id="ph-cancel">Отмена</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#ph-cam').addEventListener('click', function(){
+      bg.remove();
+      openCamera(stationId);
+    });
+    bg.querySelector('#ph-file').addEventListener('click', function(){
+      bg.remove();
+      openFileInput(stationId);
+    });
+    bg.querySelector('#ph-cancel').addEventListener('click', function(){ bg.remove(); });
+  }
+
+  function openCamera(stationId){
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      toast('Камера недоступна — открываю галерею');
       openFileInput(stationId);
       return;
     }
@@ -679,7 +733,7 @@
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.setAttribute('capture', 'environment');
+    // БЕЗ capture: пользователь сам выбирает камеру или галерею в системном диалоге
     input.addEventListener('change', function(){
       var file = input.files && input.files[0];
       if (!file) return;
@@ -699,20 +753,40 @@
       fd.append('photo', file, 'photo.jpg');
       var res = await fetch('/api/upload-photo', { method:'POST', body: fd });
       var j = await res.json();
+      console.log('[upload-photo] ответ сервера:', j);
+
       if (j && j.ok){
         toast('Фото добавлено');
         var s = stationsData.find(function(x){ return x.id === stationId; });
         if (s){
+          // Обновляем локальную модель станции
           s.last_photo = {
-            url: j.photo_url, username: username || null,
-            ago: 'только что', ts: j.ts || Math.floor(Date.now()/1000)
+            url: j.photo_url,
+            username: username || null,
+            ago: 'только что',
+            ts: j.ts || Math.floor(Date.now()/1000)
           };
-          if (markers[stationId]) markers[stationId].setPopupContent(popupHtml(s));
+          // Обновляем содержимое попапа
+          var m = markers[stationId];
+          if (m){
+            var wasOpen = m.isPopupOpen();
+            m.setPopupContent(popupHtml(s));
+            if (wasOpen){
+              // Принудительно перезагружаем попап, чтобы гарантированно
+              // подтянулась свежая картинка
+              m.closePopup();
+              setTimeout(function(){ m.openPopup(); }, 80);
+            }
+          }
         }
       } else {
         toast('Не удалось загрузить: ' + (j.error || ''));
+        console.warn('[upload-photo] ошибка:', j);
       }
-    } catch(e){ console.error(e); toast('Ошибка загрузки'); }
+    } catch(e){
+      console.error(e);
+      toast('Ошибка загрузки');
+    }
   }
 
   function updateMarkerFor(stationId){

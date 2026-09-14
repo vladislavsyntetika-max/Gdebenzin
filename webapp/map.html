@@ -159,12 +159,12 @@
 
 <div id="side-tools">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M12 2 L19 22 L12 17 L5 22 Z" fill="currentColor" stroke="currentColor"/>
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+      <path d="M12 2 L19 22 L12 17 L5 22 Z"/>
     </svg>
   </button>
   <button class="tool-btn" id="btn-route" title="Маршрут до АЗС с топливом">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round">
       <path d="M3 11l18-8-8 18-2-8-8-2z"/>
     </svg>
   </button>
@@ -185,7 +185,6 @@
 (function(){
   'use strict';
 
-  // ---------- CONSTANTS ----------
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
   var STATUS_LABEL = { ok:'Есть', low:'Мало', none:'Нет' };
   var SEVERITY = { ok:0, low:1, none:2 };
@@ -194,11 +193,10 @@
   var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
   var ADMIN_ID = 2145359728;
-  var PROXIMITY_OPEN_M = 100;    // метров — открыть попап
-  var PROXIMITY_CLOSE_M = 150;   // метров — закрыть попап
-  var PROXIMITY_IDLE_MS = 4000;  // мс — закрыть после паузы
+  var PROXIMITY_OPEN_M = 100;
+  var PROXIMITY_CLOSE_M = 150;
+  var PROXIMITY_IDLE_MS = 4000;
 
-  // ---------- STATE ----------
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
 
@@ -217,17 +215,14 @@
   var favOnly = false;
   var searchQuery = '';
 
-  // Геолокация
   var meMarker = null;
   var watchId = null;
   var locateActive = false;
-  var lastPosition = null; // {lat, lng}
+  var lastPosition = null;
 
-  // Автопоказ попапа
   var autoPopupStationId = null;
   var autoPopupIdleTimer = null;
 
-  // ---------- FAVORITES ----------
   function favKey(){ return 'azs_favs'; }
   function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; } }
   function isFav(id){ return getFavs().indexOf(id) !== -1; }
@@ -237,13 +232,11 @@
     try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
   }
 
-  // ---------- MAP ----------
   var map = L.map('map', { zoomControl:false }).setView([59.94, 30.31], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', subdomains:'abc', maxZoom:19
   }).addTo(map);
 
-  // ---------- HELPERS ----------
   function statusFor(fuels, fuelKey){
     if (fuelKey !== 'all'){
       var f = fuels[fuelKey];
@@ -282,7 +275,7 @@
   }
 
   function haversine(lat1, lon1, lat2, lon2){
-    var R = 6371000; // метры
+    var R = 6371000;
     var dLat = (lat2 - lat1) * Math.PI / 180;
     var dLon = (lon2 - lon1) * Math.PI / 180;
     var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -300,7 +293,6 @@
     return { station: best, distance: bestD };
   }
 
-  // ---------- POPUP ----------
   function popupHtml(s){
     if (!fuelsData.length || !statusesData.length){
       return '<div style="padding:20px;text-align:center;color:#8A8F98">Загрузка…</div>';
@@ -373,7 +365,6 @@
     }
   });
 
-  // Сброс авто-idle таймера при любом взаимодействии с попапом
   document.addEventListener('input', resetAutoIdle);
   document.addEventListener('touchstart', resetAutoIdle, { passive:true });
 
@@ -385,21 +376,17 @@
 
   function openAutoPopup(station){
     if (autoPopupStationId === station.id) return;
-    // Уже открыт другой — закроем его
     if (autoPopupStationId) closeAutoPopup();
     autoPopupStationId = station.id;
     var m = markers[station.id];
     if (!m) return;
-    // A+B: центрируем карту на станции с плавным зумом (если сейчас далеко)
     var targetZoom = Math.max(map.getZoom(), 15);
     map.flyTo([station.lat, station.lng], targetZoom, { duration: 0.6 });
-    // Открываем попап после начала движения карты
     setTimeout(function(){
       if (autoPopupStationId === station.id && markers[station.id]) {
         markers[station.id].openPopup();
       }
     }, 350);
-    // Автозакрытие через 4 секунды паузы
     resetAutoIdle();
   }
 
@@ -412,7 +399,6 @@
     }
   }
 
-  // ---------- API ----------
   async function submitReport(stationId, fuel, status, btn){
     var block = btn.parentNode;
     Array.prototype.forEach.call(block.children, function(b){ b.classList.remove('current'); });
@@ -430,7 +416,6 @@
       if (j && j.ok && j.points_earned) toast('+' + j.points_earned + ' баллов');
       else toast('Статус обновлён');
       updateMarkerFor(stationId);
-      // Закрываем попап, если это авто-попап (данные внесены)
       if (autoPopupStationId === stationId) {
         setTimeout(closeAutoPopup, 500);
       }
@@ -467,7 +452,6 @@
 
   function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
 
-  // ---------- PHOTO (MVP) ----------
   function pickAndUploadPhoto(stationId){
     var input = document.createElement('input');
     input.type = 'file';
@@ -497,7 +481,6 @@
       var j = await res.json();
       if (j && j.ok){
         toast('Фото добавлено');
-        // обновим попап, чтобы подтянуть свежие данные
         var s = stationsData.find(function(x){ return x.id === stationId; });
         if (s && markers[stationId]) {
           markers[stationId].setPopupContent(popupHtml(s));
@@ -511,7 +494,6 @@
     }
   }
 
-  // ---------- RENDER ----------
   function updateMarkerFor(stationId){
     var s = stationsData.find(function(x){ return x.id === stationId; });
     var m = markers[stationId];
@@ -563,7 +545,6 @@
     });
   }
 
-  // ---------- LOAD ----------
   async function loadStations(){
     try {
       var res = await fetch('/api/stations');
@@ -584,7 +565,6 @@
     }
   }
 
-  // ---------- UI EVENTS ----------
   document.getElementById('net-select').addEventListener('change', function(e){
     activeNet = e.target.value; renderMarkers();
   });
@@ -614,11 +594,9 @@
     if (pts.length) map.fitBounds(pts, { padding:[30,30] });
   });
 
-  // ---------- SIDE TOOLS ----------
   document.getElementById('btn-zoom-in').addEventListener('click', function(){ map.zoomIn(); });
   document.getElementById('btn-zoom-out').addEventListener('click', function(){ map.zoomOut(); });
 
-  // ---------- GEOLOCATION ----------
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
     if (watchId !== null) return;
@@ -639,7 +617,6 @@
         }
         map.setView([lat, lng], Math.max(map.getZoom(), 14), { animate:true });
 
-        // --- автопоказ попапа ---
         var near = findNearestStation(lat, lng);
         if (near.station && near.distance <= PROXIMITY_OPEN_M){
           if (autoPopupStationId !== near.station.id){
@@ -672,7 +649,6 @@
     if (locateActive) stopLocate(); else startLocate();
   });
 
-  // ---------- ROUTE ----------
   document.getElementById('btn-route').addEventListener('click', function(){
     if (!stationsData.length){ toast('Данные ещё загружаются'); return; }
     var from = lastPosition || (meMarker ? meMarker.getLatLng() : map.getCenter());
@@ -699,26 +675,19 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  // ---------- ADD STATION ----------
   document.getElementById('add-station-btn').addEventListener('click', function(){
-    // Координаты — из GPS, если есть. Иначе — центр карты.
     var lat, lng;
     if (lastPosition){ lat = lastPosition.lat; lng = lastPosition.lng; }
     else { var c = map.getCenter(); lat = c.lat; lng = c.lng; }
 
     if (userId === ADMIN_ID){
-      // Админ-режим: диалог прямо здесь
       openAddStationDialog(lat, lng);
     } else {
-      // Обычный пользователь: deep-link в бота с координатами
-      var payload = 'add_' +
-        Math.round(lat * 1e6) + '_' +
-        Math.round(lng * 1e6);
+      var payload = 'add_' + Math.round(lat * 1e6) + '_' + Math.round(lng * 1e6);
       openBotDeepLink(payload);
     }
   });
 
-  // ---------- ADMIN ADD-STATION DIALOG ----------
   function openAddStationDialog(lat, lng){
     var brands = [
       { key:'gpn', label:'Газпромнефть' },
@@ -818,7 +787,6 @@
     }
   }
 
-  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -842,7 +810,6 @@
     });
   });
 
-  // ---------- PWA INSTALL ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -896,7 +863,6 @@
     }
   });
 
-  // ---------- INIT ----------
   loadStations();
 
   document.addEventListener('visibilitychange', function(){

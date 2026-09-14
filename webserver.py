@@ -6,10 +6,18 @@
 
 import html
 import json
+import os
 import time
 from aiohttp import web
 import bot as core
 
+# Папка для фото стелл. На Amvera должен быть persistence mount /data,
+# тогда фото сохраняются между деплоями. Локально — папка data/photos.
+PHOTOS_DIR = os.getenv("PHOTOS_DIR", "/data/photos" if os.path.isdir("/data") else "data/photos")
+MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
+
+
+# ---------- Статика ----------
 
 async def handle_map(request):
     return web.FileResponse("webapp/map.html")
@@ -24,7 +32,6 @@ async def handle_leaflet_css(request):
 
 
 async def handle_manifest(request):
-    # Минимальный PWA-манифест. Если нужен — можно потом вынести в файл.
     manifest = {
         "name": "ГДЕ БЕНЗИН!? — топливо в реале",
         "short_name": "Где бензин",
@@ -39,7 +46,6 @@ async def handle_manifest(request):
 
 
 async def handle_sw(request):
-    # Service worker можно пока отключить (возвращаем минимальный, чтобы PWA не падал).
     sw = "self.addEventListener('install', e => self.skipWaiting());"
     return web.Response(text=sw, content_type="application/javascript")
 
@@ -64,6 +70,8 @@ h1{font-size:20px}h2{font-size:16px;color:#FFB000;margin-top:24px}</style>
 </body></html>"""
     return web.Response(text=rules, content_type="text/html")
 
+
+# ---------- API ----------
 
 async def handle_stations(request):
     conn = core.db()
@@ -100,8 +108,7 @@ async def handle_stations(request):
         matches = sum(1 for s in recent if s == current_status)
         return round(matches / len(recent) * 100)
 
-    result = []
-    for sid, name, net, addr, lat, lng in core.STATIONS:
+    def build_station_obj(sid, name, net, addr, lat, lng):
         rep = reports_by_station.get(sid, {})
         fuels = {}
         for key, label in core.FUELS:
@@ -114,18 +121,33 @@ async def handle_stations(request):
                     "confidence": confidence_for(sid, key, status),
                 }
             else:
-                fuels[key] = {"status": "unknown", "label": label,
-                              "ago": None, "stale": False, "confidence": None}
+                fuels[key] = {"status": "unknown", "label": label, "ago": None, "stale": False, "confidence": None}
         flags = {}
         for key, label in core.STATION_FLAGS:
             if key in rep:
                 status, ts = rep[key]
-                flags[key] = {"on": status == "on" and not core.is_stale(ts),
-                              "label": label, "ago": core.time_ago(ts)}
+                flags[key] = {"on": status == "on" and not core.is_stale(ts), "label": label, "ago": core.time_ago(ts)}
             else:
                 flags[key] = {"on": False, "label": label, "ago": None}
-        result.append({"id": sid, "name": name, "net": net, "addr": addr,
-                       "lat": lat, "lng": lng, "fuels": fuels, "flags": flags})
+        return {"id": sid, "name": name, "net": net, "addr": addr,
+                "lat": lat, "lng": lng, "fuels": fuels, "flags": flags}
+
+    result = []
+
+    # 1. Статические станции из bot.py
+    for sid, name, net, addr, lat, lng in core.STATIONS:
+        result.append(build_station_obj(sid, name, net, addr, lat, lng))
+
+    # 2. Пользовательские станции из БД (если bot.py уже поддерживает).
+    # Fallback для поэтапного деплоя: если bot.py ещё старый, просто пусто.
+    try:
+        custom_rows = core.get_custom_stations()
+    except AttributeError:
+        custom_rows = []
+
+    for row in custom_rows:
+        sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
+        result.append(build_station_obj(sid, name, net, addr, lat, lng))
 
     return web.json_response({
         "stations": result,
@@ -168,8 +190,14 @@ async def handle_report(request):
     except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return web.json_response({"ok": False, "error": "bad_request"}, status=400)
 
-    if station_id not in core.STATION_BY_ID:
+    # Проверка станции: через station_exists, если есть; иначе — статический список.
+    try:
+        exists = core.station_exists(station_id)
+    except AttributeError:
+        exists = station_id in core.STATION_BY_ID
+    if not exists:
         return web.json_response({"ok": False, "error": "unknown_station"}, status=404)
+
     is_flag = fuel in dict(core.STATION_FLAGS)
     if is_flag:
         if status not in ("on", "off"):
@@ -193,6 +221,148 @@ async def handle_report(request):
                 core.award_points(user_id, username, core.POINTS_SCOUT_BONUS, "scout_bonus", station_id)
         core.record_daily_activity(user_id, username)
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
+
+
+async def handle_add_station(request):
+    """
+    POST /api/add-station
+    Админ через карту добавляет новую АЗС.
+    Тело JSON: { lat, lng, net, fuels: {f92:'ok', ...}, user_id, username }
+    """
+    try:
+        data = await request.json()
+        lat = float(data["lat"])
+        lng = float(data["lng"])
+        net = str(data["net"]).strip()
+        fuels = data.get("fuels") or {}
+        user_id = int(data.get("user_id") or 0)
+        username = str(data.get("username") or "").strip()[:40] or None
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    # Проверка админа
+    admin_id = getattr(core, "ADMIN_ID", 0)
+    if not admin_id or user_id != admin_id:
+        return web.json_response({"ok": False, "error": "forbidden"}, status=403)
+
+    if net not in core.NETWORKS:
+        return web.json_response({"ok": False, "error": "unknown_network"}, status=400)
+
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
+
+    try:
+        station_id = core.add_custom_station(
+            name=core.NETWORKS[net]["label"],
+            net=net,
+            addr="Добавлено с карты",
+            lat=lat,
+            lng=lng,
+            user_id=user_id,
+        )
+    except AttributeError:
+        return web.json_response(
+            {"ok": False, "error": "bot_not_updated",
+             "detail": "add_custom_station() отсутствует в bot.py"},
+            status=500,
+        )
+
+    for fuel_key, status_val in (fuels or {}).items():
+        if fuel_key in dict(core.FUELS) and status_val in dict(core.STATUSES):
+            core.save_report(station_id, fuel_key, status_val, user_id, username)
+
+    return web.json_response({
+        "ok": True,
+        "station": {"id": station_id, "name": core.NETWORKS[net]["label"]},
+    })
+
+
+async def handle_upload_photo(request):
+    """
+    POST /api/upload-photo  (multipart/form-data)
+    Поля: station_id, user_id, username, photo
+    """
+    try:
+        reader = await request.multipart()
+    except Exception:
+        return web.json_response({"ok": False, "error": "not_multipart"}, status=400)
+
+    station_id = None
+    user_id = 0
+    username = None
+    photo_bytes = None
+    photo_name = "photo.jpg"
+
+    while True:
+        part = await reader.next()
+        if part is None:
+            break
+        if part.name == "station_id":
+            station_id = (await part.text()).strip()
+        elif part.name == "user_id":
+            try:
+                user_id = int((await part.text()).strip() or 0)
+            except ValueError:
+                user_id = 0
+        elif part.name == "username":
+            username = (await part.text()).strip()[:40] or None
+        elif part.name == "photo":
+            photo_name = part.filename or "photo.jpg"
+            chunk = await part.read(decode=False)
+            if len(chunk) > MAX_PHOTO_SIZE:
+                return web.json_response({"ok": False, "error": "too_large"}, status=413)
+            photo_bytes = chunk
+
+    # Проверка станции
+    try:
+        exists = core.station_exists(station_id) if station_id else False
+    except AttributeError:
+        exists = station_id in core.STATION_BY_ID if station_id else False
+    if not exists:
+        return web.json_response({"ok": False, "error": "unknown_station"}, status=404)
+
+    if not photo_bytes:
+        return web.json_response({"ok": False, "error": "no_photo"}, status=400)
+
+    dir_path = os.path.join(PHOTOS_DIR, station_id)
+    os.makedirs(dir_path, exist_ok=True)
+    ts = int(time.time())
+    ext = ".jpg"
+    lower = photo_name.lower()
+    if lower.endswith(".png"):
+        ext = ".png"
+    elif lower.endswith(".webp"):
+        ext = ".webp"
+    file_path = os.path.join(dir_path, f"{ts}{ext}")
+    with open(file_path, "wb") as f:
+        f.write(photo_bytes)
+
+    # Запись метаданных в БД (если bot.py уже поддерживает — иначе просто пропускаем)
+    try:
+        core.save_photo(station_id, file_path, user_id, username)
+    except AttributeError:
+        pass
+
+    return web.json_response({
+        "ok": True,
+        "station_id": station_id,
+        "photo_url": f"/api/photo/{station_id}/{ts}{ext}",
+    })
+
+
+async def handle_get_photo(request):
+    """GET /api/photo/<station_id>/<filename>"""
+    station_id = request.match_info["station_id"]
+    filename = request.match_info["filename"]
+    # Защита от path traversal
+    if "/" in filename or ".." in filename or "\\" in filename:
+        return web.Response(status=400)
+    if "/" in station_id or ".." in station_id or "\\" in station_id:
+        return web.Response(status=400)
+    path = os.path.join(PHOTOS_DIR, station_id, filename)
+    if not os.path.isfile(path):
+        return web.Response(status=404)
+    return web.FileResponse(path)
 
 
 @web.middleware
@@ -219,6 +389,9 @@ def build_app() -> web.Application:
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
+    app.router.add_post("/api/add-station", handle_add_station)
+    app.router.add_post("/api/upload-photo", handle_upload_photo)
+    app.router.add_get("/api/photo/{station_id}/{filename}", handle_get_photo)
     app.router.add_route("OPTIONS", "/api/{tail:.*}", lambda request: web.Response())
     return app
 

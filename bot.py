@@ -1566,4 +1566,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    await main() if False else asyncio.run(main())
+    asyncio.run(main())

@@ -14,7 +14,6 @@
   #map { position:absolute; top:0; left:0; right:0; bottom:64px; background:#14171A; }
   .leaflet-container { background:#14171A; }
 
-  /* ---------- TOP PANEL ---------- */
   #top { position:absolute; top:0; left:0; right:0; z-index:1000; padding:10px 10px 0;
     pointer-events:none; display:flex; flex-direction:column; gap:8px; }
   #top > * { pointer-events:auto; }
@@ -38,7 +37,6 @@
     padding:6px 12px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
   #support-row .pill b { color:#FFB000; font-weight:700; }
 
-  /* ---------- RIGHT SIDE TOOLBAR ---------- */
   #side-tools { position:absolute; right:10px; bottom:78px; z-index:1000;
     display:flex; flex-direction:column; gap:10px; pointer-events:auto; }
   .tool-btn { width:66px; height:66px; border-radius:16px; background:#1A1D21;
@@ -50,7 +48,6 @@
   .tool-btn svg { width:28px; height:28px; display:block; }
   .tool-btn.zoom { font-size:28px; font-weight:700; line-height:1; font-family:inherit; }
 
-  /* ---------- BOTTOM PANEL ---------- */
   #bottom { position:absolute; bottom:0; left:0; right:0; height:64px; background:#1A1D21;
     border-top:1px solid #262B31; display:flex; align-items:center; justify-content:space-between;
     padding:0 14px; z-index:1000; gap:10px; }
@@ -59,7 +56,6 @@
   #add-station-btn { padding:10px 14px; border-radius:12px; background:#1E2227; border:1px solid #2B3036;
     color:#E8E6E1; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
 
-  /* ---------- POPUP ---------- */
   .leaflet-popup-content-wrapper { background:#1A1D21; color:#E8E6E1; border-radius:14px;
     box-shadow:0 8px 32px rgba(0,0,0,.6); border:1px solid #262B31; }
   .leaflet-popup-content { margin:14px 16px; min-width:260px; font-size:13px; }
@@ -96,7 +92,21 @@
   .issue-btn { width:100%; padding:9px 0; border-radius:9px; border:1px solid #2B3036; background:transparent;
     color:#8A8F98; font-size:12px; cursor:pointer; font-family:inherit; }
 
-  /* ---------- MODAL ---------- */
+  /* ---------- ФОТО В ПОПАПЕ ---------- */
+  .photo-block { margin-top:10px; padding-top:10px; border-top:1px solid #262B31; }
+  .stell-photo { width:100%; border-radius:10px; display:block; cursor:zoom-in;
+    background:#0F1215; min-height:80px; }
+  .photo-meta { font-size:11px; color:#8A8F98; margin-top:6px; line-height:1.3; }
+  .photo-meta b { color:#B7BBC1; }
+
+  /* ---------- МОДАЛКА ПОЛНОЭКРАННОГО ФОТО ---------- */
+  .photo-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:5000;
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .photo-lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+  .photo-lightbox .close-x { position:absolute; top:14px; right:14px;
+    width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,.6);
+    color:#fff; border:none; font-size:24px; cursor:pointer; }
+
   .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2000;
     display:flex; align-items:center; justify-content:center; padding:20px; }
   .modal { background:#1A1D21; border:1px solid #262B31; border-radius:16px;
@@ -121,14 +131,12 @@
   .fuel-line button.low.selected { background:#C97C00; color:#fff; border-color:#C97C00; }
   .fuel-line button.none.selected { background:#C62828; color:#fff; border-color:#C62828; }
 
-  /* ---------- TOAST ---------- */
   .toast { position:fixed; left:50%; bottom:82px; transform:translateX(-50%);
     background:#232830; color:#E8E6E1; border:1px solid #3A3F45; border-radius:10px;
     padding:10px 16px; font-size:13px; z-index:3000; opacity:0; transition:opacity .25s;
     pointer-events:none; max-width:90vw; text-align:center; }
   .toast.show { opacity:1; }
 
-  /* ---------- MY LOCATION MARKER ---------- */
   .me-marker {
     width:20px; height:20px; border-radius:50%;
     background:#1E88E5; border:3px solid #ffffff;
@@ -187,7 +195,6 @@
 (function(){
   'use strict';
 
-  // ---------- CONSTANTS ----------
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
   var STATUS_LABEL = { ok:'Есть', low:'Мало', none:'Нет' };
   var SEVERITY = { ok:0, low:1, none:2 };
@@ -200,7 +207,6 @@
   var PROXIMITY_CLOSE_M = 150;
   var PROXIMITY_IDLE_MS = 4000;
 
-  // ---------- STATE ----------
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
 
@@ -227,7 +233,6 @@
   var autoPopupStationId = null;
   var autoPopupIdleTimer = null;
 
-  // ---------- FAVORITES ----------
   function favKey(){ return 'azs_favs'; }
   function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; } }
   function isFav(id){ return getFavs().indexOf(id) !== -1; }
@@ -237,13 +242,11 @@
     try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
   }
 
-  // ---------- MAP ----------
   var map = L.map('map', { zoomControl:false }).setView([59.94, 30.31], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap', subdomains:'abc', maxZoom:19
   }).addTo(map);
 
-  // ---------- HELPERS ----------
   function statusFor(fuels, fuelKey){
     if (fuelKey !== 'all'){
       var f = fuels[fuelKey];
@@ -300,7 +303,6 @@
     return { station: best, distance: bestD };
   }
 
-  // ---------- POPUP ----------
   function popupHtml(s){
     if (!fuelsData.length || !statusesData.length){
       return '<div style="padding:20px;text-align:center;color:#8A8F98">Загрузка…</div>';
@@ -340,10 +342,20 @@
     });
     if (flagBtns) rows += '<div class="flags-row">'+flagBtns+'</div>';
 
+    // --- Фото стеллы (если есть) ---
+    if (s.last_photo && s.last_photo.url){
+      var who = s.last_photo.username ? ' · ' + escapeHtml(s.last_photo.username) : '';
+      rows += '<div class="photo-block">'+
+                '<img src="'+escapeHtml(s.last_photo.url)+'" class="stell-photo" '+
+                'data-act="view-photo" data-url="'+escapeHtml(s.last_photo.url)+'" alt="Стелла" loading="lazy">'+
+                '<div class="photo-meta">📷 Стелла · <b>'+escapeHtml(s.last_photo.ago||'только что')+'</b>'+who+'</div>'+
+              '</div>';
+    }
+
     var star = isFav(s.id) ? '❤' : '☆';
     rows += '<div class="popup-actions">'+
               '<button class="route-btn" data-act="route" data-lat="'+s.lat+'" data-lng="'+s.lng+'">🧭 Маршрут</button>'+
-              '<button class="photo-btn" data-act="photo" data-st="'+escapeHtml(s.id)+'">📷 Добавить фото стеллы</button>'+
+              '<button class="photo-btn" data-act="photo" data-st="'+escapeHtml(s.id)+'">📷 '+(s.last_photo ? 'Обновить фото стеллы' : 'Добавить фото стеллы')+'</button>'+
             '</div>'+
             '<div class="issue-row">'+
               '<button class="issue-btn" data-act="issue" data-st="'+escapeHtml(s.id)+'">⚠ Сообщить о неточности</button>'+
@@ -365,6 +377,7 @@
     else if (act === 'route') openRoute(parseFloat(t.getAttribute('data-lat')), parseFloat(t.getAttribute('data-lng')));
     else if (act === 'issue') reportStationIssue(t.getAttribute('data-st'));
     else if (act === 'photo') pickAndUploadPhoto(t.getAttribute('data-st'));
+    else if (act === 'view-photo') openLightbox(t.getAttribute('data-url'));
     else if (act === 'fav'){
       var id = t.getAttribute('data-st');
       toggleFav(id);
@@ -372,6 +385,17 @@
       if (favOnly) renderMarkers();
     }
   });
+
+  function openLightbox(url){
+    var bg = document.createElement('div');
+    bg.className = 'photo-lightbox';
+    bg.innerHTML = '<button class="close-x" aria-label="Закрыть">×</button>'+
+                   '<img src="'+escapeHtml(url)+'" alt="Стелла">';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){
+      if (e.target === bg || e.target.classList.contains('close-x')) bg.remove();
+    });
+  }
 
   document.addEventListener('input', resetAutoIdle);
   document.addEventListener('touchstart', resetAutoIdle, { passive:true });
@@ -407,7 +431,6 @@
     }
   }
 
-  // ---------- API ----------
   async function submitReport(stationId, fuel, status, btn){
     var block = btn.parentNode;
     Array.prototype.forEach.call(block.children, function(b){ b.classList.remove('current'); });
@@ -459,7 +482,6 @@
 
   function reportStationIssue(id){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }
 
-  // ---------- PHOTO ----------
   function pickAndUploadPhoto(stationId){
     var input = document.createElement('input');
     input.type = 'file';
@@ -487,14 +509,21 @@
       if (j && j.ok){
         toast('Фото добавлено');
         var s = stationsData.find(function(x){ return x.id === stationId; });
-        if (s && markers[stationId]) markers[stationId].setPopupContent(popupHtml(s));
+        if (s){
+          s.last_photo = {
+            url: j.photo_url,
+            username: username || null,
+            ago: 'только что',
+            ts: j.ts || Math.floor(Date.now()/1000)
+          };
+          if (markers[stationId]) markers[stationId].setPopupContent(popupHtml(s));
+        }
       } else {
-        toast('Не удалось загрузить');
+        toast('Не удалось загрузить: ' + (j.error || ''));
       }
     } catch(e){ console.error(e); toast('Ошибка загрузки'); }
   }
 
-  // ---------- RENDER ----------
   function updateMarkerFor(stationId){
     var s = stationsData.find(function(x){ return x.id === stationId; });
     var m = markers[stationId];
@@ -546,7 +575,6 @@
     });
   }
 
-  // ---------- LOAD ----------
   async function loadStations(){
     try {
       var res = await fetch('/api/stations');
@@ -567,7 +595,6 @@
     }
   }
 
-  // ---------- UI EVENTS ----------
   document.getElementById('net-select').addEventListener('change', function(e){
     activeNet = e.target.value; renderMarkers();
   });
@@ -597,7 +624,6 @@
     if (pts.length) map.fitBounds(pts, { padding:[30,30] });
   });
 
-  // ---------- SIDE TOOLS ----------
   document.getElementById('btn-zoom-in').addEventListener('click', function(){ map.zoomIn(); });
   document.getElementById('btn-zoom-out').addEventListener('click', function(){ map.zoomOut(); });
 
@@ -650,7 +676,6 @@
     if (locateActive) stopLocate(); else startLocate();
   });
 
-  // ---------- ROUTE ----------
   document.getElementById('btn-route').addEventListener('click', function(){
     if (!stationsData.length){ toast('Данные ещё загружаются'); return; }
     var from = lastPosition || (meMarker ? meMarker.getLatLng() : map.getCenter());
@@ -677,7 +702,6 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  // ---------- ADD STATION (ADMIN + USER) ----------
   (function initAddStationBtn(){
     var btn = document.getElementById('add-station-btn') || document.getElementById('missing-btn');
     if (!btn){ console.warn('add-station-btn не найдена в DOM'); return; }
@@ -691,8 +715,8 @@
         catch(err){ console.error(err); toast('Ошибка диалога: ' + err.message); }
       } else {
         var payload = 'add_' + Math.round(lat * 1e6) + '_' + Math.round(lng * 1e6);
-        toast('Открываю бота…');
-        setTimeout(function(){ openBotDeepLink(payload); }, 300);
+        openBotDeepLink(payload);
+        setTimeout(function(){ toast('Если бот не открылся — нажмите ещё раз'); }, 100);
       }
     });
   })();
@@ -795,7 +819,6 @@
     }
   }
 
-  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -819,7 +842,6 @@
     });
   });
 
-  // ---------- PWA INSTALL ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -870,7 +892,6 @@
     }
   });
 
-  // ---------- INIT ----------
   try { loadStations(); } catch(e){ console.error('init error', e); }
 
   document.addEventListener('visibilitychange', function(){

@@ -11,8 +11,6 @@ import time
 from aiohttp import web
 import bot as core
 
-# Папка для фото стелл. На Amvera должен быть persistence mount /data,
-# тогда фото сохраняются между деплоями. Локально — папка data/photos.
 PHOTOS_DIR = os.getenv("PHOTOS_DIR", "/data/photos" if os.path.isdir("/data") else "data/photos")
 MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
 
@@ -78,6 +76,7 @@ async def handle_stations(request):
     try:
         conn.execute("PRAGMA busy_timeout = 5000")
         day_ago = int(time.time()) - 86400
+
         reports_by_station = {}
         for station_id, fuel, status, ts in conn.execute(
             "SELECT station_id, fuel, status, ts FROM reports WHERE ts > ?", (day_ago,)
@@ -98,6 +97,22 @@ async def handle_stations(request):
         reports_24h = conn.execute(
             "SELECT COUNT(*) FROM feed WHERE ts > ?", (day_ago,)
         ).fetchone()[0]
+
+        # --- Последнее фото по каждой станции ---
+        photos_by_station = {}
+        try:
+            photo_rows = conn.execute("""
+                SELECT station_id, file_path, username, ts FROM (
+                    SELECT station_id, file_path, username, ts,
+                           ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY ts DESC) AS rn
+                    FROM photos
+                ) WHERE rn = 1
+            """)
+            for sid, fpath, uname, pts in photo_rows:
+                photos_by_station[sid] = (fpath, uname, pts)
+        except Exception:
+            # таблицы photos может не быть — не падаем
+            pass
     finally:
         conn.close()
 
@@ -107,6 +122,19 @@ async def handle_stations(request):
             return None
         matches = sum(1 for s in recent if s == current_status)
         return round(matches / len(recent) * 100)
+
+    def last_photo_for(sid):
+        row = photos_by_station.get(sid)
+        if not row:
+            return None
+        fpath, uname, pts = row
+        fname = os.path.basename(fpath)
+        return {
+            "url": f"/api/photo/{sid}/{fname}",
+            "username": uname,
+            "ago": core.time_ago(pts),
+            "ts": pts,
+        }
 
     def build_station_obj(sid, name, net, addr, lat, lng):
         rep = reports_by_station.get(sid, {})
@@ -129,22 +157,20 @@ async def handle_stations(request):
                 flags[key] = {"on": status == "on" and not core.is_stale(ts), "label": label, "ago": core.time_ago(ts)}
             else:
                 flags[key] = {"on": False, "label": label, "ago": None}
-        return {"id": sid, "name": name, "net": net, "addr": addr,
-                "lat": lat, "lng": lng, "fuels": fuels, "flags": flags}
+        return {
+            "id": sid, "name": name, "net": net, "addr": addr,
+            "lat": lat, "lng": lng, "fuels": fuels, "flags": flags,
+            "last_photo": last_photo_for(sid),
+        }
 
     result = []
-
-    # 1. Статические станции из bot.py
     for sid, name, net, addr, lat, lng in core.STATIONS:
         result.append(build_station_obj(sid, name, net, addr, lat, lng))
 
-    # 2. Пользовательские станции из БД (если bot.py уже поддерживает).
-    # Fallback для поэтапного деплоя: если bot.py ещё старый, просто пусто.
     try:
         custom_rows = core.get_custom_stations()
     except AttributeError:
         custom_rows = []
-
     for row in custom_rows:
         sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
         result.append(build_station_obj(sid, name, net, addr, lat, lng))
@@ -190,7 +216,6 @@ async def handle_report(request):
     except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return web.json_response({"ok": False, "error": "bad_request"}, status=400)
 
-    # Проверка станции: через station_exists, если есть; иначе — статический список.
     try:
         exists = core.station_exists(station_id)
     except AttributeError:
@@ -224,11 +249,6 @@ async def handle_report(request):
 
 
 async def handle_add_station(request):
-    """
-    POST /api/add-station
-    Админ через карту добавляет новую АЗС.
-    Тело JSON: { lat, lng, net, fuels: {f92:'ok', ...}, user_id, username }
-    """
     try:
         data = await request.json()
         lat = float(data["lat"])
@@ -240,7 +260,6 @@ async def handle_add_station(request):
     except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return web.json_response({"ok": False, "error": "bad_request"}, status=400)
 
-    # Проверка админа
     admin_id = getattr(core, "ADMIN_ID", 0)
     if not admin_id or user_id != admin_id:
         return web.json_response({"ok": False, "error": "forbidden"}, status=403)
@@ -278,10 +297,6 @@ async def handle_add_station(request):
 
 
 async def handle_upload_photo(request):
-    """
-    POST /api/upload-photo  (multipart/form-data)
-    Поля: station_id, user_id, username, photo
-    """
     try:
         reader = await request.multipart()
     except Exception:
@@ -313,7 +328,6 @@ async def handle_upload_photo(request):
                 return web.json_response({"ok": False, "error": "too_large"}, status=413)
             photo_bytes = chunk
 
-    # Проверка станции
     try:
         exists = core.station_exists(station_id) if station_id else False
     except AttributeError:
@@ -337,7 +351,6 @@ async def handle_upload_photo(request):
     with open(file_path, "wb") as f:
         f.write(photo_bytes)
 
-    # Запись метаданных в БД (если bot.py уже поддерживает — иначе просто пропускаем)
     try:
         core.save_photo(station_id, file_path, user_id, username)
     except AttributeError:
@@ -347,14 +360,13 @@ async def handle_upload_photo(request):
         "ok": True,
         "station_id": station_id,
         "photo_url": f"/api/photo/{station_id}/{ts}{ext}",
+        "ts": ts,
     })
 
 
 async def handle_get_photo(request):
-    """GET /api/photo/<station_id>/<filename>"""
     station_id = request.match_info["station_id"]
     filename = request.match_info["filename"]
-    # Защита от path traversal
     if "/" in filename or ".." in filename or "\\" in filename:
         return web.Response(status=400)
     if "/" in station_id or ".." in station_id or "\\" in station_id:

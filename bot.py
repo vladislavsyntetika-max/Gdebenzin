@@ -1,14 +1,6 @@
 """
 Бот "АЗС СПб - топливо в реале"
 Краудсорсинговый мониторинг наличия топлива на АЗС Санкт-Петербурга.
-
-Как это работает:
-- пользователь выбирает сеть -> станцию -> вид топлива -> статус (Есть/Мало/Нет)
-- бот сохраняет отчёт в SQLite и показывает всем следующим пользователям
-- статус считается "устаревшим" через 8 часов и помечается как требующий обновления
-
-Запуск локально: python bot.py  (нужен файл .env с BOT_TOKEN=...)
-Деплой: см. README.md
 """
 
 import asyncio
@@ -17,7 +9,7 @@ import logging
 import os
 import html
 import re
-import socket  # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+import socket
 import sqlite3
 import time
 from datetime import datetime
@@ -25,11 +17,11 @@ from collections import Counter
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
-from aiogram.client.session.aiohttp import AiohttpSession  # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.exceptions import TelegramBadRequest
-from aiohttp import TCPConnector, ClientSession, ClientTimeout # <--- ДОБАВИТЬ ЭТУ СТРОКУ
+from aiohttp import TCPConnector, ClientSession, ClientTimeout
 
 try:
     from dotenv import load_dotenv
@@ -39,16 +31,16 @@ except ImportError:
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DB_PATH = os.getenv("DB_PATH", "data/db.sqlite3")
-MAP_URL = os.getenv("MAP_URL", "")  # напр. https://azs-spb-bot.amvera.io/map
+MAP_URL = os.getenv("MAP_URL", "")
 PORT = int(os.getenv("PORT", "8080"))
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))  # ваш Telegram user id, куда падают сообщения о неточностях
-CHANNEL_ID = os.getenv("CHANNEL_ID", "")  # @username канала или числовой id, куда постим топ недели по понедельникам
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+CHANNEL_ID = os.getenv("CHANNEL_ID", "")
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("azs-bot")
 
 # ---------------------------------------------------------------------------
-# Данные по станциям (те же, что и в веб-версии artifact)
+# Данные по станциям
 # ---------------------------------------------------------------------------
 
 NETWORKS = {
@@ -77,8 +69,6 @@ STATUSES = [
 ]
 STATUS_LABEL = {k: v for k, v in STATUSES}
 
-# Очередь и лимит на литры относятся ко всей станции, а не к конкретному виду топлива —
-# храним их как отдельные "псевдо-виды топлива" в той же таблице reports/feed, без миграции схемы.
 STATION_FLAGS = [
     ("flag_queue", "🚗 Очередь"),
     ("flag_limit", "⛔ Лимит на литры"),
@@ -86,13 +76,13 @@ STATION_FLAGS = [
 STATION_FLAG_LABEL = {k: v for k, v in STATION_FLAGS}
 
 # ---------------------------------------------------------------------------
-# Геймификация: баллы и звания (см. strategiya-prodvizheniya.md, раздел 2)
+# Геймификация
 # ---------------------------------------------------------------------------
 
-POINTS_REPORT = 2          # обычный отчёт о статусе топлива
-POINTS_SCOUT_BONUS = 5     # "разведка" — первый отчёт по станции за 8+ часов
-POINTS_STREAK_3 = 10       # бонус за стрик 3 дня подряд
-POINTS_STREAK_7 = 30       # бонус за стрик 7 дней подряд
+POINTS_REPORT = 2
+POINTS_SCOUT_BONUS = 5
+POINTS_STREAK_3 = 10
+POINTS_STREAK_7 = 30
 
 RANKS = [
     (0, "Новичок"),
@@ -114,7 +104,6 @@ def get_rank(points: int) -> str:
 
 
 def next_rank_info(points: int):
-    """Возвращает (баллов до следующего звания, название следующего звания) или None, если уже максимум."""
     for threshold, label in RANKS:
         if points < threshold:
             return threshold - points, label
@@ -125,7 +114,7 @@ def display_name(user) -> str:
     return user.username or user.full_name or f"id{user.id}"
 
 
-_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")  # реальные правила Telegram-юзернейма
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 
 
 def is_real_username(name: str) -> bool:
@@ -133,24 +122,15 @@ def is_real_username(name: str) -> bool:
 
 
 def format_display(name: str, user_id: int = None) -> str:
-    """Безопасное отображаемое имя для вставки в HTML-сообщения Telegram.
-
-    Всегда экранирует спецсимволы — иначе username/полное имя пользователя
-    (это произвольная строка, задаётся самим человеком в настройках Telegram)
-    могло бы сломать HTML-разметку сообщения или подделать текст/форматирование
-    от чужого имени в ленте, топе недели или посте в канале.
-
-    Если имени нет вообще — при наличии user_id возвращает различимую заглушку
-    ("участник 123..."), чтобы в списке из нескольких безымянных пользователей
-    их можно было отличить друг от друга, а не видеть несколько одинаковых "аноним"."""
     if name and name.startswith("id") and name[2:].isdigit():
-        name = None  # старый формат заглушки ("id123") — не показываем как есть
+        name = None
     if not name:
         return f"участник {user_id}" if user_id else "аноним"
     clean = name.strip()[:40] or "аноним"
     if is_real_username(clean):
         return f"@{clean}"
     return html.escape(clean)
+
 
 STATIONS = [
     ("gpn-1", "Газпромнефть", "gpn", "ул. Десантников, 21", 59.8534, 30.1992),
@@ -313,13 +293,42 @@ STATIONS = [
 ]
 STATION_BY_ID = {s[0]: s for s in STATIONS}
 
+
+def _load_custom_to_cache():
+    """Подмешивает custom_stations из БД в STATION_BY_ID, чтобы бот их видел."""
+    try:
+        for row in get_custom_stations():
+            sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
+            STATION_BY_ID[sid] = (sid, name, net, addr, lat, lng)
+    except Exception as e:
+        log.warning(f"Не удалось загрузить custom_stations: {e}")
+
+
+def get_station(sid):
+    """Возвращает tuple станции (id, name, net, addr, lat, lng) или None."""
+    if sid in STATION_BY_ID:
+        return STATION_BY_ID[sid]
+    try:
+        conn = db()
+        row = conn.execute(
+            "SELECT id, name, net, addr, lat, lng FROM custom_stations WHERE id=?", (sid,)
+        ).fetchone()
+        conn.close()
+        if row:
+            STATION_BY_ID[sid] = row
+            return row
+    except Exception:
+        pass
+    return None
+
+
+def station_exists(sid) -> bool:
+    return get_station(sid) is not None
+
+
 # ---------------------------------------------------------------------------
-# Районы (для звания "Смотритель района" — раздел 3 стратегии)
+# Районы
 # ---------------------------------------------------------------------------
-# Точных границ районов у нас нет, поэтому используем приближение: район
-# определяется по ближайшему из приблизительных географических центров.
-# Для геймификации (только текст в звании/профиле) этого достаточно;
-# не использовать эти данные как точный официальный справочник.
 
 DISTRICT_CENTROIDS = [
     ("Адмиралтейский", 59.9250, 30.3130),
@@ -358,13 +367,14 @@ def get_user_top_district(user_id: int):
     conn.close()
     counter = Counter()
     for station_id, c in rows:
-        s = STATION_BY_ID.get(station_id)
+        s = get_station(station_id)
         if not s:
             continue
         counter[district_for_station(s[4], s[5])] += c
     if not counter:
         return None
     return counter.most_common(1)[0][0]
+
 
 # ---------------------------------------------------------------------------
 # База данных
@@ -394,13 +404,11 @@ def db():
             username TEXT
         )
     """)
-    # Миграция для БД, созданных до сохранения username: добавляем колонку,
-    # если её ещё нет (закрывает пробел из раздела 8 стратегии — именные шаутауты).
     for table in ("reports", "feed"):
         try:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN username TEXT")
         except sqlite3.OperationalError:
-            pass  # колонка уже есть
+            pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS issue_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -433,19 +441,55 @@ def db():
             station_id TEXT
         )
     """)
-    # Миграция для БД, созданных до появления анти-спам защиты: если таблица
-    # points_log уже существует без колонки station_id — добавляем её.
     try:
         conn.execute("ALTER TABLE points_log ADD COLUMN station_id TEXT")
     except sqlite3.OperationalError:
-        pass  # колонка уже есть
+        pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS bot_state (
             key TEXT PRIMARY KEY,
             value TEXT
         )
     """)
-    # Индексы для ускорения /api/stations и гейм-логики
+    # --- НОВЫЕ ТАБЛИЦЫ ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS custom_stations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            net TEXT NOT NULL,
+            addr TEXT,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL,
+            created_ts INTEGER NOT NULL,
+            created_by INTEGER NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            station_id TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            user_id INTEGER,
+            username TEXT,
+            ts INTEGER NOT NULL
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_photos_station ON photos(station_id, ts DESC)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pending_stations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            net TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL,
+            fuels TEXT,
+            user_id INTEGER NOT NULL,
+            username TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_ts INTEGER NOT NULL
+        )
+    """)
+    # --- ИНДЕКСЫ ---
     conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_ts ON reports(ts)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_ts ON feed(ts)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_station_fuel ON feed(station_id, fuel, ts DESC)")
@@ -565,7 +609,6 @@ def get_recent_statuses_for_fuel(station_id, fuel, limit=5):
 
 
 def get_confidence(station_id, fuel, current_status):
-    """Доля последних отчётов по этой станции/топливу, совпадающих с текущим статусом."""
     recent = get_recent_statuses_for_fuel(station_id, fuel, limit=5)
     if not recent:
         return None
@@ -609,7 +652,6 @@ def award_points(user_id: int, username: str, points: int, reason: str, station_
     conn.close()
 
 
-# Анти-накрутка (раздел 3 стратегии): не более 1 балла за одну и ту же станцию в час с одного user_id.
 POINTS_COOLDOWN_SECONDS = 3600
 
 
@@ -628,8 +670,6 @@ def can_award_station_points(user_id: int, station_id: str) -> bool:
 
 
 def record_daily_activity(user_id: int, username: str):
-    """Обновляет стрик пользователя и начисляет бонусы за 3/7 дней подряд.
-    Вызывается один раз на каждый отчёт о статусе топлива (не на флаги станции)."""
     if user_id == 0:
         return
     today = time.strftime("%Y-%m-%d", time.gmtime())
@@ -644,7 +684,7 @@ def record_daily_activity(user_id: int, username: str):
 
     if last_date == today:
         conn.close()
-        return  # уже отмечались сегодня — стрик не трогаем
+        return
 
     if last_date == yesterday:
         streak_days += 1
@@ -676,7 +716,6 @@ def record_daily_activity(user_id: int, username: str):
 
 
 def is_scouting_report(station_id: str) -> bool:
-    """Разведка: по станции нет ни одного свежего (<8ч) отчёта ни по одному виду топлива."""
     rep = get_station_reports(station_id)
     for key, _label in FUELS:
         if key in rep:
@@ -712,11 +751,10 @@ def get_weekly_leaderboard(limit=10):
         (week_ago, limit),
     ).fetchall()
     conn.close()
-    return rows  # [(user_id, username, week_points), ...]
+    return rows
 
 
 def get_weekly_position(user_id: int):
-    """Место пользователя в недельном лидерборде (без ограничения limit) и его очки за неделю."""
     week_ago = int(time.time()) - 7 * 86400
     conn = db()
     rows = conn.execute(
@@ -763,6 +801,106 @@ def is_stale(ts: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# НОВОЕ: custom_stations, photos, pending_stations — хелперы
+# ---------------------------------------------------------------------------
+
+def add_custom_station(name: str, net: str, addr: str, lat: float, lng: float, user_id: int) -> str:
+    now = int(time.time())
+    station_id = f"custom-{now}"
+    conn = db()
+    conn.execute(
+        "INSERT INTO custom_stations (id, name, net, addr, lat, lng, created_ts, created_by) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (station_id, name, net, addr, lat, lng, now, user_id),
+    )
+    conn.commit()
+    conn.close()
+    STATION_BY_ID[station_id] = (station_id, name, net, addr, lat, lng)
+    return station_id
+
+
+def get_custom_stations():
+    conn = db()
+    rows = conn.execute(
+        "SELECT id, name, net, addr, lat, lng, created_ts, created_by FROM custom_stations ORDER BY created_ts ASC"
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def save_photo(station_id: str, file_path: str, user_id: int, username: str = None):
+    conn = db()
+    conn.execute(
+        "INSERT INTO photos (station_id, file_path, user_id, username, ts) VALUES (?,?,?,?,?)",
+        (station_id, file_path, user_id, username, int(time.time())),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_last_photo(station_id: str):
+    conn = db()
+    row = conn.execute(
+        "SELECT file_path, username, ts FROM photos WHERE station_id=? ORDER BY ts DESC LIMIT 1",
+        (station_id,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def save_pending_station(name, net, lat, lng, fuels_json: str, user_id, username) -> int:
+    conn = db()
+    cur = conn.execute(
+        "INSERT INTO pending_stations (name, net, lat, lng, fuels, user_id, username, created_ts) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        (name, net, lat, lng, fuels_json, user_id, username, int(time.time())),
+    )
+    conn.commit()
+    pid = cur.lastrowid
+    conn.close()
+    return pid
+
+
+def get_pending_station(pid: int):
+    conn = db()
+    row = conn.execute(
+        "SELECT id, name, net, lat, lng, fuels, user_id, username, status FROM pending_stations WHERE id=?",
+        (pid,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def approve_pending_station(pid: int, admin_id: int):
+    row = get_pending_station(pid)
+    if not row:
+        return None
+    _, name, net, lat, lng, fuels_json, user_id, username, status = row
+    if status != "pending":
+        return None
+    station_id = add_custom_station(name, net, "Добавлено пользователем", lat, lng, admin_id)
+    try:
+        fuels = json.loads(fuels_json or "{}")
+    except Exception:
+        fuels = {}
+    for fuel_key, status_val in fuels.items():
+        if fuel_key in dict(FUELS) and status_val in dict(STATUSES):
+            save_report(station_id, fuel_key, status_val, user_id, username)
+    conn = db()
+    conn.execute("UPDATE pending_stations SET status='approved' WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+    return station_id
+
+
+def reject_pending_station(pid: int):
+    conn = db()
+    conn.execute("UPDATE pending_stations SET status='rejected' WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
 # Клавиатуры и текстовые карточки
 # ---------------------------------------------------------------------------
 
@@ -793,7 +931,8 @@ def kb_station_card(station_id: str):
         mark = "✅ " if is_on else ""
         flag_row.append(InlineKeyboardButton(text=f"{mark}{flabel}", callback_data=f"flag:{station_id}:{fkey}"))
     rows.append(flag_row)
-    net_key = STATION_BY_ID[station_id][2]
+    s = get_station(station_id)
+    net_key = s[2] if s else "gpn"
     rows.append([InlineKeyboardButton(text="⚠️ Неточность в данных станции", callback_data=f"err:{station_id}")])
     rows.append([InlineKeyboardButton(text="⬅️ К списку станций", callback_data=f"net:{net_key}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -807,7 +946,10 @@ def kb_status_pick(station_id: str, fuel_key: str):
 
 
 def station_card_text(station_id: str) -> str:
-    _, name, net_key, addr, _, _ = STATION_BY_ID[station_id]
+    s = get_station(station_id)
+    if not s:
+        return "Станция не найдена."
+    _, name, _net_key, addr, _, _ = s
     rep = get_station_reports(station_id)
     lines = [f"⛽ <b>{name}</b>", f"📍 {addr}", ""]
     for key, label in FUELS:
@@ -831,24 +973,60 @@ def station_card_text(station_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# НОВОЕ: клавиатуры для диплинка add_
+# ---------------------------------------------------------------------------
+
+def kb_brand_pick():
+    rows = []
+    line = []
+    for k, v in NETWORKS.items():
+        line.append(InlineKeyboardButton(text=f"{v['dot']} {v['label']}", callback_data=f"addb:{k}"))
+        if len(line) == 2:
+            rows.append(line)
+            line = []
+    if line:
+        rows.append(line)
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="addcancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def kb_fuel_pick(fuels_state: dict):
+    rows = []
+    for key, label in FUELS:
+        cur = fuels_state.get(key)
+        def mark(s, lbl):
+            return f"✅ {lbl}" if cur == s else lbl
+        rows.append([
+            InlineKeyboardButton(text=mark("ok", "Есть"), callback_data=f"addf:{key}:ok"),
+            InlineKeyboardButton(text=mark("low", "Мало"), callback_data=f"addf:{key}:low"),
+            InlineKeyboardButton(text=mark("none", "Нет"), callback_data=f"addf:{key}:none"),
+        ])
+    rows.append([InlineKeyboardButton(text="💾 Сохранить заявку", callback_data="addsave")])
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="addcancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# ---------------------------------------------------------------------------
 # Хендлеры
 # ---------------------------------------------------------------------------
 
 dp = Dispatcher()
-pending_issue = {}  # user_id -> station_id ("" значит без привязки к станции)
+pending_issue = {}       # user_id -> station_id | "missing:lat:lng"
+pending_add = {}         # user_id -> {"lat", "lng", "net", "fuels", "step"}
 
 
 @dp.message(CommandStart())
 async def on_start(message: Message, command: CommandObject):
     payload = command.args
     if payload:
+        # --- старый формат: err_ / missing_ ---
         if payload.startswith("err_"):
             station_id = payload[len("err_"):].replace("_", "-")
-            if station_id in STATION_BY_ID:
+            if station_exists(station_id):
                 pending_issue[message.from_user.id] = station_id
-                name = STATION_BY_ID[station_id][1]
+                s = get_station(station_id)
                 await message.answer(
-                    f"Опишите, что не так на станции <b>{name}</b> — одним сообщением, и я передам автору бота."
+                    f"Опишите, что не так на станции <b>{s[1]}</b> — одним сообщением, и я передам автору бота."
                 )
                 return
         elif payload.startswith("missing_"):
@@ -862,6 +1040,19 @@ async def on_start(message: Message, command: CommandObject):
                     "(координаты я уже приложу автоматически)."
                 )
                 return
+        # --- НОВЫЙ формат: add_<lat>_<lng> ---
+        elif payload.startswith("add_"):
+            parts = payload[len("add_"):].split("_")
+            if len(parts) == 2 and all(p.isdigit() or (p.startswith("-") and p[1:].isdigit()) for p in parts):
+                lat = int(parts[0]) / 1e6
+                lng = int(parts[1]) / 1e6
+                pending_add[message.from_user.id] = {"lat": lat, "lng": lng, "net": None, "fuels": {}}
+                await message.answer(
+                    f"📍 Добавляем АЗС по координатам <b>{lat:.5f}, {lng:.5f}</b>\n\n"
+                    "Выберите бренд:",
+                    reply_markup=kb_brand_pick(),
+                )
+                return
 
     text = (
         "⛽ <b>АЗС СПб — топливо в реале</b>\n"
@@ -872,6 +1063,164 @@ async def on_start(message: Message, command: CommandObject):
     )
     await message.answer(text, reply_markup=kb_main())
 
+
+# --- НОВОЕ: обработчики диплинка add_ ---
+
+@dp.callback_query(F.data.startswith("addb:"))
+async def cb_add_brand(cq: CallbackQuery):
+    user_id = cq.from_user.id
+    if user_id not in pending_add:
+        await cq.answer("Сессия истекла, откройте карту заново.", show_alert=True)
+        return
+    net_key = cq.data.split(":", 1)[1]
+    if net_key not in NETWORKS:
+        await cq.answer("Неизвестный бренд.")
+        return
+    pending_add[user_id]["net"] = net_key
+    pending_add[user_id]["step"] = "fuels"
+    label = NETWORKS[net_key]["label"]
+    try:
+        await cq.message.edit_text(
+            f"⛽ Бренд: <b>{label}</b>\n\nТеперь отметьте наличие топлива (можно пропустить):",
+            reply_markup=kb_fuel_pick(pending_add[user_id]["fuels"]),
+        )
+    except TelegramBadRequest:
+        pass
+    await cq.answer()
+
+
+@dp.callback_query(F.data.startswith("addf:"))
+async def cb_add_fuel(cq: CallbackQuery):
+    user_id = cq.from_user.id
+    if user_id not in pending_add:
+        await cq.answer("Сессия истекла, откройте карту заново.", show_alert=True)
+        return
+    _, fuel_key, status = cq.data.split(":")
+    if fuel_key not in dict(FUELS) or status not in dict(STATUSES):
+        await cq.answer("Неверные данные.")
+        return
+    fuels = pending_add[user_id]["fuels"]
+    if fuels.get(fuel_key) == status:
+        fuels.pop(fuel_key, None)
+    else:
+        fuels[fuel_key] = status
+    try:
+        await cq.message.edit_reply_markup(reply_markup=kb_fuel_pick(fuels))
+    except TelegramBadRequest:
+        pass
+    await cq.answer("Отмечено")
+
+
+@dp.callback_query(F.data == "addsave")
+async def cb_add_save(cq: CallbackQuery):
+    user_id = cq.from_user.id
+    if user_id not in pending_add:
+        await cq.answer("Сессия истекла, откройте карту заново.", show_alert=True)
+        return
+    data = pending_add.pop(user_id)
+    if not data.get("net"):
+        await cq.answer("Сначала выберите бренд.", show_alert=True)
+        return
+    net_key = data["net"]
+    name = NETWORKS[net_key]["label"]
+    username = display_name(cq.from_user)
+    pid = save_pending_station(
+        name=name,
+        net=net_key,
+        lat=data["lat"],
+        lng=data["lng"],
+        fuels_json=json.dumps(data["fuels"]),
+        user_id=user_id,
+        username=username,
+    )
+    try:
+        await cq.message.edit_text(
+            "✅ Заявка отправлена на модерацию. Как только автор проверит — точка появится на карте.\n\n"
+            "Спасибо, что помогаете!"
+        )
+    except TelegramBadRequest:
+        pass
+    await cq.answer("Отправлено")
+    # Уведомляем админа
+    if ADMIN_ID:
+        fuels_lines = []
+        for key, label in FUELS:
+            if data["fuels"].get(key):
+                fuels_lines.append(f"{label}: {STATUS_LABEL[data['fuels'][key]]}")
+        fuels_text = "\n".join(fuels_lines) if fuels_lines else "не указано"
+        admin_text = (
+            f"🆕 <b>Заявка на новую АЗС #{pid}</b>\n\n"
+            f"Бренд: <b>{name}</b>\n"
+            f"Координаты: <code>{data['lat']:.6f}, {data['lng']:.6f}</code>\n"
+            f"Топливо:\n{fuels_text}\n\n"
+            f"От: {format_display(username)} (id {user_id})"
+        )
+        mod_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
+                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
+            ]
+        ])
+        try:
+            await cq.bot.send_message(ADMIN_ID, admin_text, reply_markup=mod_kb)
+        except TelegramBadRequest:
+            pass
+
+
+@dp.callback_query(F.data == "addcancel")
+async def cb_add_cancel(cq: CallbackQuery):
+    pending_add.pop(cq.from_user.id, None)
+    try:
+        await cq.message.edit_text("Отменено.")
+    except TelegramBadRequest:
+        pass
+    await cq.answer()
+
+
+# --- Модерация ---
+
+@dp.callback_query(F.data.startswith("appmod:"))
+async def cb_moderate(cq: CallbackQuery):
+    if not ADMIN_ID or cq.from_user.id != ADMIN_ID:
+        await cq.answer("Только автор бота может модерировать.", show_alert=True)
+        return
+    _, pid_str, action = cq.data.split(":")
+    pid = int(pid_str)
+    if action == "approve":
+        station_id = approve_pending_station(pid, cq.from_user.id)
+        if not station_id:
+            await cq.answer("Заявка уже обработана или не найдена.")
+            return
+        await cq.answer("Одобрено")
+        try:
+            await cq.message.edit_text(cq.message.text + f"\n\n✅ Одобрено (id {station_id})")
+        except TelegramBadRequest:
+            pass
+        row = get_pending_station(pid)
+        if row and row[6]:
+            try:
+                await cq.bot.send_message(
+                    row[6],
+                    "🎉 Ваша заявка на новую АЗС одобрена и уже на карте! Спасибо.",
+                )
+            except TelegramBadRequest:
+                pass
+    elif action == "reject":
+        reject_pending_station(pid)
+        await cq.answer("Отклонено")
+        try:
+            await cq.message.edit_text(cq.message.text + "\n\n❌ Отклонено")
+        except TelegramBadRequest:
+            pass
+        row = get_pending_station(pid)
+        if row and row[6]:
+            try:
+                await cq.bot.send_message(row[6], "Заявка на новую АЗС отклонена модератором.")
+            except TelegramBadRequest:
+                pass
+
+
+# --- старые хендлеры ---
 
 @dp.message(Command("recent"))
 async def on_recent_cmd(message: Message):
@@ -899,7 +1248,6 @@ async def on_contribution_cmd(message: Message):
 async def on_profile_cmd(message: Message):
     user_id = message.from_user.id
     name = display_name(message.from_user)
-    # обновляем сохранённый username на случай, если пользователь его сменил
     conn = db()
     _ensure_user_row(conn, user_id, name)
     conn.commit()
@@ -973,7 +1321,7 @@ def feed_text() -> str:
     fuel_label = {k: v for k, v in FUELS}
     lines = ["🕓 <b>Последние отчёты сообщества</b>", ""]
     for ts, station_id, fuel, status, username in rows:
-        s = STATION_BY_ID.get(station_id)
+        s = get_station(station_id)
         if not s:
             continue
         who = f" · {format_display(username)}" if username else ""
@@ -1066,7 +1414,8 @@ async def cb_report_issue(cq: CallbackQuery):
     station_id = cq.data.split(":", 1)[1]
     pending_issue[cq.from_user.id] = station_id
     if station_id:
-        name = STATION_BY_ID[station_id][1]
+        s = get_station(station_id)
+        name = s[1] if s else station_id
         prompt = f"Опишите, что не так на станции <b>{name}</b> (адрес, сеть, статус, координаты — что угодно). Просто напишите одним сообщением."
     else:
         prompt = "Опишите, что не так в боте или на карте — одним сообщением. Мы разберёмся как можно быстрее."
@@ -1078,7 +1427,7 @@ async def cb_report_issue(cq: CallbackQuery):
 async def on_free_text(message: Message):
     user_id = message.from_user.id
     if user_id not in pending_issue:
-        return  # обычный текст вне контекста репорта — игнорируем
+        return
     raw = pending_issue.pop(user_id)
     username = message.from_user.username or message.from_user.full_name
     if raw.startswith("missing:"):
@@ -1094,10 +1443,11 @@ async def on_free_text(message: Message):
     )
     if ADMIN_ID:
         station_line = ""
-        if station_id and station_id in STATION_BY_ID:
-            s = STATION_BY_ID[station_id]
-            station_line = f"\nСтанция: {s[1]}, {s[3]} (id: {station_id})"
-        safe_username = format_display(username)  # экранирует HTML и сам решает, ставить ли "@"
+        if station_id:
+            s = get_station(station_id)
+            if s:
+                station_line = f"\nСтанция: {s[1]}, {s[3]} (id: {station_id})"
+        safe_username = format_display(username)
         safe_text = html.escape(text_for_db)
         admin_text = (
             f"⚠️ Новое сообщение о неточности #{issue_id}\n"
@@ -1137,11 +1487,7 @@ async def cb_mark_fixed(cq: CallbackQuery):
 
 
 # ---------------------------------------------------------------------------
-# Точка входа
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Автопост топа недели в канал (раздел 3 стратегии — "следующий шаг")
+# Автопост топа недели
 # ---------------------------------------------------------------------------
 
 def format_leaderboard_text(rows, title="🏆 <b>Топ разведчиков недели</b>") -> str:
@@ -1170,21 +1516,11 @@ async def post_weekly_leaderboard(bot: Bot) -> bool:
 
 
 async def weekly_leaderboard_task(bot: Bot):
-    """Публикует топ недели по понедельникам после 06:00 UTC (~09:00 МСК).
-
-    Реализовано короткими проверками раз в 10 минут, а НЕ одним длинным
-    `asyncio.sleep()` на несколько дней вперёд. Причина: если хостинг перезапустит
-    процесс (усыпит простаивающее приложение, передеплоит код, перезапустит после
-    сбоя) — длинный sleep потеряется, а при следующем запуске логика может
-    пересчитать цель уже на СЛЕДУЮЩИЙ понедельник, молча пропустив прошедший, и
-    заметить это можно будет только по логам. Поллинг с отметкой "уже постили
-    сегодня" в БД (`bot_state`) самовосстанавливается после любого перезапуска
-    максимум за POLL_INTERVAL, и не публикует дважды за один день."""
     if not CHANNEL_ID:
         log.info("CHANNEL_ID не задан — автопост топа недели отключён.")
         return
     POST_HOUR_UTC = 6
-    POLL_INTERVAL = 600  # 10 минут
+    POLL_INTERVAL = 600
     while True:
         now = datetime.utcnow()
         if now.weekday() == 0 and now.hour >= POST_HOUR_UTC:
@@ -1197,9 +1533,6 @@ async def weekly_leaderboard_task(bot: Bot):
                     log.exception("Ошибка при публикации топа недели")
                 if sent:
                     set_state("last_weekly_post_date", today_str)
-                # Если rows были пустыми (sent=False без исключения) — не отмечаем
-                # как опубликовано, попробуем снова через POLL_INTERVAL: вдруг за
-                # день кто-то всё же отчитается и будет что постить.
         await asyncio.sleep(POLL_INTERVAL)
 
 
@@ -1207,29 +1540,30 @@ async def main():
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN. Создайте .env с BOT_TOKEN=... или переменную окружения на хостинге.")
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    
-    # === ФИКС: Принудительно используем IPv4, чтобы избежать таймаутов на хостинге ===
+
+    # Прогреваем кеш кастомных станций из БД
+    _load_custom_to_cache()
+
     class IPv4OnlySession(AiohttpSession):
         async def _create_session(self):
             connector = TCPConnector(family=socket.AF_INET)
             return ClientSession(connector=connector, timeout=ClientTimeout(total=60))
-    
+
     bot = Bot(
-        token=BOT_TOKEN, 
+        token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode="HTML"),
         session=IPv4OnlySession()
     )
-    
-    # Немного увеличим таймаут для надежности
+
     await bot.delete_webhook(drop_pending_updates=True, request_timeout=15)
 
     import webserver
     await webserver.run_webserver(PORT)
 
     asyncio.create_task(weekly_leaderboard_task(bot))
-    
-    # И здесь тоже увеличим таймаут
+
     await dp.start_polling(bot, request_timeout=15)
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    await main() if False else asyncio.run(main())

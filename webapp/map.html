@@ -1403,6 +1403,19 @@
     }
   });
 
+  // === ДИАГНОСТИКА (удалить после проверки) ===
+  (function diag(){
+    var tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    var msg = '👤 tg=' + (tg ? 'есть' : 'нет') +
+              ' · userId=' + (tgUser ? tgUser.id : 'null') +
+              ' · ADMIN_ID=' + ADMIN_ID +
+              ' · isAdmin=' + (userId === ADMIN_ID);
+    console.log('[DIAG]', msg);
+    setTimeout(function(){ toast(msg); }, 800);
+    setTimeout(function(){ toast(msg); }, 3000);
+  })();
+  // === КОНЕЦ ДИАГНОСТИКИ ===
+
   try { loadStations(); } catch(e){ console.error('init error', e); }
   document.addEventListener('visibilitychange', function(){
     if (!document.hidden) loadStations();

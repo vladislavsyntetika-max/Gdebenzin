@@ -888,7 +888,10 @@
       } else {
         toast('Не удалось: ' + (j.error || ''));
       }
-    } catch(e){ console.error(e); toast('Ошибка загрузки'); }
+    } catch(e){
+      console.error(e);
+      toast('Ошибка загрузки');
+    }
   }
 
   // ---------- СВЕЖЕСТЬ МАРКЕРОВ ----------
@@ -1032,6 +1035,7 @@
       function(pos){
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
         lastPosition = { lat: lat, lng: lng };
+
         if (!meMarker){
           meMarker = L.marker([lat, lng], {
             icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>', iconSize:[18,18], iconAnchor:[9,9] }),

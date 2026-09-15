@@ -9,6 +9,7 @@
 <title>ГДЕ БЕНЗИН!?</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/leaflet.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   html, body {
     position: fixed; inset: 0; width: 100%; height: 100%;
@@ -88,7 +89,6 @@
   .pill-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; flex: 0 0 auto; }
   .pill-btn.nearby { color: #FFB000; border-color: #FFB00055; }
 
-  /* ---------- POPUP ---------- */
   .leaflet-popup-content-wrapper {
     background: #1A1D21; color: #E8E6E1;
     border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.7);
@@ -193,7 +193,6 @@
     background: rgba(0,0,0,.6); color: #fff; border: none; font-size: 24px; cursor: pointer;
   }
 
-  /* камера */
   .photo-capture { position: fixed; inset: 0; background: #000; z-index: 7000; display: flex; align-items: center; justify-content: center; }
   .capture-frame { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .capture-frame video { width: 100%; height: 100%; object-fit: cover; background: #000; }
@@ -215,7 +214,6 @@
     text-shadow: 0 1px 4px rgba(0,0,0,.7); padding: 0 16px; pointer-events: none;
   }
 
-  /* модалки */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .modal {
     background: #1A1D21; border: 1px solid #262B31; border-radius: 16px;
@@ -240,24 +238,18 @@
   .fuel-line button.ok.selected { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
   .fuel-line button.none.selected { background: #C62828; color: #fff; border-color: #C62828; }
 
-  /* ---------- BOTTOM SHEET «Что рядом» ---------- */
   .nearby-sheet {
     position: fixed; left: 0; right: 0; bottom: 0;
     background: #1A1D21; border-top-left-radius: 20px; border-top-right-radius: 20px;
-    z-index: 4500;
-    max-height: 78vh;
+    z-index: 4500; max-height: 78vh;
     display: flex; flex-direction: column;
-    transform: translateY(110%);
-    transition: transform .3s ease;
+    transform: translateY(110%); transition: transform .3s ease;
     padding-bottom: env(safe-area-inset-bottom, 0);
     box-shadow: 0 -8px 32px rgba(0,0,0,.7);
     border-top: 1px solid #262B31;
   }
   .nearby-sheet.show { transform: translateY(0); }
-  .nearby-handle {
-    width: 40px; height: 4px; border-radius: 2px;
-    background: #3A3F45; margin: 8px auto 0;
-  }
+  .nearby-handle { width: 40px; height: 4px; border-radius: 2px; background: #3A3F45; margin: 8px auto 0; }
   .nearby-header {
     padding: 12px 20px 12px;
     display: flex; align-items: center; justify-content: space-between;
@@ -272,7 +264,6 @@
   }
   .nearby-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 12px; }
   .nearby-empty { padding: 32px 20px; text-align: center; color: #8A8F98; font-size: 13px; line-height: 1.5; }
-
   .nearby-item {
     padding: 14px 18px; display: flex; gap: 12px; align-items: center;
     cursor: pointer; border-bottom: 1px solid #1F2226;
@@ -285,7 +276,6 @@
   .nearby-item .ni-meta { font-size: 12px; color: #8A8F98; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nearby-item .ni-dist { font-size: 14px; font-weight: 700; color: #FFB000; text-align: right; flex-shrink: 0; }
 
-  /* ---------- PIN TOOLBAR ---------- */
   #pin-toolbar {
     position: absolute; left: 12px; right: 12px; bottom: 110px;
     z-index: 3500; background: #1A1D21; border: 1px solid #262B31;
@@ -545,7 +535,6 @@
     return { color: '#6B6F76', label: 'давно', level: 4 };
   }
 
-  // ---------- POPUP ----------
   function popupHtml(s){
     if (!fuelsData.length || !statusesData.length){
       return '<div style="padding:20px;text-align:center;color:#8A8F98">Загрузка…</div>';
@@ -888,13 +877,9 @@
       } else {
         toast('Не удалось: ' + (j.error || ''));
       }
-    } catch(e){
-      console.error(e);
-      toast('Ошибка загрузки');
-    }
+    } catch(e){ console.error(e); toast('Ошибка загрузки'); }
   }
 
-  // ---------- СВЕЖЕСТЬ МАРКЕРОВ ----------
   function applyMarkerOpacity(){
     var z = map.getZoom();
     if (z < 13){
@@ -1020,7 +1005,6 @@
   document.getElementById('btn-zoom-in').addEventListener('click', function(){ map.zoomIn(); });
   document.getElementById('btn-zoom-out').addEventListener('click', function(){ map.zoomOut(); });
 
-  // ---------- GPS ----------
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
     if (watchId !== null){
@@ -1035,7 +1019,6 @@
       function(pos){
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
         lastPosition = { lat: lat, lng: lng };
-
         if (!meMarker){
           meMarker = L.marker([lat, lng], {
             icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>', iconSize:[18,18], iconAnchor:[9,9] }),
@@ -1106,7 +1089,6 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  // ---------- PIN MODE ----------
   function startPinMode(initialLat, initialLng){
     return new Promise(function(resolve){
       pinResolve = resolve;
@@ -1140,19 +1122,14 @@
   document.getElementById('pin-cancel').addEventListener('click', function(){ endPinMode(false); });
   document.getElementById('pin-confirm').addEventListener('click', function(){ endPinMode(true); });
 
-  // ---------- ADD STATION ----------
   document.getElementById('add-station-btn').addEventListener('click', async function(){
     if (userId === ADMIN_ID){
       var lat, lng;
       if (lastPosition){ lat = lastPosition.lat; lng = lastPosition.lng; }
       else { var c = map.getCenter(); lat = c.lat; lng = c.lng; }
 
-      var wasFollowing = followMode;
       followMode = false;
-
       var pos = await startPinMode(lat, lng);
-      followMode = false;  // не восстанавливаем, чтобы карта не «убегала»
-      if (wasFollowing) { /* оставляем выключенным */ }
 
       if (!pos){ toast('Отменено'); return; }
 
@@ -1251,10 +1228,8 @@
     } catch(e){ console.error(e); toast('Ошибка отправки'); }
   }
 
-  // ---------- NEARBY (Что рядом) ----------
   function computeScore(s, from){
     var distKm = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
-    // Свежесть: минуты самого свежего отчёта
     var now = Date.now() / 1000;
     var bestFreshTs = 0;
     for (var k in s.fuels){
@@ -1339,7 +1314,6 @@
   document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
   document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
 
-  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -1363,7 +1337,6 @@
     });
   });
 
-  // ---------- PWA ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -1403,18 +1376,27 @@
     }
   });
 
-  // === ДИАГНОСТИКА (удалить после проверки) ===
+  // ============ ДИАГНОСТИКА (временная, удалить после проверки) ============
   (function diag(){
-    var tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-    var msg = '👤 tg=' + (tg ? 'есть' : 'нет') +
-              ' · userId=' + (tgUser ? tgUser.id : 'null') +
-              ' · ADMIN_ID=' + ADMIN_ID +
-              ' · isAdmin=' + (userId === ADMIN_ID);
-    console.log('[DIAG]', msg);
-    setTimeout(function(){ toast(msg); }, 800);
-    setTimeout(function(){ toast(msg); }, 3000);
+    try {
+      var tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+      var lines = [
+        'tg=' + (tg ? 'есть' : 'НЕТ'),
+        'userId=' + (tgUser ? tgUser.id : 'NULL'),
+        'ADMIN_ID=' + ADMIN_ID,
+        'isAdmin=' + (userId === ADMIN_ID)
+      ];
+      var msg = '👤 ' + lines.join(' · ');
+      console.log('[DIAG]', msg);
+      setTimeout(function(){ toast(msg); }, 800);
+      setTimeout(function(){ toast(msg); }, 3500);
+      setTimeout(function(){ toast(msg); }, 6500);
+    } catch(err){
+      console.error('[DIAG] error', err);
+      toast('DIAG error: ' + err.message);
+    }
   })();
-  // === КОНЕЦ ДИАГНОСТИКИ ===
+  // ============ КОНЕЦ ДИАГНОСТИКИ ============
 
   try { loadStations(); } catch(e){ console.error('init error', e); }
   document.addEventListener('visibilitychange', function(){

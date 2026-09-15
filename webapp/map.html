@@ -7,9 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>ГДЕ БЕНЗИН!?</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="manifest" href="/manifest.json">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/leaflet.css">
 <style>
   html, body {
@@ -24,7 +23,6 @@
   #map { position: absolute; inset: 0; background: #14171A; }
   .leaflet-container { background: #14171A; touch-action: none; }
 
-  /* ---------- ВЕРХНЯЯ ПАНЕЛЬ ---------- */
   #top {
     position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
     padding: 8px 8px 0; pointer-events: none;
@@ -47,8 +45,7 @@
   .search {
     flex: 1 1 auto; min-width: 0; padding-left: 32px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4.3-4.3'/></svg>");
-    background-repeat: no-repeat; background-position: 10px center;
-    outline: none;
+    background-repeat: no-repeat; background-position: 10px center; outline: none;
   }
   .icon-btn {
     flex: 0 0 auto; width: 42px; height: 42px; border-radius: 10px;
@@ -58,7 +55,6 @@
   }
   .icon-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
 
-  /* ---------- ТУЛБАР ---------- */
   #side-tools {
     position: absolute; right: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
@@ -75,7 +71,6 @@
   .tool-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn svg { width: 24px; height: 24px; display: block; }
 
-  /* ---------- ПОДВАЛ ---------- */
   #bottom {
     position: absolute; bottom: 0; left: 0; right: 0; min-height: 88px;
     background: #1A1D21; border-top: 1px solid #262B31; z-index: 1000;
@@ -94,9 +89,7 @@
   .pill-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; flex: 0 0 auto; }
   .pill-btn.nearby { color: #FFB000; border-color: #FFB00055; }
 
-  /* =====================================================
-     BOTTOM-SHEET — карточка станции
-     ===================================================== */
+  /* ---------- BOTTOM-SHEET ---------- */
   #sheet {
     position: fixed; left: 0; right: 0; bottom: 0;
     background: #1A1D21;
@@ -113,14 +106,43 @@
 
   .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
   .sh-brand { font-size: 22px; font-weight: 800; line-height: 1.1; color: #E8E6E1; }
+  .sh-head-right { display: flex; gap: 8px; flex: 0 0 auto; }
+  .sh-mic {
+    width: 46px; height: 46px; border-radius: 12px;
+    border: 1px solid #FFB00055; background: #1E2227;
+    color: #FFB000; font-size: 22px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .sh-mic.listening {
+    background: #FFB000; color: #14171A; border-color: #FFB000;
+    animation: micPulse 1s infinite;
+  }
+  @keyframes micPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,176,0,.6); }
+    70% { box-shadow: 0 0 0 12px rgba(255,176,0,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,176,0,0); }
+  }
   .sh-close {
-    flex: 0 0 auto; width: 42px; height: 42px;
-    border-radius: 10px; border: 1px solid #2B3036; background: #1E2227;
+    width: 46px; height: 46px; border-radius: 12px;
+    border: 1px solid #2B3036; background: #1E2227;
     color: #E8E6E1; font-size: 22px; cursor: pointer; font-family: inherit;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center; padding: 0;
   }
   .sh-close:active { background: #FFB000; color: #14171A; }
+
   .sh-addr { font-size: 13px; color: #8A8F98; margin: 4px 0 10px; line-height: 1.35; }
+
+  .voice-banner {
+    display: none;
+    background: #232830; border: 1px solid #FFB00055; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+    font-size: 14px; color: #E8E6E1; line-height: 1.4;
+    min-height: 42px;
+  }
+  .voice-banner.show { display: block; }
+  .voice-banner .vb-label { font-size: 11px; color: #FFB000; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+  .voice-banner .vb-text { color: #E8E6E1; }
+  .voice-banner .vb-hint { font-size: 11px; color: #8A8F98; margin-top: 4px; }
 
   .sh-flags { display: flex; gap: 8px; margin-bottom: 10px; }
   .flag-btn {
@@ -132,16 +154,12 @@
   .flag-btn.on { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; }
 
   .sh-fuels { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-  .fuel-row {
-    display: grid; grid-template-columns: 1fr 72px 1fr;
-    align-items: center; gap: 10px;
-  }
+  .fuel-row { display: grid; grid-template-columns: 1fr 72px 1fr; align-items: center; gap: 10px; }
   .fuel-btn {
     padding: 14px 6px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227;
     color: #B7BBC1; font-size: 15px; font-weight: 700;
     cursor: pointer; font-family: inherit; min-height: 54px;
-    transition: background .12s ease, color .12s ease;
   }
   .fuel-btn.ok { color: #1B8A4A; border-color: #1B8A4A55; }
   .fuel-btn.none { color: #C62828; border-color: #C6282855; }
@@ -177,8 +195,7 @@
     position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
     background: #232830; color: #E8E6E1; border: 1px solid #3A3F45;
     border-radius: 10px; padding: 8px 14px; font-size: 13px;
-    opacity: 0; transition: opacity .2s; pointer-events: none;
-    z-index: 2600;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 2600;
   }
   #saving-pill.show { opacity: 1; }
 
@@ -294,26 +311,16 @@
     box-sizing: border-box;
   }
 
-  /* =====================================================
-     LANDSCAPE: тулбар налево, bottom-sheet двумя колонками
-     ===================================================== */
   @media (orientation: landscape) and (max-height: 500px) {
     body { font-size: 14px; }
-
     #top { padding: 4px 6px 0; gap: 4px; }
     .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
     .ctrl { padding-right: 22px; max-width: 110px; }
     .search { padding-left: 28px; }
     .icon-btn { width: 34px; height: 34px; font-size: 16px; }
-
-    /* Тулбар — слева, чтобы не пересекаться с системной навигацией */
-    #side-tools {
-      right: auto; left: 8px; bottom: auto; top: 50%;
-      transform: translateY(-50%); gap: 6px;
-    }
+    #side-tools { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
     .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
     .tool-btn svg { width: 20px; height: 20px; }
-
     #bottom {
       min-height: 40px; flex-direction: row; align-items: center;
       padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 8px;
@@ -327,23 +334,17 @@
     .pill-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; flex: 0 0 auto; }
     .pill-btn.primary { padding: 7px 12px; }
 
-    /* ========== BOTTOM-SHEET LANDSCAPE: ДВЕ КОЛОНКИ ========== */
     #sheet {
       left: 50%; right: auto; transform: translate(-50%, 110%);
-      width: min(900px, 96vw);
-      max-height: 94vh;
+      width: min(900px, 96vw); max-height: 94vh;
       padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
       border-radius: 14px 14px 0 0;
     }
     #sheet.show { transform: translate(-50%, 0); }
-
-    /* Компактный заголовок */
     .sh-head { margin-bottom: 2px; }
     .sh-brand { font-size: 20px; }
-    .sh-close { width: 38px; height: 38px; font-size: 20px; }
+    .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; }
     .sh-addr { font-size: 12px; margin: 2px 0 8px; }
-
-    /* Двухколоночная раскладка через grid */
     #sheet-body {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -351,48 +352,17 @@
       gap: 10px 18px;
       align-content: start;
     }
-
-    /* Заголовок и адрес — во всю ширину */
-    .sh-head, .sh-addr { grid-column: 1 / -1; }
-
-    /* Флаги — во всю ширину */
-    .sh-flags {
-      grid-column: 1 / -1;
-      margin-bottom: 0;
-      gap: 8px;
-    }
-    .flag-btn { padding: 9px 8px; font-size: 13px; }
-
-    /* Топливо — правая колонка */
-    .sh-fuels {
-      grid-column: 2 / 3;
-      grid-row: 3 / 5;
-      gap: 6px;
-      margin-bottom: 0;
-    }
+    .sh-head, .sh-addr, .voice-banner, .sh-flags { grid-column: 1 / -1; }
+    .voice-banner { margin-bottom: 6px; }
+    .sh-fuels { grid-column: 2 / 3; grid-row: 4 / 6; gap: 6px; margin-bottom: 0; }
     .fuel-row { grid-template-columns: 1fr 56px 1fr; gap: 8px; }
     .fuel-btn { padding: 10px 4px; min-height: 44px; font-size: 14px; }
     .fuel-num { font-size: 30px; }
     .fuel-num.dt { font-size: 22px; }
-    .fuel-fresh { font-size: 10px; }
-
-    /* Действия — левая колонка */
-    .sh-actions {
-      grid-column: 1 / 2;
-      grid-row: 3 / 4;
-      margin-bottom: 0;
-      gap: 6px;
-    }
+    .sh-actions { grid-column: 1 / 2; grid-row: 4 / 5; margin-bottom: 0; gap: 6px; }
     .action-btn { padding: 11px 6px; font-size: 13px; }
-
-    /* Фото — левая колонка снизу */
-    .sh-photo {
-      grid-column: 1 / 2;
-      grid-row: 4 / 5;
-      margin-top: 0;
-    }
+    .sh-photo { grid-column: 1 / 2; grid-row: 5 / 6; margin-top: 0; }
     .stell-photo { max-height: 90px; }
-
     #pin-toolbar { left: 50%; right: auto; transform: translateX(-50%); width: min(500px, 90vw); bottom: 50px; }
     .nearby-sheet { left: 50%; right: auto; transform: translate(-50%, 110%); width: min(700px, 94vw); max-height: 94vh; }
     .nearby-sheet.show { transform: translate(-50%, 0); }
@@ -529,6 +499,9 @@
   var pinMarker = null;
   var pinResolve = null;
 
+  var voiceRecognition = null;
+  var voiceListening = false;
+
   function favKey(){ return 'azs_favs'; }
   function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; } }
   function isFav(id){ return getFavs().indexOf(id) !== -1; }
@@ -620,7 +593,217 @@
     return { color: '#6B6F76', label: 'давно' };
   }
 
-  // ---------- BOTTOM SHEET ----------
+  // =====================================================
+  // VOICE PARSER: русская речь → {fuels: {...}, flags: {...}}
+  // =====================================================
+  function parseVoiceText(raw){
+    var text = String(raw || '').toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/[!?;:]/g, ',')
+      .trim();
+    var chunks = text.split(/[,.]/).map(function(c){ return c.trim(); }).filter(function(c){ return c.length > 0; });
+
+    var fuelAliases = {
+      f92: ['девяносто второй', 'девяносто два', 'девяносто 2', '92', 'девяносто второе', '92-й', '92й'],
+      f95: ['девяносто пятый', 'девяносто пять', 'девяносто 5', '95', 'девяносто пятое', '95-й', '95й'],
+      f98: ['девяносто восьмой', 'девяносто восемь', 'девяносто 8', '98', 'девяносто восьмое', '98-й', '98й'],
+      dt:  ['дизель', 'дизеля', 'дизелю', 'дизельное', 'дизельное топливо', 'дт', 'солярка', 'солярку', 'солярки']
+    };
+    var okWords = ['есть', 'имеется', 'залил', 'заправился', 'полный', 'полная', 'наливаю', 'в наличии', 'заправил', 'имеются'];
+    var noneWords = ['нет', 'отсутствует', 'закончился', 'закончилось', 'пусто', 'пустой', 'отсутствуют', 'кончился'];
+
+    function findFuel(chunk){
+      for (var key in fuelAliases){
+        for (var i = 0; i < fuelAliases[key].length; i++){
+          if (chunk.indexOf(fuelAliases[key][i]) !== -1) return key;
+        }
+      }
+      return null;
+    }
+    function findStatus(chunk){
+      for (var i = 0; i < okWords.length; i++){
+        if (chunk.indexOf(okWords[i]) !== -1) return 'ok';
+      }
+      for (var i = 0; i < noneWords.length; i++){
+        if (chunk.indexOf(noneWords[i]) !== -1) return 'none';
+      }
+      return null;
+    }
+
+    var result = { fuels: {}, flags: {} };
+
+    for (var ci = 0; ci < chunks.length; ci++){
+      var chunk = chunks[ci];
+
+      // Флаги
+      if (/очеред|пробк|люди стоят|машины стоят|стоят в очередь/.test(chunk)){
+        result.flags.flag_queue = true;
+        continue;
+      }
+      if (/лимит|ограничен|по литраж|по литрам|не больше|по 10 литров|по 20 литров/.test(chunk)){
+        result.flags.flag_limit = true;
+        continue;
+      }
+
+      // "кроме" — исключение
+      if (chunk.indexOf('кроме') !== -1){
+        var afterKrome = chunk.split('кроме').pop();
+        var excl = findFuel(afterKrome);
+        var globalNone = /ничего нет|все нет|всё нет|нет ничего/.test(chunk);
+        var globalOk = /все есть|всё есть|есть все|есть всё/.test(chunk);
+        if (excl && (globalNone || globalOk)){
+          for (var key in fuelAliases){
+            if (key === excl){
+              result.fuels[key] = globalNone ? 'ok' : 'none';
+            } else {
+              result.fuels[key] = globalNone ? 'none' : 'ok';
+            }
+          }
+          continue;
+        }
+      }
+
+      // Обычный парсинг
+      var fuel = findFuel(chunk);
+      var status = findStatus(chunk);
+      if (fuel && status){
+        result.fuels[fuel] = status;
+      }
+    }
+
+    return result;
+  }
+
+  // =====================================================
+  // VOICE RECOGNITION
+  // =====================================================
+  function showVoiceBanner(text, hint){
+    var el = document.getElementById('voice-banner');
+    if (!el) return;
+    if (!text){
+      el.classList.remove('show');
+      return;
+    }
+    el.innerHTML = '<div class="vb-label">🎤 Слушаю…</div>' +
+                   '<div class="vb-text">' + escapeHtml(text) + '</div>' +
+                   (hint ? '<div class="vb-hint">' + escapeHtml(hint) + '</div>' : '');
+    el.classList.add('show');
+  }
+
+  function hideVoiceBanner(){
+    var el = document.getElementById('voice-banner');
+    if (el) el.classList.remove('show');
+  }
+
+  function applyVoiceResult(parsed){
+    if (!sheetStation) return;
+    var applied = 0;
+    for (var fuelKey in parsed.fuels){
+      if (parsed.fuels.hasOwnProperty(fuelKey)){
+        sheetPending[fuelKey] = parsed.fuels[fuelKey];
+        applied++;
+      }
+    }
+    for (var flagKey in parsed.flags){
+      if (parsed.flags.hasOwnProperty(flagKey)){
+        sheetPendingFlags[flagKey] = parsed.flags[flagKey];
+        applied++;
+      }
+    }
+    if (applied === 0){
+      toast('Не разобрал. Скажите: "девяносто пятый есть, дизель нет"');
+      return false;
+    }
+    renderSheet();
+    // Показать что разобрали — коротким баннером
+    var summary = [];
+    var fuelOrder = ['f92','f95','f98','dt'];
+    for (var i = 0; i < fuelOrder.length; i++){
+      var k = fuelOrder[i];
+      if (sheetPending[k]){
+        summary.push(FUEL_SHORT[k] + ': ' + (sheetPending[k] === 'ok' ? 'есть' : 'нет'));
+      }
+    }
+    if (sheetPendingFlags.flag_queue) summary.push('очередь');
+    if (sheetPendingFlags.flag_limit) summary.push('лимит');
+    showVoiceBanner(summary.join(', '), 'Применяю…');
+    // Сразу сохраняем и закрываем
+    setTimeout(function(){
+      flushBatch(false).then(function(){
+        hideVoiceBanner();
+        closeSheet();
+      });
+    }, 600);
+    return true;
+  }
+
+  function startVoiceRecognition(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR){
+      toast('Голосовой ввод не поддерживается в этом браузере');
+      return;
+    }
+    if (!sheetStation){
+      toast('Сначала откройте станцию');
+      return;
+    }
+    if (voiceListening){
+      try { voiceRecognition.stop(); } catch(e){}
+      return;
+    }
+
+    voiceRecognition = new SR();
+    voiceRecognition.lang = 'ru-RU';
+    voiceRecognition.continuous = false;
+    voiceRecognition.interimResults = true;
+    voiceRecognition.maxAlternatives = 1;
+
+    voiceRecognition.onstart = function(){
+      voiceListening = true;
+      var btn = document.getElementById('sh-mic');
+      if (btn) btn.classList.add('listening');
+      showVoiceBanner('Говорите…', 'Например: "девяносто пятый есть, девяносто восьмого нет"');
+    };
+
+    voiceRecognition.onresult = function(event){
+      var interim = '';
+      var finalText = '';
+      for (var i = event.resultIndex; i < event.results.length; i++){
+        var r = event.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      if (finalText) showVoiceBanner(finalText, 'Разбираю…');
+      else if (interim) showVoiceBanner(interim, 'Слушаю…');
+    };
+
+    voiceRecognition.onerror = function(event){
+      voiceListening = false;
+      var btn = document.getElementById('sh-mic');
+      if (btn) btn.classList.remove('listening');
+      hideVoiceBanner();
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+        toast('Разрешите доступ к микрофону');
+      } else if (event.error === 'no-speech'){
+        toast('Не услышал. Попробуйте ещё раз');
+      } else {
+        toast('Ошибка распознавания: ' + event.error);
+      }
+    };
+
+    voiceRecognition.onend = function(){
+      voiceListening = false;
+      var btn = document.getElementById('sh-mic');
+      if (btn) btn.classList.remove('listening');
+    };
+
+    try { voiceRecognition.start(); }
+    catch(e){ toast('Не удалось запустить микрофон'); }
+  }
+
+  // =====================================================
+  // BOTTOM SHEET
+  // =====================================================
   function renderSheet(){
     if (!sheetStation) return;
     var s = sheetStation;
@@ -683,9 +866,13 @@
     body.innerHTML =
       '<div class="sh-head">' +
         '<div class="sh-brand">'+escapeHtml(s.name)+'</div>' +
-        '<button class="sh-close" data-act="close-sheet">✕</button>' +
+        '<div class="sh-head-right">' +
+          '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">🎤</button>' +
+          '<button class="sh-close" data-act="close-sheet">✕</button>' +
+        '</div>' +
       '</div>' +
       '<div class="sh-addr">'+escapeHtml(s.addr)+'</div>' +
+      '<div class="voice-banner" id="voice-banner"></div>' +
       flagsHtml +
       '<div class="sh-actions">' +
         '<button class="action-btn" data-act="route">🧭 Маршрут</button>' +
@@ -706,10 +893,14 @@
     sheetPendingFlags = {};
     renderSheet();
     document.getElementById('sheet').classList.add('show');
+    // Не запускаем таймер автозакрытия — карточка висит, пока не будет действия
   }
 
   function closeSheet(){
     if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
+    // Останавливаем голосовой ввод
+    if (voiceListening && voiceRecognition){ try { voiceRecognition.stop(); } catch(e){} }
+    hideVoiceBanner();
     var stationId = sheetStation ? sheetStation.id : null;
     flushBatch(true);
     if (stationId) reopenBlockedUntil[stationId] = Date.now() + SHEET_REOPEN_BLOCK_MS;
@@ -752,45 +943,44 @@
     batchSaveTimer = setTimeout(function(){ flushBatch(false); }, BATCH_SAVE_DELAY_MS);
   }
 
-  async function flushBatch(closing){
+  function flushBatch(closing){
     if (batchSaveTimer) { clearTimeout(batchSaveTimer); batchSaveTimer = null; }
-    if (!sheetStation) return;
+    if (!sheetStation) return Promise.resolve();
     var stationId = sheetStation.id;
     var fuelsCopy = Object.assign({}, sheetPending);
     var flagsCopy = Object.assign({}, sheetPendingFlags);
-    if (!Object.keys(fuelsCopy).length && !Object.keys(flagsCopy).length) return;
+    if (!Object.keys(fuelsCopy).length && !Object.keys(flagsCopy).length) return Promise.resolve();
     sheetPending = {};
     sheetPendingFlags = {};
 
     showSaving(true);
-    try {
-      var res = await fetch('/api/report-batch', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          station_id: stationId, user_id: userId, username: username || '',
-          fuels: fuelsCopy, flags: flagsCopy
-        })
-      });
-      var j = await res.json();
+    return fetch('/api/report-batch', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        station_id: stationId, user_id: userId, username: username || '',
+        fuels: fuelsCopy, flags: flagsCopy
+      })
+    }).then(function(res){ return res.json(); }).then(function(j){
       if (j && j.ok){
         if (j.points_earned) toast('+' + j.points_earned + ' баллов');
         updateMarkerFor(stationId);
       } else {
         toast('Не сохранилось: ' + (j.error || ''));
       }
-    } catch(e){
+    }).catch(function(e){
       console.error(e);
       toast('Ошибка сети');
-    } finally {
+    }).then(function(){
       showSaving(false);
       if (closing) sheetStation = null;
-    }
+    });
   }
 
   document.getElementById('sheet').addEventListener('click', function(e){
     var t = e.target.closest('[data-act]');
     if (!t) return;
     var act = t.getAttribute('data-act');
+    if (act === 'voice'){ startVoiceRecognition(); return; }
     if (act === 'report'){
       var fuelKey = t.getAttribute('data-fuel');
       var status = t.getAttribute('data-status');
@@ -1118,7 +1308,6 @@
         var near = findNearestStation(lat, lng);
         if (near.station && near.distance <= PROXIMITY_OPEN_M){
           if (!sheetStation || sheetStation.id !== near.station.id) openSheet(near.station, true);
-          else scheduleCloseTimer();
         }
       },
       function(){ toast('Не удалось определить местоположение'); stopLocate(); },
@@ -1162,7 +1351,6 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  // ---------- PIN MODE ----------
   function startPinMode(initialLat, initialLng){
     return new Promise(function(resolve){
       pinResolve = resolve;
@@ -1196,7 +1384,6 @@
   document.getElementById('pin-cancel').addEventListener('click', function(){ endPinMode(false); });
   document.getElementById('pin-confirm').addEventListener('click', function(){ endPinMode(true); });
 
-  // ---------- ADD STATION ----------
   document.getElementById('add-station-btn').addEventListener('click', async function(){
     if (userId === ADMIN_ID){
       var lat, lng;
@@ -1208,7 +1395,6 @@
       try { openAddStationDialog(pos.lat, pos.lng); }
       catch(err){ toast('Ошибка диалога'); }
     } else if (userId === 0){
-      // Прямое открытие в браузере — админ-функция недоступна
       toast('Откройте карту через @naidibenzin_bot, чтобы добавить станцию');
     } else {
       var lat2, lng2;
@@ -1296,7 +1482,6 @@
     } catch(e){ toast('Ошибка отправки'); }
   }
 
-  // ---------- NEARBY ----------
   function computeScore(s, from){
     var distKm = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
     var now = Date.now() / 1000;
@@ -1368,7 +1553,6 @@
   document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
   document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
 
-  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -1386,7 +1570,6 @@
     });
   });
 
-  // ---------- PWA ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;

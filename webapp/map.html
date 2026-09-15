@@ -1161,6 +1161,7 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
+  // ---------- PIN MODE ----------
   function startPinMode(initialLat, initialLng){
     return new Promise(function(resolve){
       pinResolve = resolve;
@@ -1194,6 +1195,7 @@
   document.getElementById('pin-cancel').addEventListener('click', function(){ endPinMode(false); });
   document.getElementById('pin-confirm').addEventListener('click', function(){ endPinMode(true); });
 
+  // ---------- ADD STATION ----------
   document.getElementById('add-station-btn').addEventListener('click', async function(){
     if (userId === ADMIN_ID){
       var lat, lng;
@@ -1293,6 +1295,7 @@
     } catch(e){ toast('Ошибка отправки'); }
   }
 
+  // ---------- NEARBY ----------
   function computeScore(s, from){
     var distKm = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
     var now = Date.now() / 1000;
@@ -1364,6 +1367,7 @@
   document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
   document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
 
+  // ---------- SUPPORT ----------
   document.getElementById('support-btn').addEventListener('click', function(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -1381,6 +1385,7 @@
     });
   });
 
+  // ---------- PWA ----------
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;

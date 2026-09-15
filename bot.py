@@ -39,10 +39,6 @@ CHANNEL_ID = os.getenv("CHANNEL_ID", "")
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("azs-bot")
 
-# ---------------------------------------------------------------------------
-# Данные по станциям
-# ---------------------------------------------------------------------------
-
 NETWORKS = {
     "gpn": {"label": "Газпромнефть", "dot": "🔵"},
     "lukoil": {"label": "Лукойл", "dot": "🔴"},
@@ -56,6 +52,7 @@ NETWORKS = {
 }
 
 FUELS = [("f92","АИ-92"),("f95","АИ-95"),("f98","АИ-98"),("dt","ДТ")]
+FUEL_SHORT = {"f92": "92", "f95": "95", "f98": "98", "dt": "ДТ"}
 
 STATUSES = [("ok","✅ Есть"),("low","🟡 Мало"),("none","❌ Нет")]
 STATUS_LABEL = {k: v for k, v in STATUSES}
@@ -77,7 +74,7 @@ RANKS = [
 ]
 
 
-def get_rank(points: int) -> str:
+def get_rank(points):
     rank = RANKS[0][1]
     for threshold, label in RANKS:
         if points >= threshold:
@@ -87,25 +84,25 @@ def get_rank(points: int) -> str:
     return rank
 
 
-def next_rank_info(points: int):
+def next_rank_info(points):
     for threshold, label in RANKS:
         if points < threshold:
             return threshold - points, label
     return None
 
 
-def display_name(user) -> str:
+def display_name(user):
     return user.username or user.full_name or f"id{user.id}"
 
 
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 
 
-def is_real_username(name: str) -> bool:
+def is_real_username(name):
     return bool(name and _USERNAME_RE.match(name))
 
 
-def format_display(name: str, user_id: int = None) -> str:
+def format_display(name, user_id=None):
     if name and name.startswith("id") and name[2:].isdigit():
         name = None
     if not name:
@@ -304,7 +301,7 @@ def get_station(sid):
     return None
 
 
-def station_exists(sid) -> bool:
+def station_exists(sid):
     return get_station(sid) is not None
 
 
@@ -320,7 +317,7 @@ DISTRICT_CENTROIDS = [
 ]
 
 
-def district_for_station(lat: float, lng: float) -> str:
+def district_for_station(lat, lng):
     best_name, best_dist = None, None
     for name, clat, clng in DISTRICT_CENTROIDS:
         d = (lat - clat) ** 2 + (lng - clng) ** 2
@@ -329,7 +326,7 @@ def district_for_station(lat: float, lng: float) -> str:
     return best_name
 
 
-def get_user_top_district(user_id: int):
+def get_user_top_district(user_id):
     conn = db()
     rows = conn.execute(
         "SELECT station_id, COUNT(*) AS c FROM feed WHERE user_id=? GROUP BY station_id", (user_id,)
@@ -392,7 +389,7 @@ def db():
         conn.execute("ALTER TABLE points_log ADD COLUMN station_id TEXT")
     except sqlite3.OperationalError:
         pass
-    conn.execute("""CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)""")
+    conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS custom_stations (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
@@ -509,16 +506,6 @@ def user_fixed_issues_count(user_id):
     return row[0] if row else 0
 
 
-def get_recent_statuses_for_fuel(station_id, fuel, limit=5):
-    conn = db()
-    rows = conn.execute(
-        "SELECT status FROM feed WHERE station_id=? AND fuel=? ORDER BY ts DESC LIMIT ?",
-        (station_id, fuel, limit),
-    ).fetchall()
-    conn.close()
-    return [r[0] for r in rows]
-
-
 def get_user_stats(user_id):
     conn = db()
     total = conn.execute("SELECT COUNT(*) FROM feed WHERE user_id=?", (user_id,)).fetchone()[0]
@@ -553,7 +540,7 @@ def award_points(user_id, username, points, reason, station_id=None):
 POINTS_COOLDOWN_SECONDS = 3600
 
 
-def can_award_station_points(user_id, station_id) -> bool:
+def can_award_station_points(user_id, station_id):
     if user_id == 0:
         return True
     hour_ago = int(time.time()) - POINTS_COOLDOWN_SECONDS
@@ -670,8 +657,6 @@ def is_stale(ts):
     return (int(time.time()) - ts) > 8 * 3600
 
 
-# ---------- custom_stations / photos / pending_stations ----------
-
 def add_custom_station(name, net, addr, lat, lng, user_id):
     now = int(time.time())
     station_id = f"custom-{now}"
@@ -697,7 +682,6 @@ def get_custom_stations():
 
 
 def delete_custom_station(station_id):
-    """Удаляет custom-станцию и все связанные отчёты. Только для custom- id."""
     if not station_id.startswith("custom-"):
         return
     conn = db()
@@ -771,8 +755,6 @@ def reject_pending_station(pid):
     conn.close()
 
 
-# ---------- Клавиатуры ----------
-
 def kb_main():
     rows = [[InlineKeyboardButton(text=f"{v['dot']} {v['label']}", callback_data=f"net:{k}")]
             for k, v in NETWORKS.items()]
@@ -808,9 +790,13 @@ def kb_station_card(station_id):
 
 
 def kb_status_pick(station_id, fuel_key):
-    rows = [[InlineKeyboardButton(text=label, callback_data=f"rep:{station_id}:{fuel_key}:{status}")]
-            for status, label in STATUSES]
-    rows.append([InlineKeyboardButton(text="⬅️ Отмена", callback_data=f"stn:{station_id}")])
+    # В UI статуса показываем только Есть / Нет. Старые отчёты с low продолжают храниться.
+    fuel_label = FUEL_SHORT.get(fuel_key, fuel_key)
+    rows = [
+        [InlineKeyboardButton(text=f"{fuel_label} · ✅ Есть", callback_data=f"rep:{station_id}:{fuel_key}:ok")],
+        [InlineKeyboardButton(text=f"{fuel_label} · ❌ Нет",  callback_data=f"rep:{station_id}:{fuel_key}:none")],
+        [InlineKeyboardButton(text="⬅️ Отмена", callback_data=f"stn:{station_id}")],
+    ]
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -856,22 +842,23 @@ def kb_brand_pick():
 
 
 def kb_fuel_pick(fuels_state):
+    """Диалог выбора топлива для новой станции. Каждая строка — одно топливо:
+    [92]  [Есть] [Нет]  — с явной меткой вида топлива в кнопках.
+    """
     rows = []
     for key, label in FUELS:
+        short = FUEL_SHORT.get(key, label)
         cur = fuels_state.get(key)
-        def mark(s, lbl):
-            return f"✅ {lbl}" if cur == s else lbl
+        ok_text = f"{short} · ✅ Есть" if cur != "ok" else f"{short} · ✅ Есть ✓"
+        none_text = f"{short} · ❌ Нет" if cur != "none" else f"{short} · ❌ Нет ✓"
         rows.append([
-            InlineKeyboardButton(text=mark("ok", "Есть"), callback_data=f"addf:{key}:ok"),
-            InlineKeyboardButton(text=mark("low", "Мало"), callback_data=f"addf:{key}:low"),
-            InlineKeyboardButton(text=mark("none", "Нет"), callback_data=f"addf:{key}:none"),
+            InlineKeyboardButton(text=ok_text, callback_data=f"addf:{key}:ok"),
+            InlineKeyboardButton(text=none_text, callback_data=f"addf:{key}:none"),
         ])
     rows.append([InlineKeyboardButton(text="💾 Сохранить заявку", callback_data="addsave")])
     rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="addcancel")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-
-# ---------- Хендлеры ----------
 
 dp = Dispatcher()
 pending_issue = {}
@@ -879,7 +866,7 @@ pending_add = {}
 
 
 @dp.message(CommandStart())
-async def on_start(message: Message, command: CommandObject):
+async def on_start(message, command: CommandObject):
     payload = command.args
     if payload:
         if payload.startswith("err_"):
@@ -953,7 +940,7 @@ async def cb_add_fuel(cq: CallbackQuery):
         await cq.answer("Сессия истекла.", show_alert=True)
         return
     _, fuel_key, status = cq.data.split(":")
-    if fuel_key not in dict(FUELS) or status not in dict(STATUSES):
+    if fuel_key not in dict(FUELS) or status not in ("ok", "none"):
         await cq.answer("Неверные данные.")
         return
     fuels = pending_add[user_id]["fuels"]
@@ -996,7 +983,7 @@ async def cb_add_save(cq: CallbackQuery):
         fuels_lines = []
         for key, label in FUELS:
             if data["fuels"].get(key):
-                fuels_lines.append(f"{label}: {STATUS_LABEL[data['fuels'][key]]}")
+                fuels_lines.append(f"{FUEL_SHORT.get(key, label)}: {STATUS_LABEL[data['fuels'][key]]}")
         fuels_text = "\n".join(fuels_lines) if fuels_lines else "не указано"
         admin_text = (
             f"🆕 <b>Заявка на новую АЗС #{pid}</b>\n\n"

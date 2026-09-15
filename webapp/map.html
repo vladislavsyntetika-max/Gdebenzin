@@ -1376,27 +1376,6 @@
     }
   });
 
-  // ============ ДИАГНОСТИКА (временная, удалить после проверки) ============
-  (function diag(){
-    try {
-      var tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-      var lines = [
-        'tg=' + (tg ? 'есть' : 'НЕТ'),
-        'userId=' + (tgUser ? tgUser.id : 'NULL'),
-        'ADMIN_ID=' + ADMIN_ID,
-        'isAdmin=' + (userId === ADMIN_ID)
-      ];
-      var msg = '👤 ' + lines.join(' · ');
-      console.log('[DIAG]', msg);
-      setTimeout(function(){ toast(msg); }, 800);
-      setTimeout(function(){ toast(msg); }, 3500);
-      setTimeout(function(){ toast(msg); }, 6500);
-    } catch(err){
-      console.error('[DIAG] error', err);
-      toast('DIAG error: ' + err.message);
-    }
-  })();
-  // ============ КОНЕЦ ДИАГНОСТИКИ ============
 
   try { loadStations(); } catch(e){ console.error('init error', e); }
   document.addEventListener('visibilitychange', function(){

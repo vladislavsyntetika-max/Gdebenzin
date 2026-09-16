@@ -362,6 +362,20 @@
     box-shadow: 0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
     box-sizing: border-box;
   }
+
+    .sheet-stats {
+    display: none;
+    background: #232830;
+    border: 1px solid #2B3036;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: #B7BBC1;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .sheet-stats.show { display: block; }
+  .sheet-stats b { color: #FFB000; font-weight: 700; }
   /* Баннер «Открой в Telegram» — для веб-гостей без Telegram */
   #tg-banner {
     position: absolute;
@@ -434,7 +448,6 @@
     .bottom-row:last-child { margin-left: auto; }
     .stat { font-size: 12px; }
     .stat b { font-size: 13px; margin-left: 1px; }
-    .stat:nth-child(3) { display: none; }
     .pill-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; flex: 0 0 auto; }
     .pill-btn.primary { padding: 7px 12px; }
 
@@ -629,6 +642,7 @@
   var effectiveUsername = isTelegramWebApp ? (username || '') : ('веб-гость ' + anonId.slice(4, 10));
 
   var stationsData = [];
+  var lastGlobalStats = { reports_24h: 0, stations_reported: 0 };
   var fuelsData = [];
   var statusesData = [];
   var stationFlagsData = [];
@@ -707,7 +721,54 @@
       return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c];
     });
   }
+  var OFFLINE_KEY = 'azs_offline_queue';
 
+  function queueOffline(url, body) {
+    try {
+      var q = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+      q.push({ url: url, body: body, ts: Date.now() });
+      if (q.length > 100) q = q.slice(-100);
+      localStorage.setItem(OFFLINE_KEY, JSON.stringify(q));
+    } catch(e){}
+  }
+
+  function flushOfflineQueue() {
+    var q;
+    try { q = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); }
+    catch(e){ return Promise.resolve(); }
+    if (!q.length) return Promise.resolve();
+    var rest = [];
+    var chain = Promise.resolve();
+    q.forEach(function(item){
+      chain = chain.then(function(){
+        return fetch(item.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item.body),
+        }).then(function(r){ return r.json(); })
+          .then(function(j){ if (!j || !j.ok) rest.push(item); })
+          .catch(function(){ rest.push(item); });
+      });
+    });
+    return chain.then(function(){
+      try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(rest)); } catch(e){}
+      var sent = q.length - rest.length;
+      if (sent > 0) toast('Синхронизировано: ' + sent);
+    });
+  }
+
+  function sendOrQueue(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function(r){ return r.json(); })
+      .catch(function(e){
+        queueOffline(url, body);
+        toast('Нет сети — отметка в очереди');
+        throw e;
+      });
+  }
   function toast(msg){
     var el = document.getElementById('toast');
     el.textContent = msg;
@@ -1038,6 +1099,7 @@
         '</div>' +
       '</div>' +
       '<div class="sh-addr">'+escapeHtml(s.addr)+'</div>' +
+      '<div class="sheet-stats" id="sheet-stats"></div>' +
       '<div class="voice-banner" id="voice-banner"></div>' +
       flagsHtml +
       '<div class="sh-actions">' +
@@ -1051,6 +1113,17 @@
       photoHtml +
       shareRow +
       '<div class="sheet-promo">📣 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
+
+    var statsEl = document.getElementById('sheet-stats');
+    if (statsEl && lastGlobalStats) {
+      var parts = [];
+      if (lastGlobalStats.reports_24h) parts.push('<b>' + lastGlobalStats.reports_24h + '</b> отчётов за 24ч по городу');
+      if (lastGlobalStats.stations_reported) parts.push('<b>' + lastGlobalStats.stations_reported + '</b> станций с данными');
+      if (parts.length) {
+        statsEl.innerHTML = '📊 ' + parts.join(' · ');
+        statsEl.classList.add('show');
+      }
+    }
   }
 
   function openSheet(station, auto){
@@ -1120,13 +1193,10 @@
     sheetPendingFlags = {};
 
     showSaving(true);
-    return fetch('/api/report-batch', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        station_id: stationId, user_id: userId, username: effectiveUsername || '',
-        fuels: fuelsCopy, flags: flagsCopy
-      })
-    }).then(function(res){ return res.json(); }).then(function(j){
+    return sendOrQueue('/api/report-batch', {
+      station_id: stationId, user_id: userId, username: effectiveUsername || '',
+      fuels: fuelsCopy, flags: flagsCopy
+    }).then(function(j){
       if (j && j.ok){
         if (j.points_earned) toast('+' + j.points_earned + ' баллов');
         updateMarkerFor(stationId);
@@ -1459,13 +1529,47 @@
       stationFlagsData = data.station_flags || [];
       networksData = data.networks || {};
       document.getElementById('stat-reports-24h').textContent = data.reports_24h || 0;
+      lastGlobalStats = {
+        reports_24h: data.reports_24h || 0,
+        stations_reported: (data.stations || []).filter(function(s){
+          for (var k in s.fuels) {
+            if (s.fuels[k].status && s.fuels[k].status !== 'unknown' && !s.fuels[k].stale) return true;
+          }
+          return false;
+        }).length
+      };
       fillFilterOptions();
       renderMarkers();
       var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
       if (pts.length && !lastPosition) map.fitBounds(pts, { padding:[30,30] });
+      if (!window.__onboarding_done) {
+        window.__onboarding_done = true;
+        tryOnboarding();
+      }
     } catch(e){ toast('Не удалось загрузить данные'); }
+    flushOfflineQueue();
   }
-
+  function tryOnboarding() {
+    if (!navigator.geolocation) return;
+    var isOnboarding = /[?&]onboarding=1/.test(location.search);
+    if (!isOnboarding && lastPosition) return;
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      lastPosition = { lat: lat, lng: lng };
+      lastGoodPosition = lastPosition;
+      lastGoodTimestamp = pos.timestamp;
+      if (isOnboarding) {
+        map.setView([lat, lng], 15, { animate: true });
+      }
+      var near = findNearestStation(lat, lng);
+      if (near.station && near.distance <= 5000) {
+        setTimeout(function(){ openSheet(near.station, false); }, 500);
+        if (isOnboarding) {
+          setTimeout(function(){ toast('Тапни «Есть» или «Нет» — это 3 секунды'); }, 1200);
+        }
+      }
+    }, function(){ /* отказ — ничего */ }, { timeout: 6000, maximumAge: 60000 });
+  }
   document.getElementById('net-select').addEventListener('change', function(e){ activeNet = e.target.value; renderMarkers(); });
   document.getElementById('fuel-select').addEventListener('change', function(e){ activeFuel = e.target.value; renderMarkers(); });
   document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
@@ -1854,7 +1958,11 @@
   });
 
   try { loadStations(); } catch(e){}
-  document.addEventListener('visibilitychange', function(){ if (!document.hidden) loadStations(); });
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) { loadStations(); flushOfflineQueue(); }
+  });
+  setInterval(flushOfflineQueue, 30000);
+  window.addEventListener('online', flushOfflineQueue);
 
 })();
 </script>

@@ -96,7 +96,8 @@ a{color:#FFB000}</style>
 # ---------- API ----------
 
 _STATIONS_CACHE = {"ts": 0.0, "json": None, "content_type": "application/json; charset=utf-8"}
-_STATIONS_CACHE_TTL = 60.0
+_STATIONS_CACHE_TTL = 600.0  # 10 минут — данные меняются медленно
+_STATIONS_CACHE_LOCK = asyncio.Lock()
 
 
 def _build_stations_payload():
@@ -219,10 +220,14 @@ def _build_stations_payload():
 
 def _refresh_stations_cache():
     """Пересобирает payload и обновляет кэш. Запускается warmup-таском."""
+    t0 = time.time()
     payload = _build_stations_payload()
+    t1 = time.time()
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    t2 = time.time()
     _STATIONS_CACHE["ts"] = time.time()
     _STATIONS_CACHE["json"] = body
+    core.log.info(f"refresh: build={t1-t0:.2f}s json={t2-t1:.2f}s total={t2-t0:.2f}s bytes={len(body)}")
     return len(body)
 
 
@@ -247,7 +252,26 @@ async def handle_stations(request):
     )
 
 
-async def stations_warmup_task(interval_sec=25):
+async def stations_warmup_task(interval_sec=15):
+    # Первый прогрев — сразу, до первого запроса
+    for attempt in range(3):
+        try:
+            size = await asyncio.get_event_loop().run_in_executor(None, _refresh_stations_cache)
+            core.log.info(f"warmup: кэш станций прогрет, {size} байт (попытка {attempt+1})")
+            break
+        except Exception as e:
+            core.log.exception(f"warmup: попытка {attempt+1} упала")
+            await asyncio.sleep(3)
+
+    while True:
+        await asyncio.sleep(interval_sec)
+        try:
+            t0 = time.time()
+            size = await asyncio.get_event_loop().run_in_executor(None, _refresh_stations_cache)
+            dt = time.time() - t0
+            core.log.info(f"warmup: перегрев {size} байт за {dt:.2f} сек")
+        except Exception:
+            core.log.exception("warmup: перегрев кэша упал")
     """Греет кэш в фоне, чтобы у юзера TTFB был ~0.1 сек всегда."""
     # Первый прогрев при старте
     try:

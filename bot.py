@@ -400,7 +400,7 @@ def db():
     except sqlite3.OperationalError:
         pass
     conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
-        conn.execute("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS metrics_counters (
             day TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (day, key)

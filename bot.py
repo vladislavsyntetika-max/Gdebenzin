@@ -400,6 +400,18 @@ def db():
     except sqlite3.OperationalError:
         pass
     conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS metrics_counters (
+            day TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, key)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS metrics_users_daily (
+            day TEXT NOT NULL, user_id INTEGER NOT NULL,
+            PRIMARY KEY (day, user_id)
+        )
+    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS custom_stations (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
@@ -444,7 +456,6 @@ def set_state(key, value):
     conn.commit()
     conn.close()
 
-
 def save_report(station_id, fuel, status, user_id, username=None):
     now = int(time.time())
     conn = db()
@@ -460,6 +471,13 @@ def save_report(station_id, fuel, status, user_id, username=None):
     )
     conn.commit()
     conn.close()
+    try:
+        if fuel in dict(FUELS):
+            inc_metric("reports")
+        if user_id:
+            track_user_today(user_id)
+    except Exception:
+        log.exception("metrics failed in save_report")
 
 
 def get_station_reports(station_id):
@@ -665,7 +683,63 @@ def time_ago(ts):
 
 def is_stale(ts):
     return (int(time.time()) - ts) > 8 * 3600
+def inc_metric(key, delta=1):
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    conn = db()
+    try:
+        conn.execute(
+            "INSERT INTO metrics_counters (day, key, value) VALUES (?, ?, ?) "
+            "ON CONFLICT(day, key) DO UPDATE SET value = value + excluded.value",
+            (today, key, delta),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
+
+def track_user_today(user_id):
+    if not user_id:
+        return
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    conn = db()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO metrics_users_daily (day, user_id) VALUES (?, ?)",
+            (today, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_metrics(days=7):
+    today_ts = int(time.time())
+    days_list = [
+        time.strftime("%Y-%m-%d", time.gmtime(today_ts - i * 86400))
+        for i in range(days - 1, -1, -1)
+    ]
+    placeholders = ",".join("?" * len(days_list))
+    conn = db()
+    try:
+        counters = {}
+        for day, key, value in conn.execute(
+            f"SELECT day, key, value FROM metrics_counters WHERE day IN ({placeholders})",
+            days_list,
+        ):
+            counters.setdefault(day, {})[key] = value
+        users_count = {}
+        for day, cnt in conn.execute(
+            f"SELECT day, COUNT(*) FROM metrics_users_daily WHERE day IN ({placeholders}) GROUP BY day",
+            days_list,
+        ):
+            users_count[day] = cnt
+    finally:
+        conn.close()
+    result = []
+    for d in days_list:
+        c = counters.get(d, {})
+        result.append((d, c.get("api_hits", 0), c.get("reports", 0), users_count.get(d, 0)))
+    return result
 
 def add_custom_station(name, net, addr, lat, lng, user_id):
     now = int(time.time())
@@ -916,7 +990,7 @@ async def on_start(message, command: CommandObject):
         "Данные вносят водители, это открытое сообщество, а не официальный источник.\n\n"
         "Выберите сеть, чтобы посмотреть станции или сообщить свежий статус.\n\n"
         "За отчёты начисляются баллы и звания — посмотреть свой прогресс: /профиль, "
-        "топ недели: /топ."
+        "топ недели: /топ. Правила: /правила. Сообщить о проблеме: /проблема."
     )
     await message.answer(text, reply_markup=kb_main())
 
@@ -1126,6 +1200,48 @@ async def on_top_cmd(message: Message):
     text = format_leaderboard_text(rows, title="🏆 <b>Топ-10 недели</b>")
     await message.answer(text, reply_markup=kb_main())
 
+@dp.message(Command("проблема", "проблемы", "баг"))
+async def on_problem_cmd(message: Message):
+    pending_issue[message.from_user.id] = "__bot__"
+    await message.answer(
+        "Опишите проблему одним сообщением — отправлю автору бота.\n"
+        "Если проблема на конкретной станции — укажите адрес или название."
+    )
+
+
+@dp.message(Command("статистика", "stats"))
+async def on_stats_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    rows = get_metrics(7)
+    lines = ["📊 <b>Метрики за 7 дней (UTC)</b>", ""]
+    lines.append("<code>дата     api   отм  уник</code>")
+    for day, api, reps, uniq in rows:
+        short = day[5:]
+        lines.append(f"<code>{short}  {api:5d} {reps:5d} {uniq:4d}</code>")
+    total_api = sum(r[1] for r in rows)
+    total_rep = sum(r[2] for r in rows)
+    total_uniq = sum(r[3] for r in rows)
+    lines.append("")
+    lines.append(f"За 7 дней: api {total_api}, отчётов {total_rep}, уник {total_uniq}")
+    conn = db()
+    try:
+        total_feed = conn.execute("SELECT COUNT(*) FROM feed").fetchone()[0]
+        day_ago = int(time.time()) - 86400
+        stations_24h = conn.execute(
+            "SELECT COUNT(DISTINCT station_id) FROM feed WHERE ts > ?", (day_ago,)
+        ).fetchone()[0]
+        users_24h = conn.execute(
+            "SELECT COUNT(DISTINCT user_id) FROM feed WHERE ts > ? AND user_id != 0",
+            (day_ago,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    lines.append("")
+    lines.append(f"Всего отчётов в БД: {total_feed}")
+    lines.append(f"За 24ч: станций {stations_24h}, юзеров {users_24h}")
+    await message.answer("\n".join(lines), reply_markup=kb_main())
 
 @dp.message(Command("правила"))
 async def on_rules_cmd(message: Message):
@@ -1253,7 +1369,10 @@ async def on_free_text(message: Message):
         return
     raw = pending_issue.pop(user_id)
     username = message.from_user.username or message.from_user.full_name
-    if raw.startswith("missing:"):
+    if raw == "__bot__":
+        station_id = None
+        text_for_db = message.text
+    elif raw.startswith("missing:"):
         coords = raw[len("missing:"):]
         station_id = None
         text_for_db = f"[Нет на карте · координаты {coords}] {message.text}"

@@ -1123,7 +1123,7 @@
     return fetch('/api/report-batch', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        station_id: stationId, user_id: userId, username: username || '',
+        station_id: stationId, user_id: userId, username: effectiveUsername || '',
         fuels: fuelsCopy, flags: flagsCopy
       })
     }).then(function(res){ return res.json(); }).then(function(j){
@@ -1247,8 +1247,29 @@
   }
 
   function reportStationIssue(id){
-    toast('Открываю бота…');
-    setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
+    if (isTelegramWebApp) {
+      // В Telegram — ведём в бота, там удобный диалог
+      toast('Открываю бота…');
+      setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
+      return;
+    }
+    // Веб-гость: спрашиваем текст прямо здесь и шлём на /api/report-issue
+    var text = prompt('Опишите, что не так со станцией (одним сообщением):');
+    if (!text || !text.trim()) return;
+    text = text.trim().slice(0, 2000);
+    toast('Отправляю…');
+    fetch('/api/report-issue', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        station_id: id,
+        text: text,
+        user_id: userId,
+        username: effectiveUsername || 'веб-гость'
+      })
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok) toast('Спасибо! Заявка ушла автору.');
+      else toast('Не удалось отправить');
+    }).catch(function(){ toast('Ошибка сети'); });
   }
 
   function confirmDeleteStation(stationId){
@@ -1343,7 +1364,7 @@
       var fd = new FormData();
       fd.append('station_id', stationId);
       fd.append('user_id', String(userId));
-      fd.append('username', username || '');
+      fd.append('username', effectiveUsername || '');
       fd.append('photo', file, 'photo.jpg');
       var res = await fetch('/api/upload-photo', { method:'POST', body: fd });
       var j = await res.json();
@@ -1585,8 +1606,34 @@
       if (!pos){ toast('Отменено'); return; }
       try { openAddStationDialog(pos.lat, pos.lng); }
       catch(err){ toast('Ошибка диалога'); }
+    } else if (userId === 0 && isTelegramWebApp){
+      toast('Не удалось определить Telegram ID');
     } else if (userId === 0){
-      toast('Откройте карту через @naidibenzin_bot, чтобы добавить станцию');
+      // Веб-гость: собираем заявку через /api/report-issue с координатами
+      var lat0, lng0;
+      if (lastPosition){ lat0 = lastPosition.lat; lng0 = lastPosition.lng; }
+      else { var cc = map.getCenter(); lat0 = cc.lat; lng0 = cc.lng; }
+      var textAdd = prompt(
+        'Напишите адрес и сеть АЗС одним сообщением (координаты приложатся автоматически):',
+        ''
+      );
+      if (!textAdd || !textAdd.trim()) return;
+      var fullText = '[Нет на карте · координаты ' +
+        lat0.toFixed(6) + ',' + lng0.toFixed(6) + '] ' +
+        textAdd.trim().slice(0, 1500);
+      toast('Отправляю…');
+      fetch('/api/report-issue', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          station_id: null,
+          text: fullText,
+          user_id: 0,
+          username: effectiveUsername || 'веб-гость'
+        })
+      }).then(function(r){ return r.json(); }).then(function(j){
+        if (j && j.ok) toast('Заявка ушла автору — точка появится после проверки.');
+        else toast('Не удалось отправить');
+      }).catch(function(){ toast('Ошибка сети'); });
     } else {
       // Обычный пользователь — кидаем координаты в бота через deep-link
       var lat2, lng2;
@@ -1658,7 +1705,7 @@
     bg.querySelector('#as-save').addEventListener('click', function(){
       if (!selectedBrand){ toast('Выберите бренд'); return; }
       saveNewStation({ lat: lat, lng: lng, net: selectedBrand, fuels: fuelStates,
-                       user_id: userId, username: username || '' });
+                       user_id: userId, username: effectiveUsername || '' });
       bg.remove();
     });
   }

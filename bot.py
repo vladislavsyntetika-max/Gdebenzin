@@ -343,100 +343,111 @@ def get_user_top_district(user_id):
     return counter.most_common(1)[0][0]
 
 
-def db():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    # WAL позволит читать во время записи, кэш страниц в памяти.
+def init_db():
+    """Один раз при старте процесса: создаёт схему, настраивает WAL.
+    Не вызывать после старта — каждая операция на сетевом диске дорогая."""
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA synchronous = NORMAL")
         conn.execute("PRAGMA temp_store = MEMORY")
-        conn.execute("PRAGMA mmap_size = 134217728")  # 128 МБ mmap
-        conn.execute("PRAGMA cache_size = -8000")     # ~8 МБ page cache
-        conn.execute("PRAGMA busy_timeout = 5000")
-    except sqlite3.OperationalError:
-        pass
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS reports (
-            station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
-            ts INTEGER NOT NULL, user_id INTEGER, username TEXT,
-            PRIMARY KEY (station_id, fuel)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS feed (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
-            station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
-            user_id INTEGER, username TEXT
-        )
-    """)
-    for table in ("reports", "feed"):
+        conn.execute("PRAGMA mmap_size = 134217728")
+        conn.execute("PRAGMA cache_size = -8000")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reports (
+                station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
+                ts INTEGER NOT NULL, user_id INTEGER, username TEXT,
+                PRIMARY KEY (station_id, fuel)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feed (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
+                station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,
+                user_id INTEGER, username TEXT
+            )
+        """)
+        for table in ("reports", "feed"):
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN username TEXT")
+            except sqlite3.OperationalError:
+                pass
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS issue_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
+                station_id TEXT, user_id INTEGER NOT NULL, username TEXT,
+                text TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open'
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_points (
+                user_id INTEGER PRIMARY KEY, username TEXT,
+                total_points INTEGER NOT NULL DEFAULT 0, last_report_date TEXT,
+                streak_days INTEGER NOT NULL DEFAULT 0, streak3_awarded INTEGER NOT NULL DEFAULT 0,
+                streak7_awarded INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS points_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+                ts INTEGER NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, station_id TEXT
+            )
+        """)
         try:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN username TEXT")
+            conn.execute("ALTER TABLE points_log ADD COLUMN station_id TEXT")
         except sqlite3.OperationalError:
             pass
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS issue_reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
-            station_id TEXT, user_id INTEGER NOT NULL, username TEXT,
-            text TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open'
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS user_points (
-            user_id INTEGER PRIMARY KEY, username TEXT,
-            total_points INTEGER NOT NULL DEFAULT 0, last_report_date TEXT,
-            streak_days INTEGER NOT NULL DEFAULT 0, streak3_awarded INTEGER NOT NULL DEFAULT 0,
-            streak7_awarded INTEGER NOT NULL DEFAULT 0
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS points_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-            ts INTEGER NOT NULL, points INTEGER NOT NULL, reason TEXT NOT NULL, station_id TEXT
-        )
-    """)
-    try:
-        conn.execute("ALTER TABLE points_log ADD COLUMN station_id TEXT")
-    except sqlite3.OperationalError:
-        pass
-    conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS metrics_counters (
-            day TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY (day, key)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS metrics_users_daily (
-            day TEXT NOT NULL, user_id INTEGER NOT NULL,
-            PRIMARY KEY (day, user_id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS custom_stations (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
-            lat REAL NOT NULL, lng REAL NOT NULL,
-            created_ts INTEGER NOT NULL, created_by INTEGER NOT NULL
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS photos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, station_id TEXT NOT NULL,
-            file_path TEXT NOT NULL, user_id INTEGER, username TEXT, ts INTEGER NOT NULL
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_photos_station ON photos(station_id, ts DESC)")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS pending_stations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, net TEXT NOT NULL,
-            lat REAL NOT NULL, lng REAL NOT NULL, fuels TEXT, user_id INTEGER NOT NULL,
-            username TEXT, status TEXT NOT NULL DEFAULT 'pending', created_ts INTEGER NOT NULL
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_ts ON reports(ts)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_ts ON feed(ts)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_station_fuel ON feed(station_id, fuel, ts DESC)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_points_log_user_station ON points_log(user_id, station_id, ts)")
+        conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS metrics_counters (
+                day TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, key)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS metrics_users_daily (
+                day TEXT NOT NULL, user_id INTEGER NOT NULL,
+                PRIMARY KEY (day, user_id)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS custom_stations (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
+                lat REAL NOT NULL, lng REAL NOT NULL,
+                created_ts INTEGER NOT NULL, created_by INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, station_id TEXT NOT NULL,
+                file_path TEXT NOT NULL, user_id INTEGER, username TEXT, ts INTEGER NOT NULL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_photos_station ON photos(station_id, ts DESC)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_stations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, net TEXT NOT NULL,
+                lat REAL NOT NULL, lng REAL NOT NULL, fuels TEXT, user_id INTEGER NOT NULL,
+                username TEXT, status TEXT NOT NULL DEFAULT 'pending', created_ts INTEGER NOT NULL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_ts ON reports(ts)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_ts ON feed(ts)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_station_fuel ON feed(station_id, fuel, ts DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_points_log_user_station ON points_log(user_id, station_id, ts)")
+        conn.commit()
+        log.info("init_db: схема БД готова, WAL активен")
+    finally:
+        conn.close()
+
+
+def db():
+    """Быстрое соединение — только PRAGMA, без DDL. Схема создаётся init_db() при старте."""
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA busy_timeout = 5000")
+    conn.execute("PRAGMA temp_store = MEMORY")
+    conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA mmap_size = 134217728")
     return conn
 
 
@@ -1476,6 +1487,7 @@ async def main():
         raise RuntimeError("Не задан BOT_TOKEN.")
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
 
+    init_db()          # один раз: PRAGMA WAL, схема, индексы
     _load_custom_to_cache()
 
     class IPv4OnlySession(AiohttpSession):

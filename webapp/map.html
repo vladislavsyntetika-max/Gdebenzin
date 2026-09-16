@@ -494,7 +494,14 @@
     <button id="install-btn" class="icon-btn" title="Установить" style="display:none;">⤓</button>
   </div>
 </div>
-
+<div id="tg-banner">
+  <div class="tgb-text">
+    🎁 Хочешь баллы и топ недели?
+    <small>Открой бота в Telegram — это 10 секунд.</small>
+  </div>
+  <button class="tgb-go" id="tg-banner-go">Открыть</button>
+  <button class="tgb-close" id="tg-banner-close" aria-label="Закрыть">×</button>
+</div>
 <div id="side-tools">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
@@ -603,8 +610,23 @@
   }
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+  var isTelegramWebApp = !!(tg && tg.initData && tg.initData.length > 0);
   var userId = user ? user.id : 0;
   var username = user ? (user.username || user.first_name || '') : '';
+
+  // Анонимный ID для веб-гостей (без Telegram)
+  function getAnonId() {
+    var key = 'azs_anon_id';
+    var id = null;
+    try { id = localStorage.getItem(key); } catch(e){}
+    if (!id) {
+      id = 'web_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+      try { localStorage.setItem(key, id); } catch(e){}
+    }
+    return id;
+  }
+  var anonId = isTelegramWebApp ? null : getAnonId();
+  var effectiveUsername = isTelegramWebApp ? (username || '') : ('веб-гость ' + anonId.slice(4, 10));
 
   var stationsData = [];
   var fuelsData = [];
@@ -992,6 +1014,11 @@
       ? '<button class="action-btn danger full" data-act="delete-station">🗑 Удалить станцию</button>'
       : '';
 
+    var shareRow =
+      '<div class="share-btn-row">' +
+        '<button type="button" data-act="share">📣 Поделиться проектом</button>' +
+      '</div>';
+
     var photoHtml = '';
     if (s.last_photo && s.last_photo.url){
       var cacheBust = s.last_photo.ts ? ('?v=' + s.last_photo.ts) : '';
@@ -1022,6 +1049,7 @@
       '</div>' +
       fuelsHtml +
       photoHtml +
+      shareRow +
       '<div class="sheet-promo">📣 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
   }
 
@@ -1141,6 +1169,7 @@
       if (favOnly) renderMarkers();
       return;
     }
+    if (act === 'share'){ shareProject(); return; }
     if (act === 'issue'){ if (sheetStation) reportStationIssue(sheetStation.id); return; }
     if (act === 'delete-station'){ if (sheetStation) confirmDeleteStation(sheetStation.id); return; }
     if (act === 'view-photo'){ openLightbox(t.getAttribute('data-url')); return; }
@@ -1166,6 +1195,49 @@
   function openRoute(lat, lng){
     var url = 'https://yandex.ru/maps/?rtext=~' + lat + ',' + lng + '&rtt=auto';
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
+  }
+
+    // ---------- Баннер апселла в Telegram (только для веб-гостей) ----------
+  (function initTgBanner(){
+    if (isTelegramWebApp) return;
+    var banner = document.getElementById('tg-banner');
+    var goBtn = document.getElementById('tg-banner-go');
+    var closeBtn = document.getElementById('tg-banner-close');
+    if (!banner) return;
+
+    var key = 'azs_tg_banner_dismissed_at';
+    var dismissedAt = 0;
+    try { dismissedAt = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch(e){}
+
+    // Показываем, если отказ был больше 3 дней назад (или никогда)
+    var threeDays = 3 * 24 * 60 * 60 * 1000;
+    if (Date.now() - dismissedAt > threeDays) {
+      setTimeout(function(){ banner.classList.add('show'); }, 2500);
+    }
+
+    if (goBtn) goBtn.addEventListener('click', function(){
+      location.href = 'https://t.me/' + BOT_USERNAME;
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function(){
+      try { localStorage.setItem(key, String(Date.now())); } catch(e){}
+      banner.classList.remove('show');
+    });
+  })();
+
+  // ---------- Поделиться (нативная или через копирование) ----------
+  function shareProject(){
+    var url = 'https://' + location.host + '/';
+    var text = 'ГДЕ БЕНЗИН!? — карта наличия топлива на АЗС СПб и ЛО. Отмечают сами водители.';
+    if (navigator.share) {
+      navigator.share({ title: 'ГДЕ БЕНЗИН!?', text: text, url: url })
+        .catch(function(){ /* юзер отменил — не ошибка */ });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + ' ' + url).then(function(){
+        toast('Ссылка скопирована');
+      }).catch(function(){ toast(url); });
+    } else {
+      toast(url);
+    }
   }
 
   function openBotDeepLink(payload){

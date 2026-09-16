@@ -1147,17 +1147,13 @@ async def cb_moderate(cq: CallbackQuery):
         return
     _, pid_str, action = cq.data.split(":")
     pid = int(pid_str)
+
     if action == "approve":
         station_id = approve_pending_station(pid, cq.from_user.id)
         if not station_id:
             await cq.answer("Заявка уже обработана.")
             return
-        await cq.answer("Одобрено")
-        try:    if action == "approve":
-        station_id = approve_pending_station(pid, cq.from_user.id)
-        if not station_id:
-            await cq.answer("Заявка уже обработана.")
-            return
+
         # Начисляем +50 автору заявки
         row = get_pending_station(pid)
         if row and row[6]:
@@ -1172,16 +1168,13 @@ async def cb_moderate(cq: CallbackQuery):
                 )
             except TelegramBadRequest:
                 pass
+
         await cq.answer("Одобрено")
+        try:
             await cq.message.edit_text(cq.message.text + f"\n\n✅ Одобрено (id {station_id})")
         except TelegramBadRequest:
             pass
-        row = get_pending_station(pid)
-        if row and row[6]:
-            try:
-                await cq.bot.send_message(row[6], "🎉 Ваша заявка на новую АЗС одобрена и уже на карте!")
-            except TelegramBadRequest:
-                pass
+
     elif action == "reject":
         reject_pending_station(pid)
         await cq.answer("Отклонено")
@@ -1195,7 +1188,6 @@ async def cb_moderate(cq: CallbackQuery):
                 await cq.bot.send_message(row[6], "Заявка на новую АЗС отклонена модератором.")
             except TelegramBadRequest:
                 pass
-
 
 @dp.message(Command("recent"))
 async def on_recent_cmd(message: Message):

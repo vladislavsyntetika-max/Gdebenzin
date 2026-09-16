@@ -227,6 +227,10 @@ def _refresh_stations_cache():
 
 
 async def handle_stations(request):
+    try:
+        core.inc_metric("api_hits")
+    except Exception:
+        core.log.exception("metrics api_hits failed")
     now = time.time()
     if _STATIONS_CACHE["json"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
         return web.Response(

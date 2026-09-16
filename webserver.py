@@ -61,6 +61,8 @@ async def handle_icon_512(request):
     return web.FileResponse("webapp/icon-512.png")
 async def handle_apple_icon(request):
     return web.FileResponse("webapp/apple-touch-icon.png")
+async def handle_favicon(request):
+    return web.FileResponse("webapp/icon-192.png")
 
 async def handle_sw(request):
     sw = "self.addEventListener('install', e => self.skipWaiting());"
@@ -567,8 +569,31 @@ async def cors_middleware(request, handler):
     return resp
 
 
+@web.middleware
+async def gzip_middleware(request, handler):
+    resp = await handler(request)
+    accept = request.headers.get("Accept-Encoding", "")
+    if "gzip" not in accept.lower():
+        return resp
+    if resp.headers.get("Content-Encoding"):
+        return resp
+    ct = (resp.content_type or "").lower()
+    if ct not in ("application/json", "text/html", "application/javascript",
+                  "text/css", "text/plain", "image/svg+xml"):
+        return resp
+    body = getattr(resp, "body", None)
+    if body is None or len(body) < 512:
+        return resp
+    import gzip as _gzip
+    compressed = _gzip.compress(body, 5)
+    resp.body = compressed
+    resp.headers["Content-Encoding"] = "gzip"
+    resp.headers["Content-Length"] = str(len(compressed))
+    resp.headers["Vary"] = "Accept-Encoding"
+    return resp
+
 def build_app() -> web.Application:
-    app = web.Application(middlewares=[cors_middleware])
+    app = web.Application(middlewares=[cors_middleware, gzip_middleware])
     app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
@@ -580,6 +605,7 @@ def build_app() -> web.Application:
     app.router.add_get("/icon-512.png", handle_icon_512)
     app.router.add_get("/apple-touch-icon.png", handle_apple_icon)
     app.router.add_get("/apple-touch-icon-precomposed.png", handle_apple_icon)
+    app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)

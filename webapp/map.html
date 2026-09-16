@@ -429,6 +429,29 @@
     display: flex; align-items: center; justify-content: center; gap: 6px;
     min-height: 50px;
   }
+    /* Десктоп: попап — центральная карточка, не растянут на весь экран */
+  @media (min-width: 700px) {
+    #sheet {
+      left: 50%;
+      right: auto;
+      bottom: 20px;
+      transform: translate(-50%, 110%);
+      width: min(560px, 92vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 18px;
+      border-top-width: 3px;
+    }
+    #sheet.show { transform: translate(-50%, 0); }
+    .stell-photo { max-height: 200px; }
+    .sh-brand { font-size: 24px; }
+    .fuel-btn { font-size: 15px; min-height: 50px; padding: 10px 6px; }
+    .fuel-num { font-size: 32px; }
+    .fuel-num.dt { font-size: 22px; }
+    .action-btn { font-size: 14px; min-height: 44px; padding: 10px 8px; }
+    .flag-btn { font-size: 14px; padding: 10px; }
+    .sheet-promo { font-size: 12px; }
+  }
   @media (orientation: landscape) and (max-height: 500px) {
     body { font-size: 14px; }
     #top { padding: 4px 6px 0; gap: 4px; }
@@ -1546,13 +1569,17 @@
         window.__onboarding_done = true;
         tryOnboarding();
       }
+      // На десктопе без onboarding=1 попап не открываем автоматически
     } catch(e){ toast('Не удалось загрузить данные'); }
     flushOfflineQueue();
   }
   function tryOnboarding() {
+    // Только с лендинга (?onboarding=1) и только на мобильных
+    if (!/[?&]onboarding=1/.test(location.search)) return;
+    var ua = navigator.userAgent || '';
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    if (!isMobile) return;
     if (!navigator.geolocation) return;
-    var isOnboarding = /[?&]onboarding=1/.test(location.search);
-    if (!isOnboarding && lastPosition) return;
     navigator.geolocation.getCurrentPosition(function(pos){
       var lat = pos.coords.latitude, lng = pos.coords.longitude;
       lastPosition = { lat: lat, lng: lng };

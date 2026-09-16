@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14171A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Где бензин">
+<title>ГДЕ БЕНЗИН!? — карта наличия топлива на АЗС СПб</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #14171A; color: #E8E6E1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 28px 20px 40px; }
+  .hero { text-align: center; margin-bottom: 26px; }
+  .logo {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: #FFB000; color: #14171A;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 36px; font-weight: 800; margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(255,176,0,.35);
+  }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.5px; font-weight: 800; }
+  .tag { font-size: 15px; color: #B7BBC1; margin: 0; }
+  .tag b { color: #FFB000; }
+
+  .cta-block { display: flex; flex-direction: column; gap: 10px; margin: 24px 0; }
+  .cta {
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px 20px; border-radius: 14px;
+    font-size: 17px; font-weight: 700; letter-spacing: 0.1px;
+    cursor: pointer; border: none; font-family: inherit;
+    text-decoration: none; color: inherit;
+    transition: transform .1s ease;
+  }
+  .cta:active { transform: scale(0.98); }
+  .cta-primary { background: #FFB000; color: #14171A; box-shadow: 0 4px 16px rgba(255,176,0,.3); }
+  .cta-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
+  .cta-accent { background: #2F7FBF; color: #fff; border: 1px solid #2F7FBF; }
+  .cta-accent:disabled { opacity: 0.5; }
+  .cta small { font-weight: 400; opacity: 0.75; margin-left: 6px; font-size: 14px; }
+  .cta-icon { font-size: 20px; margin-right: 10px; }
+
+  .badge-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    justify-content: center; margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px;
+    background: #1E2227; color: #B7BBC1; border: 1px solid #2B3036;
+  }
+  .badge b { color: #FFB000; }
+
+  .ios-help {
+    display: none;
+    background: #1A1D21; border: 1px solid #262B31;
+    border-radius: 14px; padding: 16px 18px; margin: 16px 0;
+  }
+  .ios-help.show { display: block; }
+  .ios-help h3 { margin: 0 0 10px; font-size: 16px; }
+  .ios-help ol { margin: 0; padding-left: 22px; color: #B7BBC1; font-size: 14px; line-height: 1.8; }
+  .ios-help b { color: #E8E6E1; }
+
+  .features {
+    margin: 32px 0 12px;
+    display: grid; gap: 12px;
+  }
+  .feature {
+    background: #1A1D21; border: 1px solid #262B31;
+    border-radius: 12px; padding: 14px 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .feature .ico { font-size: 22px; flex-shrink: 0; line-height: 1.2; }
+  .feature .txt { font-size: 14px; color: #B7BBC1; }
+  .feature .txt b { color: #E8E6E1; display: block; margin-bottom: 3px; font-size: 15px; }
+
+  footer {
+    margin-top: 30px; text-align: center;
+    font-size: 12px; color: #6B6F76;
+  }
+  footer a { color: #B7BBC1; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="logo">⛽</div>
+    <h1>ГДЕ БЕНЗИН!?</h1>
+    <p class="tag">Карта наличия топлива на АЗС Санкт-Петербурга и Ленобласти.<br>
+      Отмечают сами водители — <b>205 станций</b>, в реальном времени.</p>
+  </div>
+
+  <div class="badge-row">
+    <span class="badge">✅ <b>Бесплатно</b></span>
+    <span class="badge">🚫 Без рекламы</span>
+    <span class="badge">📍 205 АЗС</span>
+    <span class="badge">👥 Данные от водителей</span>
+  </div>
+
+  <div class="cta-block">
+    <button class="cta cta-primary" id="btn-map">
+      <span class="cta-icon">🗺</span> Открыть карту
+    </button>
+    <button class="cta cta-secondary" id="btn-tg">
+      <span class="cta-icon">✈️</span> Открыть в Telegram <small>— баллы и топ</small>
+    </button>
+    <button class="cta cta-accent" id="btn-install" style="display:none">
+      <span class="cta-icon">⬇</span> Установить на телефон
+    </button>
+    <button class="cta cta-secondary" id="btn-ios-help" style="display:none">
+      <span class="cta-icon">📲</span> Как поставить на iPhone
+    </button>
+  </div>
+
+  <div class="ios-help" id="ios-help">
+    <h3>Установка на iPhone</h3>
+    <ol>
+      <li>Открой эту страницу в <b>Safari</b></li>
+      <li>Нажми <b>Поделиться</b> (иконка ⬆ внизу)</li>
+      <li>Выбери <b>«На экран „Домой“»</b></li>
+      <li>Нажми <b>«Добавить»</b></li>
+    </ol>
+    <p style="font-size:13px;color:#8A8F98;margin:10px 0 0;">Иконка появится на рабочем столе — открывается как обычное приложение, без браузера.</p>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="ico">⚡</div>
+      <div class="txt"><b>3 тапа — и готово</b>Выбери сеть → станцию → «Есть» или «Нет». Отчёт сразу видят другие водители.</div>
+    </div>
+    <div class="feature">
+      <div class="ico">🎯</div>
+      <div class="txt"><b>Работает без Telegram</b>Карта открывается прямо в браузере. Хочешь баллы и топ недели — подключишь Telegram позже.</div>
+    </div>
+    <div class="feature">
+      <div class="ico">🚗</div>
+      <div class="txt"><b>Помогает другим</b>Ни навигаторы, ни сами сети не публикуют, есть ли топливо на колонке прямо сейчас. Только водители.</div>
+    </div>
+  </div>
+
+  <footer>
+    Некоммерческий проект сообщества · <a href="/rules">Правила и конфиденциальность</a>
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var isTG = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  var isAndroid = /Android/i.test(ua);
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                     || window.navigator.standalone === true;
+
+  // Уже в Telegram — сразу на карту
+  if (isTG) {
+    location.replace('/map');
+    return;
+  }
+
+  var btnMap = document.getElementById('btn-map');
+  var btnTg = document.getElementById('btn-tg');
+  var btnInstall = document.getElementById('btn-install');
+  var btnIosHelp = document.getElementById('btn-ios-help');
+  var iosHelp = document.getElementById('ios-help');
+
+  // Если приложение уже установлено — убираем кнопку установки
+  if (isStandalone) {
+    btnInstall.style.display = 'none';
+    btnIosHelp.style.display = 'none';
+  }
+
+  btnMap.addEventListener('click', function(){
+    location.href = '/map';
+  });
+
+  btnTg.addEventListener('click', function(){
+    var url = 'https://t.me/naidibenzin_bot';
+    location.href = url;
+  });
+
+  // PWA install prompt (Android/Chrome)
+  var deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    btnInstall.style.display = 'flex';
+  });
+
+  window.addEventListener('appinstalled', function(){
+    btnInstall.style.display = 'none';
+    btnIosHelp.style.display = 'none';
+    deferredInstallPrompt = null;
+  });
+
+  btnInstall.addEventListener('click', function(){
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function(c){
+        if (c.outcome === 'accepted') {
+          btnInstall.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      });
+    }
+  });
+
+  // iOS: показываем инструкцию вместо авто-промпта
+  if (isIOS && !isStandalone) {
+    btnIosHelp.style.display = 'flex';
+    btnIosHelp.addEventListener('click', function(){
+      iosHelp.classList.toggle('show');
+      btnIosHelp.scrollIntoView({ behavior:'smooth', block:'center' });
+    });
+  }
+
+  // Android без beforeinstallprompt (Firefox, Samsung Internet и т.д.) — показываем подсказку
+  if (isAndroid && !isStandalone && !deferredInstallPrompt) {
+    setTimeout(function(){
+      if (!deferredInstallPrompt) {
+        btnInstall.style.display = 'flex';
+        btnInstall.querySelector('small') && btnInstall.querySelector('small').remove();
+        btnInstall.innerHTML = '<span class="cta-icon">⬇</span> Добавить на главный экран';
+        btnInstall.addEventListener('click', function(){
+          alert('Открой меню браузера (три точки сверху) → «Добавить на главный экран».');
+        });
+      }
+    }, 1500);
+  }
+
+})();
+</script>
+</body>
+</html>

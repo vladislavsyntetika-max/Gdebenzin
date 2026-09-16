@@ -9,6 +9,8 @@
 <title>ГДЕ БЕНЗИН!?</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/leaflet.css">
 <style>
   html, body {
@@ -89,6 +91,23 @@
   .pill-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; flex: 0 0 auto; }
   .pill-btn.nearby { color: #FFB000; border-color: #FFB00055; }
 
+  /* Реклама проекта в подвале — видна в горизонтальной ориентации */
+  .promo-line {
+    display: none;
+    color: #FFB000;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    text-align: center;
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-self: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   /* ---------- BOTTOM-SHEET ---------- */
   #sheet {
     position: fixed; left: 0; right: 0; bottom: 0;
@@ -97,7 +116,7 @@
     z-index: 2500;
     padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0));
     box-shadow: 0 -8px 32px rgba(0,0,0,.75);
-    border-top: 1px solid #262B31;
+    border-top: 3px solid var(--sheet-accent, #FFB000);
     transform: translateY(110%);
     transition: transform .25s ease;
     display: flex; flex-direction: column;
@@ -105,7 +124,14 @@
   #sheet.show { transform: translateY(0); }
 
   .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .sh-brand { font-size: 22px; font-weight: 800; line-height: 1.1; color: #E8E6E1; }
+  .sh-brand {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #E8E6E1;
+    word-break: break-word;
+    letter-spacing: -0.2px;
+  }
   .sh-head-right { display: flex; gap: 8px; flex: 0 0 auto; }
   .sh-mic {
     width: 46px; height: 46px; border-radius: 12px;
@@ -130,7 +156,7 @@
   }
   .sh-close:active { background: #FFB000; color: #14171A; }
 
-  .sh-addr { font-size: 13px; color: #8A8F98; margin: 4px 0 10px; line-height: 1.35; }
+  .sh-addr { font-size: 14px; color: #8A8F98; margin: 6px 0 10px; line-height: 1.35; }
 
   .voice-banner {
     display: none;
@@ -146,20 +172,21 @@
 
   .sh-flags { display: flex; gap: 8px; margin-bottom: 10px; }
   .flag-btn {
-    flex: 1; padding: 11px 8px; border-radius: 9px;
+    flex: 1; padding: 13px 10px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227;
-    color: #B7BBC1; font-size: 14px; font-weight: 600;
+    color: #B7BBC1; font-size: 16px; font-weight: 700;
     cursor: pointer; font-family: inherit;
   }
-  .flag-btn.on { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 700; }
+  .flag-btn.on { background: #FFB000; color: #14171A; border-color: #FFB000; font-weight: 800; }
 
   .sh-fuels { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-  .fuel-row { display: grid; grid-template-columns: 1fr 72px 1fr; align-items: center; gap: 10px; }
+  .fuel-row { display: grid; grid-template-columns: 1fr 78px 1fr; align-items: center; gap: 10px; }
   .fuel-btn {
-    padding: 14px 6px; border-radius: 10px;
+    padding: 16px 6px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227;
-    color: #B7BBC1; font-size: 15px; font-weight: 700;
-    cursor: pointer; font-family: inherit; min-height: 54px;
+    color: #B7BBC1; font-size: 18px; font-weight: 800;
+    cursor: pointer; font-family: inherit; min-height: 62px;
+    letter-spacing: 0.2px;
   }
   .fuel-btn.ok { color: #1B8A4A; border-color: #1B8A4A55; }
   .fuel-btn.none { color: #C62828; border-color: #C6282855; }
@@ -176,20 +203,33 @@
 
   .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
   .action-btn {
-    padding: 12px 6px; border-radius: 9px;
+    padding: 14px 8px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1;
-    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
     display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 52px;
   }
   .action-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .action-btn.fav-on { color: #FF5E5E; border-color: #FF5E5E55; }
-  .action-btn.danger { color: #E5484D; border-color: #E5484D33; font-size: 13px; }
-  .action-btn.issue { color: #8A8F98; font-size: 13px; grid-column: 1 / -1; }
+  .action-btn.danger { color: #E5484D; border-color: #E5484D33; font-size: 15px; }
+  .action-btn.issue { color: #B7BBC1; font-size: 15px; grid-column: 1 / -1; }
   .action-btn.full { grid-column: 1 / -1; }
 
   .sh-photo { margin-top: 6px; }
   .stell-photo { width: 100%; max-height: 120px; object-fit: cover; border-radius: 10px; display: block; cursor: zoom-in; background: #0F1215; }
   .photo-meta { font-size: 12px; color: #8A8F98; margin-top: 4px; }
+
+  /* Реклама проекта в попапе */
+  .sheet-promo {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #2B3036;
+    font-size: 12.5px;
+    color: #8A8F98;
+    text-align: center;
+    line-height: 1.45;
+  }
+  .sheet-promo b { color: #FFB000; font-weight: 800; }
 
   #saving-pill {
     position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
@@ -290,10 +330,22 @@
     display: none;
   }
   #pin-toolbar.show { display: block; }
-  #pin-toolbar .pin-text { font-size: 14px; color: #E8E6E1; font-weight: 600; margin-bottom: 12px; text-align: center; }
+  #pin-toolbar .pin-text { font-size: 15px; color: #E8E6E1; font-weight: 700; margin-bottom: 12px; text-align: center; }
   #pin-toolbar .pin-btns { display: flex; gap: 8px; }
   #pin-toolbar .pin-btns button { flex: 1; padding: 14px 0; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1; }
   #pin-toolbar .pin-btns button.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
+
+  /* Центральная булавка (не в кружке, острие — центр карты) */
+  #center-pin {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -100%);
+    z-index: 2000;
+    pointer-events: none;
+    display: none;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,.65));
+  }
+  #center-pin.show { display: block; }
 
   .toast {
     position: fixed; left: 50%; bottom: 106px; transform: translateX(-50%);
@@ -310,7 +362,59 @@
     box-shadow: 0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
     box-sizing: border-box;
   }
+  /* Баннер «Открой в Telegram» — для веб-гостей без Telegram */
+  #tg-banner {
+    position: absolute;
+    top: 60px; left: 8px; right: 8px;
+    background: linear-gradient(135deg, #2F7FBF 0%, #3E7CB1 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 12px 14px;
+    z-index: 1500;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  #tg-banner.show { display: flex; }
+  #tg-banner .tgb-text {
+    flex: 1;
+    font-size: 13.5px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+  #tg-banner .tgb-text small {
+    display: block;
+    font-weight: 400;
+    opacity: 0.9;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+  #tg-banner .tgb-go {
+    background: #fff; color: #1E4A6F;
+    border: none; border-radius: 10px;
+    padding: 9px 14px; font-size: 14px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+    flex-shrink: 0;
+  }
+  #tg-banner .tgb-close {
+    background: transparent; border: none; color: #fff;
+    font-size: 20px; cursor: pointer; padding: 0 0 0 4px;
+    opacity: 0.75; font-family: inherit; flex-shrink: 0;
+  }
 
+  /* Кнопка «Поделиться» — общая для всех */
+  .share-btn-row {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .share-btn-row button {
+    flex: 1; padding: 12px 8px; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; border: 1px solid #2B3036;
+    background: #1E2227; color: #E8E6E1;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 50px;
+  }
   @media (orientation: landscape) and (max-height: 500px) {
     body { font-size: 14px; }
     #top { padding: 4px 6px 0; gap: 4px; }
@@ -326,13 +430,20 @@
       padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 8px;
     }
     .bottom-row { justify-content: flex-start; gap: 6px; flex: 0 0 auto; }
-    .bottom-row:first-child { flex: 1; overflow: hidden; }
+    .bottom-row:first-child { flex: 0 0 auto; overflow: hidden; }
     .bottom-row:last-child { margin-left: auto; }
     .stat { font-size: 12px; }
     .stat b { font-size: 13px; margin-left: 1px; }
     .stat:nth-child(3) { display: none; }
     .pill-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; flex: 0 0 auto; }
     .pill-btn.primary { padding: 7px 12px; }
+
+    /* Реклама проекта — по центру подвала между «С отчётом» и «Что рядом» */
+    .promo-line {
+      display: block;
+      font-size: 13px;
+      padding: 0 10px;
+    }
 
     #sheet {
       left: 50%; right: auto; transform: translate(-50%, 110%);
@@ -342,9 +453,9 @@
     }
     #sheet.show { transform: translate(-50%, 0); }
     .sh-head { margin-bottom: 2px; }
-    .sh-brand { font-size: 20px; }
+    .sh-brand { font-size: 26px; }
     .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; }
-    .sh-addr { font-size: 12px; margin: 2px 0 8px; }
+    .sh-addr { font-size: 13px; margin: 2px 0 8px; }
     #sheet-body {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -355,14 +466,15 @@
     .sh-head, .sh-addr, .voice-banner, .sh-flags { grid-column: 1 / -1; }
     .voice-banner { margin-bottom: 6px; }
     .sh-fuels { grid-column: 2 / 3; grid-row: 4 / 6; gap: 6px; margin-bottom: 0; }
-    .fuel-row { grid-template-columns: 1fr 56px 1fr; gap: 8px; }
-    .fuel-btn { padding: 10px 4px; min-height: 44px; font-size: 14px; }
+    .fuel-row { grid-template-columns: 1fr 60px 1fr; gap: 8px; }
+    .fuel-btn { padding: 12px 4px; min-height: 50px; font-size: 16px; }
     .fuel-num { font-size: 30px; }
     .fuel-num.dt { font-size: 22px; }
     .sh-actions { grid-column: 1 / 2; grid-row: 4 / 5; margin-bottom: 0; gap: 6px; }
-    .action-btn { padding: 11px 6px; font-size: 13px; }
+    .action-btn { padding: 12px 6px; font-size: 15px; min-height: 48px; }
     .sh-photo { grid-column: 1 / 2; grid-row: 5 / 6; margin-top: 0; }
     .stell-photo { max-height: 90px; }
+    .sheet-promo { grid-column: 1 / -1; margin-top: 6px; padding-top: 8px; font-size: 12px; }
     #pin-toolbar { left: 50%; right: auto; transform: translateX(-50%); width: min(500px, 90vw); bottom: 50px; }
     .nearby-sheet { left: 50%; right: auto; transform: translate(-50%, 110%); width: min(700px, 94vw); max-height: 94vh; }
     .nearby-sheet.show { transform: translate(-50%, 0); }
@@ -382,7 +494,14 @@
     <button id="install-btn" class="icon-btn" title="Установить" style="display:none;">⤓</button>
   </div>
 </div>
-
+<div id="tg-banner">
+  <div class="tgb-text">
+    🎁 Хочешь баллы и топ недели?
+    <small>Открой бота в Telegram — это 10 секунд.</small>
+  </div>
+  <button class="tgb-go" id="tg-banner-go">Открыть</button>
+  <button class="tgb-close" id="tg-banner-close" aria-label="Закрыть">×</button>
+</div>
 <div id="side-tools">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
@@ -406,6 +525,7 @@
     <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
     <div class="stat" id="stat-reports-24h-item">За 24ч: <b id="stat-reports-24h">0</b></div>
   </div>
+  <div class="promo-line" id="promo-line">ГДЕ БЕНЗИН!? — @naidibenzin_bot · расскажи друзьям</div>
   <div class="bottom-row">
     <button class="pill-btn nearby" id="nearby-btn">🎯 Что рядом</button>
     <button class="pill-btn" id="support-btn">☕</button>
@@ -419,8 +539,17 @@
 
 <div id="saving-pill">Сохраняю…</div>
 
+<!-- Центральная булавка для добавления АЗС -->
+<div id="center-pin">
+  <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 2 C13.5 2 5 10.5 5 21 C5 30 12 38 21 50 L24 62 L27 50 C36 38 43 30 43 21 C43 10.5 34.5 2 24 2 Z"
+          fill="#FFB000" stroke="#14171A" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="24" cy="21" r="7" fill="#14171A"/>
+  </svg>
+</div>
+
 <div id="pin-toolbar">
-  <div class="pin-text">📍 Перетащите булавку в точку АЗС</div>
+  <div class="pin-text">📍 Двигайте карту — булавка стоит в центре</div>
   <div class="pin-btns">
     <button id="pin-cancel">Отмена</button>
     <button id="pin-confirm" class="primary">✔ Подтвердить</button>
@@ -447,6 +576,20 @@
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
   var SEVERITY = { ok:0, low:1, none:2 };
   var FLAG_SHORT = { flag_queue:'🚗 Очередь', flag_limit:'⛔ Лимит' };
+
+  // Корпоративные цвета сетей (для полосы сверху попапа и подсветки)
+  var NETWORK_COLORS = {
+    gpn: '#3E7CB1',
+    lukoil: '#D64550',
+    rosneft: '#C98A2E',
+    tatneft: '#8B5FBF',
+    ptk: '#E07A3F',
+    faeton: '#4A4F55',
+    kirishi: '#C7A400',
+    teboil: '#2F7FBF',
+    other: '#8A8F98'
+  };
+
   var BOT_USERNAME = 'naidibenzin_bot';
   var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
@@ -467,8 +610,23 @@
   }
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+  var isTelegramWebApp = !!(tg && tg.initData && tg.initData.length > 0);
   var userId = user ? user.id : 0;
   var username = user ? (user.username || user.first_name || '') : '';
+
+  // Анонимный ID для веб-гостей (без Telegram)
+  function getAnonId() {
+    var key = 'azs_anon_id';
+    var id = null;
+    try { id = localStorage.getItem(key); } catch(e){}
+    if (!id) {
+      id = 'web_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+      try { localStorage.setItem(key, id); } catch(e){}
+    }
+    return id;
+  }
+  var anonId = isTelegramWebApp ? null : getAnonId();
+  var effectiveUsername = isTelegramWebApp ? (username || '') : ('веб-гость ' + anonId.slice(4, 10));
 
   var stationsData = [];
   var fuelsData = [];
@@ -496,7 +654,6 @@
   var batchSaveTimer = null;
   var reopenBlockedUntil = {};
 
-  var pinMarker = null;
   var pinResolve = null;
 
   var voiceRecognition = null;
@@ -594,7 +751,7 @@
   }
 
   // =====================================================
-  // VOICE PARSER: русская речь → {fuels: {...}, flags: {...}}
+  // VOICE PARSER
   // =====================================================
   function parseVoiceText(raw){
     var text = String(raw || '').toLowerCase()
@@ -635,7 +792,6 @@
     for (var ci = 0; ci < chunks.length; ci++){
       var chunk = chunks[ci];
 
-      // Флаги
       if (/очеред|пробк|люди стоят|машины стоят|стоят в очередь/.test(chunk)){
         result.flags.flag_queue = true;
         continue;
@@ -645,7 +801,6 @@
         continue;
       }
 
-      // "кроме" — исключение
       if (chunk.indexOf('кроме') !== -1){
         var afterKrome = chunk.split('кроме').pop();
         var excl = findFuel(afterKrome);
@@ -663,7 +818,6 @@
         }
       }
 
-      // Обычный парсинг
       var fuel = findFuel(chunk);
       var status = findStatus(chunk);
       if (fuel && status){
@@ -715,7 +869,6 @@
       return false;
     }
     renderSheet();
-    // Показать что разобрали — коротким баннером
     var summary = [];
     var fuelOrder = ['f92','f95','f98','dt'];
     for (var i = 0; i < fuelOrder.length; i++){
@@ -727,7 +880,6 @@
     if (sheetPendingFlags.flag_queue) summary.push('очередь');
     if (sheetPendingFlags.flag_limit) summary.push('лимит');
     showVoiceBanner(summary.join(', '), 'Применяю…');
-    // Сразу сохраняем и закрываем
     setTimeout(function(){
       flushBatch(false).then(function(){
         hideVoiceBanner();
@@ -773,8 +925,13 @@
         if (r.isFinal) finalText += r[0].transcript;
         else interim += r[0].transcript;
       }
-      if (finalText) showVoiceBanner(finalText, 'Разбираю…');
-      else if (interim) showVoiceBanner(interim, 'Слушаю…');
+      if (finalText){
+        showVoiceBanner(finalText, 'Разбираю…');
+        var parsed = parseVoiceText(finalText);
+        applyVoiceResult(parsed);
+      } else if (interim) {
+        showVoiceBanner(interim, 'Слушаю…');
+      }
     };
 
     voiceRecognition.onerror = function(event){
@@ -808,6 +965,10 @@
     if (!sheetStation) return;
     var s = sheetStation;
     var body = document.getElementById('sheet-body');
+
+    // Цвет полосы попапа по сети
+    var accent = NETWORK_COLORS[s.net] || '#FFB000';
+    document.getElementById('sheet').style.setProperty('--sheet-accent', accent);
 
     var flagBtns = '';
     (stationFlagsData || []).forEach(function(fp){
@@ -853,6 +1014,11 @@
       ? '<button class="action-btn danger full" data-act="delete-station">🗑 Удалить станцию</button>'
       : '';
 
+    var shareRow =
+      '<div class="share-btn-row">' +
+        '<button type="button" data-act="share">📣 Поделиться проектом</button>' +
+      '</div>';
+
     var photoHtml = '';
     if (s.last_photo && s.last_photo.url){
       var cacheBust = s.last_photo.ts ? ('?v=' + s.last_photo.ts) : '';
@@ -882,7 +1048,9 @@
         adminDelete +
       '</div>' +
       fuelsHtml +
-      photoHtml;
+      photoHtml +
+      shareRow +
+      '<div class="sheet-promo">📣 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
   }
 
   function openSheet(station, auto){
@@ -893,12 +1061,10 @@
     sheetPendingFlags = {};
     renderSheet();
     document.getElementById('sheet').classList.add('show');
-    // Не запускаем таймер автозакрытия — карточка висит, пока не будет действия
   }
 
   function closeSheet(){
     if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
-    // Останавливаем голосовой ввод
     if (voiceListening && voiceRecognition){ try { voiceRecognition.stop(); } catch(e){} }
     hideVoiceBanner();
     var stationId = sheetStation ? sheetStation.id : null;
@@ -957,7 +1123,7 @@
     return fetch('/api/report-batch', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        station_id: stationId, user_id: userId, username: username || '',
+        station_id: stationId, user_id: userId, username: effectiveUsername || '',
         fuels: fuelsCopy, flags: flagsCopy
       })
     }).then(function(res){ return res.json(); }).then(function(j){
@@ -984,19 +1150,8 @@
     if (act === 'report'){
       var fuelKey = t.getAttribute('data-fuel');
       var status = t.getAttribute('data-status');
-      var current = sheetPending[fuelKey] || (sheetStation && sheetStation.fuels[fuelKey] && sheetStation.fuels[fuelKey].status);
-      if (current === status){
-        delete sheetPending[fuelKey];
-        if (sheetStation && sheetStation.fuels[fuelKey]){
-          sheetStation.fuels[fuelKey].status = 'unknown';
-          sheetStation.fuels[fuelKey].ts = 0;
-        }
-        renderSheet();
-        scheduleBatchSave();
-        scheduleCloseTimer();
-      } else {
-        queueChange(fuelKey, status);
-      }
+      // ВСЕГДА обновляем статус (не переключаем)
+      queueChange(fuelKey, status);
       return;
     }
     if (act === 'flag'){
@@ -1014,6 +1169,7 @@
       if (favOnly) renderMarkers();
       return;
     }
+    if (act === 'share'){ shareProject(); return; }
     if (act === 'issue'){ if (sheetStation) reportStationIssue(sheetStation.id); return; }
     if (act === 'delete-station'){ if (sheetStation) confirmDeleteStation(sheetStation.id); return; }
     if (act === 'view-photo'){ openLightbox(t.getAttribute('data-url')); return; }
@@ -1041,6 +1197,49 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   }
 
+    // ---------- Баннер апселла в Telegram (только для веб-гостей) ----------
+  (function initTgBanner(){
+    if (isTelegramWebApp) return;
+    var banner = document.getElementById('tg-banner');
+    var goBtn = document.getElementById('tg-banner-go');
+    var closeBtn = document.getElementById('tg-banner-close');
+    if (!banner) return;
+
+    var key = 'azs_tg_banner_dismissed_at';
+    var dismissedAt = 0;
+    try { dismissedAt = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch(e){}
+
+    // Показываем, если отказ был больше 3 дней назад (или никогда)
+    var threeDays = 3 * 24 * 60 * 60 * 1000;
+    if (Date.now() - dismissedAt > threeDays) {
+      setTimeout(function(){ banner.classList.add('show'); }, 2500);
+    }
+
+    if (goBtn) goBtn.addEventListener('click', function(){
+      location.href = 'https://t.me/' + BOT_USERNAME;
+    });
+    if (closeBtn) closeBtn.addEventListener('click', function(){
+      try { localStorage.setItem(key, String(Date.now())); } catch(e){}
+      banner.classList.remove('show');
+    });
+  })();
+
+  // ---------- Поделиться (нативная или через копирование) ----------
+  function shareProject(){
+    var url = 'https://' + location.host + '/';
+    var text = 'ГДЕ БЕНЗИН!? — карта наличия топлива на АЗС СПб и ЛО. Отмечают сами водители.';
+    if (navigator.share) {
+      navigator.share({ title: 'ГДЕ БЕНЗИН!?', text: text, url: url })
+        .catch(function(){ /* юзер отменил — не ошибка */ });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + ' ' + url).then(function(){
+        toast('Ссылка скопирована');
+      }).catch(function(){ toast(url); });
+    } else {
+      toast(url);
+    }
+  }
+
   function openBotDeepLink(payload){
     var url = 'https://t.me/' + BOT_USERNAME + '?start=' + encodeURIComponent(payload);
     if (tg && tg.openTelegramLink) { try { tg.openTelegramLink(url); return; } catch(e){} }
@@ -1048,8 +1247,29 @@
   }
 
   function reportStationIssue(id){
-    toast('Открываю бота…');
-    setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
+    if (isTelegramWebApp) {
+      // В Telegram — ведём в бота, там удобный диалог
+      toast('Открываю бота…');
+      setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
+      return;
+    }
+    // Веб-гость: спрашиваем текст прямо здесь и шлём на /api/report-issue
+    var text = prompt('Опишите, что не так со станцией (одним сообщением):');
+    if (!text || !text.trim()) return;
+    text = text.trim().slice(0, 2000);
+    toast('Отправляю…');
+    fetch('/api/report-issue', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        station_id: id,
+        text: text,
+        user_id: userId,
+        username: effectiveUsername || 'веб-гость'
+      })
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok) toast('Спасибо! Заявка ушла автору.');
+      else toast('Не удалось отправить');
+    }).catch(function(){ toast('Ошибка сети'); });
   }
 
   function confirmDeleteStation(stationId){
@@ -1144,7 +1364,7 @@
       var fd = new FormData();
       fd.append('station_id', stationId);
       fd.append('user_id', String(userId));
-      fd.append('username', username || '');
+      fd.append('username', effectiveUsername || '');
       fd.append('photo', file, 'photo.jpg');
       var res = await fetch('/api/upload-photo', { method:'POST', body: fd });
       var j = await res.json();
@@ -1351,34 +1571,29 @@
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   });
 
-  function startPinMode(initialLat, initialLng){
+  // =====================================================
+  // PIN MODE: булавка в центре экрана, двигаем карту
+  // =====================================================
+  function startPinMode(){
     return new Promise(function(resolve){
       pinResolve = resolve;
-      pinMarker = L.marker([initialLat, initialLng], {
-        draggable: true,
-        icon: L.divIcon({
-          className: '',
-          html: '<div style="width:36px;height:36px;border-radius:50%;background:#FFB000;' +
-                'border:3px solid #14171A;box-shadow:0 4px 16px rgba(255,176,0,.7);' +
-                'display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>',
-          iconSize: [36, 36], iconAnchor: [18, 18]
-        }),
-        zIndexOffset: 2000
-      }).addTo(map);
-      map.setView([initialLat, initialLng], Math.max(map.getZoom(), 16), { animate:true });
+      document.getElementById('center-pin').classList.add('show');
       document.getElementById('pin-toolbar').classList.add('show');
     });
   }
 
   function endPinMode(confirm){
-    if (!pinMarker){ return; }
-    var result = confirm ? pinMarker.getLatLng() : null;
-    map.removeLayer(pinMarker);
-    pinMarker = null;
+    document.getElementById('center-pin').classList.remove('show');
     document.getElementById('pin-toolbar').classList.remove('show');
     var cb = pinResolve;
     pinResolve = null;
-    if (cb) cb(result);
+    if (!cb) return;
+    if (confirm){
+      var c = map.getCenter();
+      cb({ lat: c.lat, lng: c.lng });
+    } else {
+      cb(null);
+    }
   }
 
   document.getElementById('pin-cancel').addEventListener('click', function(){ endPinMode(false); });
@@ -1386,17 +1601,41 @@
 
   document.getElementById('add-station-btn').addEventListener('click', async function(){
     if (userId === ADMIN_ID){
-      var lat, lng;
-      if (lastPosition){ lat = lastPosition.lat; lng = lastPosition.lng; }
-      else { var c = map.getCenter(); lat = c.lat; lng = c.lng; }
       followMode = false;
-      var pos = await startPinMode(lat, lng);
+      var pos = await startPinMode();
       if (!pos){ toast('Отменено'); return; }
       try { openAddStationDialog(pos.lat, pos.lng); }
       catch(err){ toast('Ошибка диалога'); }
+    } else if (userId === 0 && isTelegramWebApp){
+      toast('Не удалось определить Telegram ID');
     } else if (userId === 0){
-      toast('Откройте карту через @naidibenzin_bot, чтобы добавить станцию');
+      // Веб-гость: собираем заявку через /api/report-issue с координатами
+      var lat0, lng0;
+      if (lastPosition){ lat0 = lastPosition.lat; lng0 = lastPosition.lng; }
+      else { var cc = map.getCenter(); lat0 = cc.lat; lng0 = cc.lng; }
+      var textAdd = prompt(
+        'Напишите адрес и сеть АЗС одним сообщением (координаты приложатся автоматически):',
+        ''
+      );
+      if (!textAdd || !textAdd.trim()) return;
+      var fullText = '[Нет на карте · координаты ' +
+        lat0.toFixed(6) + ',' + lng0.toFixed(6) + '] ' +
+        textAdd.trim().slice(0, 1500);
+      toast('Отправляю…');
+      fetch('/api/report-issue', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          station_id: null,
+          text: fullText,
+          user_id: 0,
+          username: effectiveUsername || 'веб-гость'
+        })
+      }).then(function(r){ return r.json(); }).then(function(j){
+        if (j && j.ok) toast('Заявка ушла автору — точка появится после проверки.');
+        else toast('Не удалось отправить');
+      }).catch(function(){ toast('Ошибка сети'); });
     } else {
+      // Обычный пользователь — кидаем координаты в бота через deep-link
       var lat2, lng2;
       if (lastPosition){ lat2 = lastPosition.lat; lng2 = lastPosition.lng; }
       else { var c2 = map.getCenter(); lat2 = c2.lat; lng2 = c2.lng; }
@@ -1466,20 +1705,32 @@
     bg.querySelector('#as-save').addEventListener('click', function(){
       if (!selectedBrand){ toast('Выберите бренд'); return; }
       saveNewStation({ lat: lat, lng: lng, net: selectedBrand, fuels: fuelStates,
-                       user_id: userId, username: username || '' });
+                       user_id: userId, username: effectiveUsername || '' });
       bg.remove();
     });
   }
 
   async function saveNewStation(payload){
+    // Запоминаем текущий вид карты, чтобы после сохранения НЕ перескакивать
+    var savedCenter = map.getCenter();
+    var savedZoom = map.getZoom();
     try {
       var res = await fetch('/api/add-station', {
         method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
       var j = await res.json();
-      if (j && j.ok){ toast('АЗС добавлена'); await loadStations(); }
-      else toast('Не удалось: ' + (j.error || ''));
-    } catch(e){ toast('Ошибка отправки'); }
+      if (j && j.ok){
+        toast('АЗС добавлена');
+        await loadStations();
+        map.setView(savedCenter, savedZoom, { animate:false });
+      } else {
+        toast('Не удалось: ' + (j.error || ''));
+        map.setView(savedCenter, savedZoom, { animate:false });
+      }
+    } catch(e){
+      toast('Ошибка отправки');
+      map.setView(savedCenter, savedZoom, { animate:false });
+    }
   }
 
   function computeScore(s, from){

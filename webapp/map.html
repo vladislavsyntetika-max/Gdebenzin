@@ -1101,7 +1101,7 @@
 
     var shareRow =
       '<div class="share-btn-row">' +
-        '<button type="button" data-act="share">📣 Поделиться проектом</button>' +
+        '<button type="button" data-act="share">📣 Рассказать друзьям <span style="color:#FFB000;font-weight:800">+10</span></button>' +
       '</div>';
 
     var photoHtml = '';
@@ -1320,18 +1320,68 @@
 
   // ---------- Поделиться (нативная или через копирование) ----------
   function shareProject(){
-    var url = 'https://' + location.host + '/';
-    var text = 'ГДЕ БЕНЗИН!? — карта наличия топлива на АЗС СПб и ЛО. Отмечают сами водители.';
-    if (navigator.share) {
-      navigator.share({ title: 'ГДЕ БЕНЗИН!?', text: text, url: url })
-        .catch(function(){ /* юзер отменил — не ошибка */ });
-    } else if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text + ' ' + url).then(function(){
-        toast('Ссылка скопирована');
-      }).catch(function(){ toast(url); });
-    } else {
-      toast(url);
+    var mapUrl = 'https://' + location.host + '/';
+    var shareText = 'Карта наличия топлива на АЗС СПб и ЛО. Водители сами отмечают, где есть бензин — в реальном времени. Глянь, полезно: @naidibenzin_bot';
+    var shortText = 'Слушай, наткнулся на карту — водители отмечают, где сейчас бензин есть, а где нет. Полезно: @naidibenzin_bot';
+
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">' +
+        '<h3>📣 Поделиться проектом</h3>' +
+        '<p style="margin:8px 0 16px;color:#B7BBC1;font-size:14px;line-height:1.45;">' +
+          'За первый репост в сутки — <b style="color:#FFB000">+10 баллов</b>.<br>' +
+          'Чем нас больше, тем точнее карта. Твой район станет живым.' +
+        '</p>' +
+        '<button type="button" class="big-choice modal-primary" id="sh-tg">💬 Отправить в Telegram другу</button>' +
+        '<button type="button" class="big-choice modal-secondary" id="sh-vk">📘 Поделиться в VK</button>' +
+        '<button type="button" class="big-choice modal-secondary" id="sh-copy">📋 Скопировать текст и ссылку</button>' +
+        '<div class="modal-btns"><button class="modal-secondary" id="sh-close">Отмена</button></div>' +
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+
+    function creditAndClose(msg) {
+      // Начисляем баллы на сервере, если это Telegram-пользователь
+      if (isTelegramWebApp && userId) {
+        fetch('/api/share-credit', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ user_id: userId, username: username || '' })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          if (j && j.ok && j.points_earned) toast('+' + j.points_earned + ' баллов за репост!');
+          else if (msg) toast(msg);
+        }).catch(function(){ if (msg) toast(msg); });
+      } else if (msg) {
+        toast(msg);
+      }
+      bg.remove();
     }
+
+    bg.querySelector('#sh-tg').addEventListener('click', function(){
+      var url = 'https://t.me/share/url?url=' + encodeURIComponent(mapUrl) + '&text=' + encodeURIComponent(shortText);
+      if (tg && tg.openTelegramLink) { try { tg.openTelegramLink(url); } catch(e) { window.open(url, '_blank'); } }
+      else window.open(url, '_blank');
+      creditAndClose('Спасибо за репост!');
+    });
+
+    bg.querySelector('#sh-vk').addEventListener('click', function(){
+      var url = 'https://vk.com/share.php?url=' + encodeURIComponent(mapUrl) + '&title=' + encodeURIComponent(shareText);
+      window.open(url, '_blank');
+      creditAndClose('Спасибо за репост!');
+    });
+
+    bg.querySelector('#sh-copy').addEventListener('click', function(){
+      var full = shareText + ' ' + mapUrl;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(full).then(function(){
+          creditAndClose('Скопировано. Отправь кому хочешь.');
+        }).catch(function(){ creditAndClose(full); });
+      } else {
+        creditAndClose(full);
+      }
+    });
+
+    bg.querySelector('#sh-close').addEventListener('click', function(){ bg.remove(); });
   }
 
   function openBotDeepLink(payload){

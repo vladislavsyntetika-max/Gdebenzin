@@ -475,6 +475,28 @@ async def handle_report_issue(request):
 
     return web.json_response({"ok": True, "issue_id": issue_id})
 
+async def handle_share_credit(request):
+    """POST /api/share-credit — начисление баллов за репост (не чаще 1 раза в сутки)."""
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id") or 0)
+        username = data.get("username") or None
+        if username:
+            username = str(username).strip()[:40]
+            if not core.is_real_username(username):
+                username = html.escape(username) if username else None
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+    if not user_id:
+        return web.json_response({"ok": False, "error": "no_user"}, status=400)
+    try:
+        earned = core.award_share_points(user_id, username)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+    except Exception:
+        core.log.exception("share_credit failed")
+        return web.json_response({"ok": False, "error": "db_error"}, status=500)
+    return web.json_response({"ok": True, "points_earned": earned})
 
 async def handle_add_station(request):
     try:
@@ -673,6 +695,7 @@ def build_app() -> web.Application:
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
     app.router.add_post("/api/report-issue", handle_report_issue)
+    app.router.add_post("/api/share-credit", handle_share_credit)
     app.router.add_post("/api/add-station", handle_add_station)
     app.router.add_post("/api/delete-station", handle_delete_station)
     app.router.add_post("/api/upload-photo", handle_upload_photo)

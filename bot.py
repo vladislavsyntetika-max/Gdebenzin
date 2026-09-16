@@ -64,6 +64,9 @@ POINTS_REPORT = 2
 POINTS_SCOUT_BONUS = 5
 POINTS_STREAK_3 = 10
 POINTS_STREAK_7 = 30
+POINTS_SHARE = 10        # за первый репост в сутки
+POINTS_ADD_STATION = 50  # за одобренную новую АЗС
+POINTS_FIX_ISSUE = 20    # за исправленную неточность
 
 RANKS = [
     (0, "Новичок"),
@@ -633,6 +636,29 @@ def record_daily_activity(user_id, username):
         conn.commit()
         conn.close()
 
+def can_award_share_today(user_id):
+    """True, если юзер ещё не получал баллы за репост сегодня."""
+    if not user_id:
+        return False
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM points_log WHERE user_id=? AND reason='share' "
+            "AND ts > ?",
+            (user_id, int(time.time()) - 86400),
+        ).fetchone()
+        return row[0] == 0
+    finally:
+        conn.close()
+
+
+def award_share_points(user_id, username):
+    """Начисляет баллы за репост, если сегодня ещё не начисляли."""
+    if not can_award_share_today(user_id):
+        return 0
+    award_points(user_id, username, POINTS_SHARE, "share")
+    return POINTS_SHARE
 
 def is_scouting_report(station_id):
     rep = get_station_reports(station_id)
@@ -1127,7 +1153,26 @@ async def cb_moderate(cq: CallbackQuery):
             await cq.answer("Заявка уже обработана.")
             return
         await cq.answer("Одобрено")
-        try:
+        try:    if action == "approve":
+        station_id = approve_pending_station(pid, cq.from_user.id)
+        if not station_id:
+            await cq.answer("Заявка уже обработана.")
+            return
+        # Начисляем +50 автору заявки
+        row = get_pending_station(pid)
+        if row and row[6]:
+            author_id = row[6]
+            author_name = row[7] or None
+            try:
+                award_points(author_id, author_name, POINTS_ADD_STATION, "add_station", station_id)
+                await cq.bot.send_message(
+                    author_id,
+                    f"🎉 Ваша заявка на новую АЗС одобрена и уже на карте!\n"
+                    f"Начислено <b>+{POINTS_ADD_STATION} баллов</b>."
+                )
+            except TelegramBadRequest:
+                pass
+        await cq.answer("Одобрено")
             await cq.message.edit_text(cq.message.text + f"\n\n✅ Одобрено (id {station_id})")
         except TelegramBadRequest:
             pass
@@ -1259,6 +1304,43 @@ async def on_stats_cmd(message: Message):
     lines.append("")
     lines.append(f"Всего отчётов в БД: {total_feed}")
     lines.append(f"За 24ч: станций {stations_24h}, юзеров {users_24h}")
+    await message.answer("\n".join(lines), reply_markup=kb_main())
+@dp.message(Command("смотрители", "районы"))
+async def on_ambassadors_cmd(message: Message):
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT user_id, username, total_points FROM user_points "
+            "WHERE total_points >= 301 ORDER BY total_points DESC LIMIT 50"
+        ).fetchall()
+    finally:
+        conn.close()
+    if not rows:
+        await message.answer(
+            "🏛 <b>Смотрители районов</b>\n\n"
+            "Пока никто не набрал 301 балл. Первый, кто дойдёт — станет Смотрителем своего района.\n\n"
+            "Твои баллы: /профиль",
+            reply_markup=kb_main(),
+        )
+        return
+    # группируем по районам
+    by_district = {}
+    for uid, name, pts in rows:
+        district = get_user_top_district(uid)
+        if not district:
+            continue
+        by_district.setdefault(district, []).append((uid, name, pts))
+    if not by_district:
+        await message.answer("Пока нет Смотрителей. Стань первым — /профиль")
+        return
+    lines = ["🏛 <b>Смотрители районов</b>", ""]
+    for district in sorted(by_district):
+        people = by_district[district]
+        top = people[0]
+        label = format_display(top[1], top[0])
+        lines.append(f"• <b>{district}</b> — {label} ({top[2]} баллов)")
+    lines.append("")
+    lines.append("Набрать 301 балл = стать Смотрителем. /профиль — твои баллы.")
     await message.answer("\n".join(lines), reply_markup=kb_main())
 
 @dp.message(Command("правила"))
@@ -1441,10 +1523,23 @@ async def cb_mark_fixed(cq: CallbackQuery):
         return
     mark_issue_fixed(issue_id)
     reporter_id = issue[2]
+    # Начисляем баллы за исправление
+    if reporter_id:
+        try:
+            name = None
+            conn = db()
+            row = conn.execute("SELECT username FROM user_points WHERE user_id=?", (reporter_id,)).fetchone()
+            conn.close()
+            if row:
+                name = row[0]
+            award_points(reporter_id, name, POINTS_FIX_ISSUE, "fix_issue")
+        except Exception:
+            log.exception("Не удалось начислить баллы за исправление")
     try:
         await cq.message.bot.send_message(
             reporter_id,
-            "Ваше сообщение о неточности разобрали и исправили — спасибо! 🙌"
+            f"Ваше сообщение о неточности разобрали и исправили — спасибо! 🙌\n"
+            f"Начислено <b>+{POINTS_FIX_ISSUE} баллов</b>."
         )
     except TelegramBadRequest:
         pass

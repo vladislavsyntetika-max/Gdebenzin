@@ -92,7 +92,15 @@ a{color:#FFB000}</style>
 
 # ---------- API ----------
 
+_STATIONS_CACHE = {"ts": 0.0, "data": None}
+_STATIONS_CACHE_TTL = 5.0  # секунд
+
+
 async def handle_stations(request):
+    now = time.time()
+    if _STATIONS_CACHE["data"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
+        return web.json_response(_STATIONS_CACHE["data"])
+
     conn = core.db()
     try:
         conn.execute("PRAGMA busy_timeout = 5000")
@@ -198,16 +206,18 @@ async def handle_stations(request):
         sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
         result.append(build_station_obj(sid, name, net, addr, lat, lng))
 
-    return web.json_response({
+    payload = {
         "stations": result,
         "networks": core.NETWORKS,
         "fuels": core.FUELS,
         "statuses": core.STATUSES,
         "station_flags": core.STATION_FLAGS,
         "reports_24h": reports_24h,
-    })
-
-
+    }
+    _STATIONS_CACHE["ts"] = now
+    _STATIONS_CACHE["data"] = payload
+    return web.json_response(payload)
+    
 async def handle_user_stats(request):
     try:
         user_id = int(request.query.get("user_id", "0"))

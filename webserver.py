@@ -92,14 +92,18 @@ a{color:#FFB000}</style>
 
 # ---------- API ----------
 
-_STATIONS_CACHE = {"ts": 0.0, "data": None}
-_STATIONS_CACHE_TTL = 5.0  # секунд
+_STATIONS_CACHE = {"ts": 0.0, "json": None, "content_type": "application/json; charset=utf-8"}
+_STATIONS_CACHE_TTL = 5.0
 
 
 async def handle_stations(request):
     now = time.time()
-    if _STATIONS_CACHE["data"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
-        return web.json_response(_STATIONS_CACHE["data"])
+    if _STATIONS_CACHE["json"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
+        return web.Response(
+            body=_STATIONS_CACHE["json"],
+            content_type="application/json",
+            charset="utf-8",
+        )
 
     conn = core.db()
     try:

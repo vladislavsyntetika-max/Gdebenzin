@@ -17,6 +17,10 @@ MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
 
 # ---------- Статика ----------
 
+async def handle_landing(request):
+    return web.FileResponse("webapp/landing.html")
+
+
 async def handle_map(request):
     return web.FileResponse("webapp/map.html")
 
@@ -33,14 +37,28 @@ async def handle_manifest(request):
     manifest = {
         "name": "ГДЕ БЕНЗИН!? — топливо в реале",
         "short_name": "Где бензин",
+        "description": "Карта наличия топлива на АЗС СПб и ЛО от самих водителей.",
         "start_url": "/map",
         "scope": "/",
         "display": "standalone",
         "orientation": "portrait",
         "background_color": "#14171A",
         "theme_color": "#14171A",
+        "lang": "ru",
+        "icons": [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ],
     }
     return web.json_response(manifest, content_type="application/manifest+json")
+
+
+async def handle_icon_192(request):
+    return web.FileResponse("webapp/icon-192.png")
+
+
+async def handle_icon_512(request):
+    return web.FileResponse("webapp/icon-512.png")
 
 
 async def handle_sw(request):
@@ -54,7 +72,8 @@ async def handle_rules(request):
 <title>Правила — ГДЕ БЕНЗИН!?</title>
 <style>body{background:#14171A;color:#E8E6E1;font-family:-apple-system,sans-serif;
 padding:20px;line-height:1.6;max-width:640px;margin:0 auto}
-h1{font-size:20px}h2{font-size:16px;color:#FFB000;margin-top:24px}</style>
+h1{font-size:20px}h2{font-size:16px;color:#FFB000;margin-top:24px}
+a{color:#FFB000}</style>
 </head><body>
 <h1>Правила и конфиденциальность</h1>
 <p>Это открытый некоммерческий проект, не связанный с сетями АЗС официально.</p>
@@ -65,6 +84,7 @@ h1{font-size:20px}h2{font-size:16px;color:#FFB000;margin-top:24px}</style>
 <p>Никому.</p>
 <h2>Ответственность</h2>
 <p>Данные вносят сами водители, точность не гарантируется.</p>
+<p><a href="/map">← Вернуться к карте</a></p>
 </body></html>"""
     return web.Response(text=rules, content_type="text/html")
 
@@ -98,7 +118,6 @@ async def handle_stations(request):
             "SELECT COUNT(*) FROM feed WHERE ts > ?", (day_ago,)
         ).fetchone()[0]
 
-        # Последнее фото по каждой станции
         photos_by_station = {}
         try:
             photo_rows = conn.execute("""
@@ -255,7 +274,7 @@ async def handle_report_batch(request):
     """
     POST /api/report-batch
     Тело JSON: { station_id, user_id, username, fuels: {f92:'ok',...}, flags: {flag_queue:true,...} }
-    Записывает все отметки батчем, начисляет баллы один раз за отчёт по станции.
+    Пишет все отметки батчем. Работает и для Telegram, и для анонимных веб-гостей.
     """
     try:
         data = await request.json()
@@ -311,6 +330,72 @@ async def handle_report_batch(request):
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
 
 
+async def handle_report_issue(request):
+    """
+    POST /api/report-issue
+    Тело: { station_id, text, user_id?, username? }
+    Для веб-гостей без Telegram — заявка сохраняется в БД, админ увидит её в общем потоке.
+    """
+    try:
+        data = await request.json()
+        station_id = data.get("station_id") or None
+        if station_id is not None:
+            station_id = str(station_id)
+        text = str(data.get("text") or "").strip()
+        user_id = int(data.get("user_id") or 0)
+        username = str(data.get("username") or "").strip()[:40] or "веб-гость"
+        if not text:
+            raise ValueError("empty_text")
+        if len(text) > 2000:
+            text = text[:2000]
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    if station_id:
+        try:
+            exists = core.station_exists(station_id)
+        except AttributeError:
+            exists = station_id in core.STATION_BY_ID
+        if not exists:
+            station_id = None  # не блокируем, но и не привязываем к фейку
+
+    try:
+        issue_id = core.save_issue(station_id, user_id, username, text)
+    except Exception as e:
+        core.log.exception("save_issue failed: %s", e)
+        return web.json_response({"ok": False, "error": "db_error"}, status=500)
+
+    # Уведомляем админа в Telegram (если ADMIN_ID задан)
+    try:
+        admin_id = getattr(core, "ADMIN_ID", 0)
+        if admin_id:
+            from aiogram import Bot
+            from aiogram.client.default import DefaultBotProperties
+            bot = Bot(token=core.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+            try:
+                station_line = ""
+                if station_id:
+                    s = core.get_station(station_id)
+                    if s:
+                        station_line = f"\nСтанция: {s[1]}, {s[3]} (id: {station_id})"
+                safe_text = html.escape(text)
+                msg = (
+                    f"⚠️ Неточность #{issue_id} (веб)\n"
+                    f"От: {html.escape(username)} (id {user_id}){station_line}\n\n{safe_text}"
+                )
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                fix_kb = InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="✅ Исправлено", callback_data=f"fix:{issue_id}")
+                ]])
+                await bot.send_message(admin_id, msg, reply_markup=fix_kb)
+            finally:
+                await bot.session.close()
+    except Exception as e:
+        core.log.warning("Не удалось уведомить админа о веб-заявке: %s", e)
+
+    return web.json_response({"ok": True, "issue_id": issue_id})
+
+
 async def handle_add_station(request):
     try:
         data = await request.json()
@@ -351,11 +436,6 @@ async def handle_add_station(request):
 
 
 async def handle_delete_station(request):
-    """
-    POST /api/delete-station
-    Тело JSON: { station_id, user_id }
-    Удаляет только custom-станции (с префиксом custom-). Только для админа.
-    """
     try:
         data = await request.json()
         station_id = str(data["station_id"])
@@ -473,16 +553,20 @@ async def cors_middleware(request, handler):
 
 def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
+    app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
     app.router.add_get("/manifest.json", handle_manifest)
     app.router.add_get("/sw.js", handle_sw)
     app.router.add_get("/rules", handle_rules)
+    app.router.add_get("/icon-192.png", handle_icon_192)
+    app.router.add_get("/icon-512.png", handle_icon_512)
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
+    app.router.add_post("/api/report-issue", handle_report_issue)
     app.router.add_post("/api/add-station", handle_add_station)
     app.router.add_post("/api/delete-station", handle_delete_station)
     app.router.add_post("/api/upload-photo", handle_upload_photo)

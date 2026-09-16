@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Иконки — ГДЕ БЕНЗИН!?</title>
+<style>
+  body { background:#14171A; color:#E8E6E1; font-family:-apple-system,sans-serif;
+         text-align:center; padding:40px 20px; margin:0; }
+  h1 { font-size:22px; margin-bottom:8px; }
+  p { color:#B7BBC1; margin-bottom:24px; }
+  button { padding:16px 26px; font-size:16px; font-weight:700; background:#FFB000;
+           color:#14171A; border:none; border-radius:10px; cursor:pointer; margin:6px;
+           font-family:inherit; }
+  button:active { transform:scale(0.97); }
+  #preview { margin-top:32px; }
+  #preview svg { border-radius:22px; }
+  .hint { color:#8A8F98; font-size:13px; margin-top:24px; line-height:1.6; }
+</style>
+</head>
+<body>
+<h1>Иконки «ГДЕ БЕНЗИН!?»</h1>
+<p>Жми кнопки — браузер скачает PNG. Потом положи их в <code>webapp/</code>.</p>
+<button id="b192">Скачать icon-192.png</button>
+<button id="b512">Скачать icon-512.png</button>
+<button id="b180">Скачать apple-touch-icon.png (180)</button>
+<div id="preview"></div>
+<div class="hint">
+  192×192 — Android / favicon<br>
+  512×512 — PWA / splash<br>
+  180×180 — iOS (Safari «На экран Домой»)
+</div>
+
+<script>
+const SVG_SRC = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#14171A"/>
+  <path d="M256 70 C 170 70 100 140 100 226 C 100 320 190 390 256 442 C 322 390 412 320 412 226 C 412 140 342 70 256 70 Z" fill="#FFB000"/>
+  <circle cx="256" cy="220" r="86" fill="#14171A"/>
+  <path d="M256 162 C 226 200 208 226 208 252 C 208 279 230 300 256 300 C 282 300 304 279 304 252 C 304 226 286 200 256 162 Z" fill="#FFB000"/>
+</svg>`;
+
+function render(size, filename){
+  const blob = new Blob([SVG_SRC], { type:'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const img  = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    URL.revokeObjectURL(url);
+    c.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  };
+  img.src = url;
+}
+
+document.getElementById('b192').onclick = () => render(192, 'icon-192.png');
+document.getElementById('b512').onclick = () => render(512, 'icon-512.png');
+document.getElementById('b180').onclick = () => render(180, 'apple-touch-icon.png');
+
+// превью
+document.getElementById('preview').innerHTML =
+  SVG_SRC.replace('width="512" height="512"', 'width="180" height="180"');
+</script>
+</body>
+</html>

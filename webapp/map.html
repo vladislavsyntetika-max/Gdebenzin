@@ -362,7 +362,59 @@
     box-shadow: 0 0 0 2px rgba(30,136,229,.35), 0 0 12px rgba(30,136,229,.8);
     box-sizing: border-box;
   }
+  /* Баннер «Открой в Telegram» — для веб-гостей без Telegram */
+  #tg-banner {
+    position: absolute;
+    top: 60px; left: 8px; right: 8px;
+    background: linear-gradient(135deg, #2F7FBF 0%, #3E7CB1 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 12px 14px;
+    z-index: 1500;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  #tg-banner.show { display: flex; }
+  #tg-banner .tgb-text {
+    flex: 1;
+    font-size: 13.5px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+  #tg-banner .tgb-text small {
+    display: block;
+    font-weight: 400;
+    opacity: 0.9;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+  #tg-banner .tgb-go {
+    background: #fff; color: #1E4A6F;
+    border: none; border-radius: 10px;
+    padding: 9px 14px; font-size: 14px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+    flex-shrink: 0;
+  }
+  #tg-banner .tgb-close {
+    background: transparent; border: none; color: #fff;
+    font-size: 20px; cursor: pointer; padding: 0 0 0 4px;
+    opacity: 0.75; font-family: inherit; flex-shrink: 0;
+  }
 
+  /* Кнопка «Поделиться» — общая для всех */
+  .share-btn-row {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .share-btn-row button {
+    flex: 1; padding: 12px 8px; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; border: 1px solid #2B3036;
+    background: #1E2227; color: #E8E6E1;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 50px;
+  }
   @media (orientation: landscape) and (max-height: 500px) {
     body { font-size: 14px; }
     #top { padding: 4px 6px 0; gap: 4px; }

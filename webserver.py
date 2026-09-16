@@ -251,6 +251,66 @@ async def handle_report(request):
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
 
 
+async def handle_report_batch(request):
+    """
+    POST /api/report-batch
+    Тело JSON: { station_id, user_id, username, fuels: {f92:'ok',...}, flags: {flag_queue:true,...} }
+    Записывает все отметки батчем, начисляет баллы один раз за отчёт по станции.
+    """
+    try:
+        data = await request.json()
+        station_id = str(data["station_id"])
+        user_id = int(data.get("user_id") or 0)
+        username = data.get("username")
+        if username:
+            username = str(username).strip()[:40]
+            if not core.is_real_username(username):
+                username = html.escape(username) if username else None
+        else:
+            username = None
+        fuels = data.get("fuels") or {}
+        flags = data.get("flags") or {}
+        if not isinstance(fuels, dict) or not isinstance(flags, dict):
+            raise ValueError("bad_shape")
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    try:
+        exists = core.station_exists(station_id)
+    except AttributeError:
+        exists = station_id in core.STATION_BY_ID
+    if not exists:
+        return web.json_response({"ok": False, "error": "unknown_station"}, status=404)
+
+    fuel_keys = dict(core.FUELS)
+    status_keys = dict(core.STATUSES)
+    flag_keys = dict(core.STATION_FLAGS)
+
+    saved_fuel = False
+    for fuel_key, status_val in fuels.items():
+        if fuel_key in fuel_keys and status_val in status_keys:
+            core.save_report(station_id, fuel_key, status_val, user_id, username)
+            saved_fuel = True
+
+    for flag_key, on in flags.items():
+        if flag_key in flag_keys:
+            core.save_report(station_id, flag_key, "on" if on else "off", user_id, username)
+
+    points_earned = 0
+    scouting = False
+    if saved_fuel:
+        scouting = core.is_scouting_report(station_id)
+        allow_points = core.can_award_station_points(user_id, station_id)
+        if allow_points:
+            points_earned = core.POINTS_REPORT + (core.POINTS_SCOUT_BONUS if scouting else 0)
+            core.award_points(user_id, username, core.POINTS_REPORT, "report", station_id)
+            if scouting:
+                core.award_points(user_id, username, core.POINTS_SCOUT_BONUS, "scout_bonus", station_id)
+        core.record_daily_activity(user_id, username)
+
+    return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
+
+
 async def handle_add_station(request):
     try:
         data = await request.json()
@@ -422,6 +482,7 @@ def build_app() -> web.Application:
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
+    app.router.add_post("/api/report-batch", handle_report_batch)
     app.router.add_post("/api/add-station", handle_add_station)
     app.router.add_post("/api/delete-station", handle_delete_station)
     app.router.add_post("/api/upload-photo", handle_upload_photo)

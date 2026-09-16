@@ -4,6 +4,7 @@
 Статика (HTML, JS, CSS) отдаётся из папки webapp/.
 """
 
+import asyncio
 import html
 import json
 import os
@@ -95,18 +96,11 @@ a{color:#FFB000}</style>
 # ---------- API ----------
 
 _STATIONS_CACHE = {"ts": 0.0, "json": None, "content_type": "application/json; charset=utf-8"}
-_STATIONS_CACHE_TTL = 5.0
+_STATIONS_CACHE_TTL = 60.0
 
 
-async def handle_stations(request):
-    now = time.time()
-    if _STATIONS_CACHE["json"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
-        return web.Response(
-            body=_STATIONS_CACHE["json"],
-            content_type="application/json",
-            charset="utf-8",
-        )
-
+def _build_stations_payload():
+    """Синхронно собирает payload карты. Вызывается из handle_stations и warmup-таска."""
     conn = core.db()
     try:
         conn.execute("PRAGMA busy_timeout = 5000")
@@ -220,10 +214,50 @@ async def handle_stations(request):
         "station_flags": core.STATION_FLAGS,
         "reports_24h": reports_24h,
     }
+    return payload
+
+
+def _refresh_stations_cache():
+    """Пересобирает payload и обновляет кэш. Запускается warmup-таском."""
+    payload = _build_stations_payload()
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    _STATIONS_CACHE["ts"] = now
+    _STATIONS_CACHE["ts"] = time.time()
     _STATIONS_CACHE["json"] = body
-    return web.Response(body=body, content_type="application/json", charset="utf-8")
+    return len(body)
+
+
+async def handle_stations(request):
+    now = time.time()
+    if _STATIONS_CACHE["json"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
+        return web.Response(
+            body=_STATIONS_CACHE["json"],
+            content_type="application/json",
+            charset="utf-8",
+        )
+    # Холодный кэш — считаем синхронно
+    _refresh_stations_cache()
+    return web.Response(
+        body=_STATIONS_CACHE["json"],
+        content_type="application/json",
+        charset="utf-8",
+    )
+
+
+async def stations_warmup_task(interval_sec=25):
+    """Греет кэш в фоне, чтобы у юзера TTFB был ~0.1 сек всегда."""
+    # Первый прогрев при старте
+    try:
+        size = await asyncio.get_event_loop().run_in_executor(None, _refresh_stations_cache)
+        core.log.info(f"warmup: кэш станций прогрет, {size} байт")
+    except Exception:
+        core.log.exception("warmup: первичный прогрев упал")
+
+    while True:
+        await asyncio.sleep(interval_sec)
+        try:
+            size = await asyncio.get_event_loop().run_in_executor(None, _refresh_stations_cache)
+        except Exception:
+            core.log.exception("warmup: перегрев кэша упал")
     
 async def handle_user_stats(request):
     try:
@@ -626,3 +660,4 @@ async def run_webserver(port: int):
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     core.log.info(f"Веб-сервер карты запущен на порту {port}")
+    asyncio.create_task(stations_warmup_task())

@@ -59,7 +59,8 @@ async def handle_icon_192(request):
 
 async def handle_icon_512(request):
     return web.FileResponse("webapp/icon-512.png")
-
+async def handle_apple_icon(request):
+    return web.FileResponse("webapp/apple-touch-icon.png")
 
 async def handle_sw(request):
     sw = "self.addEventListener('install', e => self.skipWaiting());"
@@ -562,6 +563,8 @@ def build_app() -> web.Application:
     app.router.add_get("/rules", handle_rules)
     app.router.add_get("/icon-192.png", handle_icon_192)
     app.router.add_get("/icon-512.png", handle_icon_512)
+    app.router.add_get("/apple-touch-icon.png", handle_apple_icon)
+    app.router.add_get("/apple-touch-icon-precomposed.png", handle_apple_icon)
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)

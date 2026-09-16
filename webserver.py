@@ -658,6 +658,15 @@ def build_app() -> web.Application:
 
 
 async def run_webserver(port: int):
+    import hashlib
+    for f in ("webapp/map.html", "webapp/landing.html", "webserver.py"):
+        try:
+            with open(f, "rb") as fh:
+                h = hashlib.md5(fh.read()).hexdigest()
+            core.log.info(f"startup: {f} md5={h}")
+        except Exception as e:
+            core.log.warning(f"startup: не смог прочитать {f}: {e}")
+
     app = build_app()
     runner = web.AppRunner(app)
     await runner.setup()

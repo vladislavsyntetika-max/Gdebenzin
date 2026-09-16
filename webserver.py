@@ -218,9 +218,10 @@ async def handle_stations(request):
         "station_flags": core.STATION_FLAGS,
         "reports_24h": reports_24h,
     }
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     _STATIONS_CACHE["ts"] = now
-    _STATIONS_CACHE["data"] = payload
-    return web.json_response(payload)
+    _STATIONS_CACHE["json"] = body
+    return web.Response(body=body, content_type="application/json", charset="utf-8")
     
 async def handle_user_stats(request):
     try:

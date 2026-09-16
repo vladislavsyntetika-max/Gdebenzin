@@ -344,7 +344,17 @@ def get_user_top_district(user_id):
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    # WAL позволит читать во время записи, кэш страниц в памяти.
+    try:
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA temp_store = MEMORY")
+        conn.execute("PRAGMA mmap_size = 134217728")  # 128 МБ mmap
+        conn.execute("PRAGMA cache_size = -8000")     # ~8 МБ page cache
+        conn.execute("PRAGMA busy_timeout = 5000")
+    except sqlite3.OperationalError:
+        pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS reports (
             station_id TEXT NOT NULL, fuel TEXT NOT NULL, status TEXT NOT NULL,

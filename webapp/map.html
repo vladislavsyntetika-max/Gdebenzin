@@ -468,28 +468,29 @@
     .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
     .tool-btn svg { width: 20px; height: 20px; }
     #bottom {
-      min-height: 44px;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0));
-      gap: 4px 8px;
+      min-height: 40px; flex-direction: row; align-items: center;
+      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 6px;
     }
     .bottom-row { justify-content: flex-start; gap: 6px; flex: 0 0 auto; }
     .bottom-row:first-child { flex: 0 0 auto; overflow: hidden; }
     .bottom-row:last-child { margin-left: auto; }
     .stat { font-size: 11px; }
     .stat b { font-size: 12px; margin-left: 1px; }
+    .stat:nth-child(3) { display: none; }
     .pill-btn { padding: 5px 8px; font-size: 11.5px; border-radius: 7px; flex: 0 0 auto; min-height: 30px; }
     .pill-btn.primary { padding: 6px 10px; }
 
     /* Реклама проекта — по центру подвала между «С отчётом» и «Что рядом» */
     .promo-line {
       display: block;
-      font-size: 12px;
-      padding: 2px 0;
-      flex-basis: 100%;
-      order: -1;
+      font-size: 10px;
+      padding: 0 4px;
+      flex: 0 1 auto;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      order: 0;
     }
 
     #sheet {
@@ -744,9 +745,9 @@
   function makeIcon(color){
     return L.divIcon({
       className:'',
-      html:'<div style="width:16px;height:16px;border-radius:50%;background:'+color+
-           ';border:2px solid #14171A;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>',
-      iconSize:[16,16], iconAnchor:[8,8]
+      html:'<div style="width:12px;height:12px;border-radius:50%;background:'+color+
+           ';border:1.5px solid #14171A;box-shadow:0 0 3px rgba(0,0,0,.5)"></div>',
+      iconSize:[12,12], iconAnchor:[6,6]
     });
   }
 

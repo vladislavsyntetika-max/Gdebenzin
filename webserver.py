@@ -19,7 +19,24 @@ MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
 # ---------- Статика ----------
 
 async def handle_landing(request):
-    return web.FileResponse("webapp/landing.html")
+    """Рендерит лендинг с актуальным числом станций."""
+    try:
+        with open("webapp/landing.html", "r", encoding="utf-8") as f:
+            tpl = f.read()
+    except Exception as e:
+        core.log.exception("landing.html не прочитан: %s", e)
+        return web.Response(status=500, text="landing template error")
+
+    total = len(core.STATIONS)
+    try:
+        total += len(core.get_custom_stations())
+    except AttributeError:
+        pass
+
+    html_out = tpl.replace("{{COUNT}}", str(total))
+    resp = web.Response(text=html_out, content_type="text/html", charset="utf-8")
+    resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return resp
 
 
 async def handle_map(request):

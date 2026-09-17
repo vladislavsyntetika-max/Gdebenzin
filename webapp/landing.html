@@ -97,13 +97,13 @@
     <div class="logo">⛽</div>
     <h1>ГДЕ БЕНЗИН!?</h1>
     <p class="tag">Карта наличия топлива на АЗС Санкт-Петербурга и Ленобласти.<br>
-      Отмечают сами водители — <b><span id="stat-count-2">более 200</span> станций</b>, в реальном времени.</p>
+      Отмечают сами водители — <b>{{COUNT}} станций</b>, в реальном времени.</p>
   </div>
 
   <div class="badge-row">
     <span class="badge">✅ <b>Бесплатно</b></span>
     <span class="badge">🚫 Без рекламы</span>
-<span class="badge">📍 <span id="stat-count">200+</span> АЗС</span>
+<span class="badge">📍 {{COUNT}} АЗС</span>
     <span class="badge">👥 Данные от водителей</span>
   </div>
 
@@ -246,22 +246,6 @@
     }, 1500);
   }
 
-})();
-</script>
-<script>
-(function(){
-  // Подтягиваем актуальное количество станций
-  fetch('/api/stations')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var n = (d.stations || []).length;
-      if (!n) return;
-      var el1 = document.getElementById('stat-count');
-      var el2 = document.getElementById('stat-count-2');
-      if (el1) el1.textContent = n;
-      if (el2) el2.textContent = n;
-    })
-    .catch(function(){ /* тихо игнорируем — оставим "200+" */ });
 })();
 </script>
 </body>

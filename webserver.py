@@ -122,11 +122,12 @@ def _build_stations_payload():
     conn = core.db()
     try:
         conn.execute("PRAGMA busy_timeout = 5000")
-        day_ago = int(time.time()) - 86400
+        cutoff = int(time.time()) - 3 * 86400   # 3 суток — данные видны дольше
+        day_ago = int(time.time()) - 86400      # только для счётчика «за 24ч»
 
         reports_by_station = {}
         for station_id, fuel, status, ts in conn.execute(
-            "SELECT station_id, fuel, status, ts FROM reports WHERE ts > ?", (day_ago,)
+            "SELECT station_id, fuel, status, ts FROM reports WHERE ts > ?", (cutoff,)
         ):
             reports_by_station.setdefault(station_id, {})[fuel] = (status, ts)
 
@@ -135,9 +136,9 @@ def _build_stations_payload():
             SELECT station_id, fuel, status FROM (
                 SELECT station_id, fuel, status,
                 ROW_NUMBER() OVER (PARTITION BY station_id, fuel ORDER BY ts DESC) AS rn
-                FROM feed WHERE ts > ?
-            ) WHERE rn <= 5
-        """, (day_ago,))
+            FROM feed WHERE ts > ?
+        ) WHERE rn <= 5
+    """, (cutoff,))
         for station_id, fuel, status in recent_rows:
             recent_by_key.setdefault((station_id, fuel), []).append(status)
 
@@ -184,14 +185,25 @@ def _build_stations_payload():
     def build_station_obj(sid, name, net, addr, lat, lng):
         rep = reports_by_station.get(sid, {})
         fuels = {}
+        now_ts = int(time.time())
         for key, label in core.FUELS:
             if key in rep:
                 status, ts = rep[key]
+                age = now_ts - ts
+                if age < 8 * 3600:
+                    fresh_level = "fresh"
+                elif age < 48 * 3600:
+                    fresh_level = "stale"
+                elif age < 72 * 3600:
+                    fresh_level = "old"
+                else:
+                    fresh_level = "gone"
                 fuels[key] = {
                     "status": status,
                     "label": label,
                     "ago": core.time_ago(ts),
                     "stale": core.is_stale(ts),
+                    "fresh_level": fresh_level,
                     "ts": ts,
                     "confidence": confidence_for(sid, key, status),
                 }

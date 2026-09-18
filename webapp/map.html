@@ -715,13 +715,13 @@
   function statusFor(fuels, fuelKey){
     if (fuelKey !== 'all'){
       var f = fuels[fuelKey];
-      if (!f || f.status === 'unknown' || f.stale) return 'unknown';
+      if (!f || f.status === 'unknown' || f.fresh_level === 'gone') return 'unknown';
       return f.status === 'low' ? 'ok' : f.status;
     }
     var worst = -1, any = false;
     for (var k in fuels){
       var x = fuels[k];
-      if (x.status !== 'unknown' && !x.stale){
+      if (x.status !== 'unknown' && x.fresh_level !== 'gone'){
         any = true;
         var sev = x.status === 'low' ? 0 : SEVERITY[x.status];
         worst = Math.max(worst, sev);
@@ -832,7 +832,8 @@
     if (diffMin < 120) return { color: '#8BC34A', label: Math.round(diffMin) + ' мин' };
     if (diffMin < 480) return { color: '#FFC107', label: Math.round(diffMin / 60) + ' ч' };
     if (diffMin < 1440) return { color: '#FF9800', label: 'вчера' };
-    return { color: '#6B6F76', label: 'давно' };
+    if (diffMin < 2880) return { color: '#8A8F98', label: '2 дня' };
+    return { color: '#6B6F76', label: 'архив' };
   }
 
   // =====================================================
@@ -1072,7 +1073,7 @@
       var f = (s.fuels && s.fuels[key]) || {status:'unknown', ts: 0};
       var rawStatus = (key in sheetPending) ? sheetPending[key] : f.status;
       var displayStatus = (rawStatus === 'low') ? 'ok' : rawStatus;
-      var isKnown = (rawStatus !== 'unknown' && !f.stale) || (key in sheetPending);
+      var isKnown = (rawStatus !== 'unknown' && f.fresh_level !== 'gone') || (key in sheetPending);
 
       var numCls = 'fuel-num' + (key === 'dt' ? ' dt' : '');
       var okCls = 'fuel-btn ok' + (isKnown && displayStatus === 'ok' ? ' current' : '');

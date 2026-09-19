@@ -1163,7 +1163,9 @@
     sheetPending = {};
     sheetPendingFlags = {};
     renderSheet();
-    document.getElementById('sheet').classList.add('show');
+    var sheetEl = document.getElementById('sheet');
+    sheetEl.classList.add('show');
+    sheetEl.scrollTop = 0;
   }
 
   function closeSheet(){

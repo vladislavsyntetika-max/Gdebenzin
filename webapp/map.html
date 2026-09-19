@@ -455,7 +455,7 @@
   }
   @media (orientation: landscape) and (max-height: 500px) {
     body { font-size: 14px; }
-    #top { padding: 40px 6px 0; gap: 4px; }
+    #top { padding: 4px 6px 0; gap: 4px; }
     .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
     .ctrl { padding-right: 22px; max-width: 110px; }
     .search { padding-left: 28px; }
@@ -463,10 +463,7 @@
     #side-tools { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
     .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
     .tool-btn svg { width: 20px; height: 20px; }
-    #bottom {
-      min-height: 40px; flex-direction: row; align-items: center;
-      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 8px;
-    }
+    #bottom { min-height: 40px; flex-direction: row; align-items: center; padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 8px; }
     .bottom-row { justify-content: flex-start; gap: 6px; flex: 0 0 auto; }
     .bottom-row:first-child { flex: 0 0 auto; overflow: hidden; }
     .bottom-row:last-child { margin-left: auto; }
@@ -474,54 +471,51 @@
     .stat b { font-size: 13px; margin-left: 1px; }
     .pill-btn { padding: 6px 10px; font-size: 12px; border-radius: 8px; flex: 0 0 auto; }
     .pill-btn.primary { padding: 7px 12px; }
+    .promo-line { display: block; font-size: 13px; padding: 0 10px; }
 
-    /* Реклама проекта — по центру подвала между «С отчётом» и «Что рядом» */
-    .promo-line {
-      display: block;
-      font-size: 13px;
-      padding: 0 10px;
-    }
-
-    /* Landscape: popap - pravyy bokovoy yashchik, karta sleba ostayotsya vidna */
+    /* Попап — правая панель, ниже системных кнопок Telegram */
     #sheet {
-      left: auto; right: 6px; top: 6px; bottom: 6px;
+      left: auto; right: 6px;
+      top: calc(env(safe-area-inset-top, 0px) + 54px);
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 54px);
       transform: translateX(110%);
-      width: 400px; max-width: 44vw;
-      height: auto; max-height: none;
+      width: min(420px, 46vw);
       padding: 10px 12px;
       border-radius: 14px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       box-shadow: -8px 0 28px rgba(0,0,0,.65);
+      display: flex; flex-direction: column;
     }
     #sheet.show { transform: translateX(0); }
 
-    .sh-head { margin-bottom: 0; }
-    .sh-brand { font-size: 20px; line-height: 1.1; }
-    .sh-head-right { position: static; gap: 6px; }
-    .sh-mic, .sh-close { width: 36px; height: 36px; font-size: 18px; border-radius: 9px; }
-    .sh-addr { font-size: 12px; margin: 2px 0 6px; }
+    .sh-head { margin-bottom: 2px; align-items: center; }
+    .sh-brand { font-size: 20px; line-height: 1.1; flex: 1; min-width: 0; }
+    .sh-head-right { position: static; gap: 6px; flex: 0 0 auto; }
+    .sh-mic, .sh-close { width: 34px; height: 34px; font-size: 17px; border-radius: 9px; }
+    .sh-addr { font-size: 12px; margin: 0 0 6px; }
 
-    .sheet-stats { padding: 6px 10px; font-size: 12px; margin-bottom: 6px; border-radius: 7px; }
+    .sheet-stats { padding: 5px 8px; font-size: 11.5px; margin-bottom: 6px; border-radius: 6px; }
     .sh-flags { gap: 6px; margin-bottom: 6px; }
     .flag-btn { padding: 8px 4px; font-size: 13px; border-radius: 8px; }
 
     #sheet-body { display: flex; flex-direction: column; gap: 6px; }
 
-    .sh-actions { grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 0; }
-    .action-btn { padding: 9px 4px; font-size: 13px; min-height: 40px; border-radius: 8px; }
+    .sh-actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-bottom: 0; }
+    .action-btn { padding: 8px 2px; font-size: 11.5px; min-height: 36px; border-radius: 7px; }
+    .action-btn.full, .action-btn.issue { grid-column: 1 / -1; font-size: 11.5px; }
 
-    .sh-fuels { gap: 5px; margin-bottom: 0; }
-    .fuel-row { grid-template-columns: 1fr 52px 1fr; gap: 6px; }
-    .fuel-btn { padding: 9px 4px; min-height: 42px; font-size: 14px; border-radius: 8px; }
-    .fuel-num { font-size: 26px; }
-    .fuel-num.dt { font-size: 18px; }
-    .fuel-fresh { font-size: 9.5px; }
+    .sh-fuels { gap: 4px; margin-bottom: 0; }
+    .fuel-row { grid-template-columns: 1fr 44px 1fr; gap: 5px; align-items: center; }
+    .fuel-btn { padding: 8px 4px; min-height: 38px; font-size: 13px; border-radius: 7px; }
+    .fuel-num { font-size: 22px; }
+    .fuel-num.dt { font-size: 15px; }
+    .fuel-fresh { font-size: 9px; }
 
-    .sh-photo { margin-top: 4px; }
-    .stell-photo { max-height: 80px; }
-    .sheet-promo { margin-top: 4px; padding-top: 6px; font-size: 11px; line-height: 1.35; }
+    .sh-photo { display: none; }
+    .sheet-promo { display: none; }
     .voice-banner { margin-bottom: 4px; padding: 6px 10px; font-size: 12px; }
+
     #pin-toolbar { left: 50%; right: auto; transform: translateX(-50%); width: min(500px, 90vw); bottom: 50px; }
     .nearby-sheet { left: 50%; right: auto; transform: translate(-50%, 110%); width: min(700px, 94vw); max-height: 94vh; }
     .nearby-sheet.show { transform: translate(-50%, 0); }

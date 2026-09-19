@@ -484,7 +484,8 @@
 
     #sheet {
       left: 50%; right: auto; transform: translate(-50%, 110%);
-      width: min(900px, 96vw); max-height: 94vh;
+      width: min(900px, 96vw); max-height: 82vh;
+      top: auto; bottom: 0;
       padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
       border-radius: 14px 14px 0 0;
     }
@@ -492,9 +493,9 @@
     .sh-head { margin-bottom: 2px; }
     .sh-brand { font-size: 26px; }
     .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; }
-    #sheet { padding-top: 54px; }
-    .sh-head-right { position: absolute; top: 8px; right: 10px; z-index: 20; }
-    .sh-head { padding-right: 96px; }
+    #sheet { padding-top: 12px; }
+    .sh-head-right { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); right: 12px; z-index: 3000; }
+    .sh-head { padding-right: 100px; }
     .sh-addr { font-size: 13px; margin: 2px 0 8px; }
     #sheet-body {
       display: grid;

@@ -431,6 +431,50 @@
     min-height: 50px;
   }
     /* Десктоп: попап — центральная карточка, не растянут на весь экран */
+  /* NEW SHEET LAYOUT (portrait + landscape base) */
+  .sh-head {
+    display: grid; grid-template-columns: 46px 1fr auto;
+    align-items: center; gap: 8px; margin-bottom: 4px;
+  }
+  .sh-mic, .sh-close, .sh-fav {
+    width: 46px; height: 46px; border-radius: 12px; padding: 0;
+    border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1;
+    font-size: 22px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sh-fav { color: #8A8F98; }
+  .sh-fav.on { color: #1B8A4A; border-color: #1B8A4A55; }
+  .sh-close:active { background: #FFB000; color: #14171A; }
+  .sh-head-right { display: flex; gap: 4px; flex: 0 0 auto; }
+  .sh-brand {
+    font-size: 26px; font-weight: 800; line-height: 1.15;
+    text-align: center; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; letter-spacing: -0.2px; color: #E8E6E1;
+  }
+  .sh-body { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
+  .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fuel-cell {
+    background: #1E2227; border: 1px solid #2B3036; border-radius: 12px;
+    padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .fuel-name {
+    font-size: 26px; font-weight: 800; text-align: center;
+    color: #E8E6E1; line-height: 1; letter-spacing: 0.5px;
+  }
+  .fuel-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .fuel-ok, .fuel-none {
+    padding: 14px 4px; font-size: 17px; font-weight: 800;
+    border-radius: 10px; border: 2px solid; background: transparent;
+    cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
+    min-height: 54px;
+  }
+  .fuel-ok { color: #1B8A4A; border-color: #1B8A4A55; }
+  .fuel-none { color: #C62828; border-color: #C6282855; }
+  .fuel-ok.current { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
+  .fuel-none.current { background: #C62828; color: #fff; border-color: #C62828; }
+  .action-btn .ai { font-size: 22px; line-height: 1; }
+  .action-btn .al { font-size: 13px; line-height: 1.1; }
+  .action-btn.danger.full { grid-column: 1 / -1; }
   @media (min-width: 700px) {
     #sheet {
       left: 50%;
@@ -464,10 +508,8 @@
   .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
   .tool-btn svg { width: 20px; height: 20px; }
   #bottom {
-    min-height: 44px; flex-direction: row; flex-wrap: wrap;
-    align-items: center;
-    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0));
-    gap: 4px 8px;
+    min-height: 44px; flex-direction: row; flex-wrap: wrap; align-items: center;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 4px 8px;
   }
   .bottom-row { justify-content: flex-start; gap: 6px; flex: 0 0 auto; }
   .bottom-row:first-child { flex: 0 0 auto; overflow: hidden; }
@@ -479,44 +521,52 @@
   .promo-line { display: block; font-size: 11px; padding: 2px 0; flex-basis: 100%; order: -1; color: #FFB000; font-weight: 700; text-align: center; }
 
   #sheet {
-    left: 50%; right: auto;
-    top: 50%; bottom: auto;
-    transform: translate(-50%, calc(-50% + 60px));
-    width: min(560px, 78vw);
-    max-height: calc(100vh - 80px);
-    padding: 12px 16px 14px;
+    left: 50%; right: auto; top: 50%; bottom: auto;
+    transform: translate(-50%, calc(-50% + 24px)) scale(0.98);
+    width: min(760px, 96vw);
+    max-height: calc(100vh - 56px);
+    padding: 8px 12px 10px;
     border-radius: 16px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     border-top: 3px solid var(--sheet-accent, #FFB000);
-    box-shadow: 0 12px 40px rgba(0,0,0,.75);
+    box-shadow: 0 12px 40px rgba(0,0,0,.78);
+    transition: transform .18s ease, opacity .18s ease;
+    opacity: 0;
   }
-  #sheet.show { transform: translate(-50%, -50%); }
-  .sh-head { padding-right: 0; margin-bottom: 2px; }
-  .sh-brand { font-size: 22px; font-weight: 800; }
-  .sh-head-right { position: static; display: flex; gap: 6px; }
-  .sh-mic, .sh-close { width: 36px; height: 36px; font-size: 18px; border-radius: 10px; }
-  .sh-addr { font-size: 12.5px; margin: 2px 0 6px; }
-  .voice-banner { font-size: 12px; padding: 6px 8px; min-height: 30px; }
-  .sheet-stats { font-size: 11.5px; padding: 6px 10px; margin-bottom: 6px; }
-  .sh-flags { gap: 5px; margin-bottom: 6px; }
-  .flag-btn { padding: 8px 6px; font-size: 13px; font-weight: 700; min-height: 34px; }
-  .sh-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 6px; }
-  .action-btn { padding: 6px 2px; font-size: 10.5px; min-height: 48px; flex-direction: column; gap: 2px; line-height: 1.1; text-align: center; border-radius: 8px; }
-  .action-btn.full { grid-column: auto; }
-  .action-btn.issue { grid-column: auto; font-size: 10.5px; }
-  .action-btn.danger { grid-column: 1 / -1; font-size: 12px; min-height: 34px; flex-direction: row; }
-  .sh-fuels { gap: 4px; margin-bottom: 6px; }
-  .fuel-row { grid-template-columns: 60px 1fr 60px; gap: 4px; align-items: center; }
-  .fuel-btn { padding: 8px 2px; min-height: 36px; font-size: 14px; font-weight: 800; border-radius: 8px; }
-  .fuel-num { font-size: 20px; }
-  .fuel-num.dt { font-size: 15px; }
-  .fuel-fresh { font-size: 9px; }
-  .sh-photo { max-height: 70px; overflow: hidden; margin-top: 0; }
-  .stell-photo { max-height: 70px; }
-  .sheet-promo { font-size: 10.5px; padding: 4px 0 0; }
-  .share-btn-row { margin-top: 6px; }
-  .share-btn-row button { min-height: 34px; font-size: 12px; padding: 6px 4px; }
+  #sheet.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+  .sh-head { grid-template-columns: 40px 1fr auto; gap: 6px; margin-bottom: 2px; }
+  .sh-mic, .sh-close, .sh-fav { width: 40px; height: 40px; font-size: 20px; border-radius: 10px; }
+  .sh-brand { font-size: 22px; padding: 0 6px; }
+  .sh-addr { font-size: 12px; margin: 0 0 6px; text-align: center; color: #8A8F98; }
+  .sheet-stats { display: none !important; }
+  .sheet-promo { display: none !important; }
+  .sh-flags { gap: 6px; margin-bottom: 6px; }
+  .flag-btn { padding: 8px 6px; font-size: 14px; font-weight: 700; min-height: 40px; border-radius: 10px; }
+
+  .sh-body { grid-template-columns: 1.05fr 1fr; gap: 8px; margin-bottom: 6px; }
+  .sh-fuels { gap: 6px; }
+  .fuel-cell { padding: 6px 6px 8px; border-radius: 10px; gap: 4px; }
+  .fuel-name { font-size: 24px; }
+  .fuel-choices { gap: 4px; }
+  .fuel-ok, .fuel-none { padding: 10px 4px; font-size: 16px; min-height: 44px; border-radius: 8px; }
+
+  .sh-actions { grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+  .action-btn {
+    padding: 10px 6px; font-size: 13px; min-height: 64px;
+    flex-direction: column; gap: 4px; border-radius: 10px;
+    grid-column: auto !important;
+  }
+  .action-btn .ai { font-size: 22px; }
+  .action-btn .al { font-size: 12.5px; font-weight: 700; }
+  .action-btn.primary { font-size: 13px; }
+  .action-btn.danger.full { grid-column: 1 / -1 !important; min-height: 40px; flex-direction: row; }
+
+  .sh-photo { max-height: 56px; overflow: hidden; margin-top: 6px; }
+  .stell-photo { max-height: 56px; }
+  .photo-meta { font-size: 11px; }
+
   #pin-toolbar { left: 50%; right: auto; transform: translateX(-50%); width: min(500px, 90vw); bottom: 50px; }
   .nearby-sheet { left: 50%; right: auto; transform: translate(-50%, 110%); width: min(700px, 94vw); max-height: 94vh; }
   .nearby-sheet.show { transform: translate(-50%, 0); }
@@ -1058,13 +1108,13 @@
     var s = sheetStation;
     var body = document.getElementById('sheet-body');
 
-    // Цвет полосы попапа по сети
     var accent = NETWORK_COLORS[s.net] || '#FFB000';
     document.getElementById('sheet').style.setProperty('--sheet-accent', accent);
 
     var flagBtns = '';
     (stationFlagsData || []).forEach(function(fp){
       var fkey = fp[0], flabel = fp[1];
+      if (fkey === 'flag_limit') return;
       var fl = s.flags ? s.flags[fkey] : null;
       var on = (fkey in sheetPendingFlags) ? sheetPendingFlags[fkey] : (fl && fl.on);
       var short = FLAG_SHORT[fkey] || flabel;
@@ -1072,44 +1122,37 @@
     });
     var flagsHtml = flagBtns ? '<div class="sh-flags">'+flagBtns+'</div>' : '';
 
+    var FUEL_ORDER = ['f92', 'f95', 'dt', 'f98'];
     var fuelsHtml = '<div class="sh-fuels">';
-    fuelsData.forEach(function(pair){
-      var key = pair[0];
+    FUEL_ORDER.forEach(function(key){
+      var pair = null;
+      for (var pi = 0; pi < fuelsData.length; pi++){ if (fuelsData[pi][0] === key){ pair = fuelsData[pi]; break; } }
+      if (!pair) return;
       var shortLabel = FUEL_SHORT[key] || pair[1];
       var f = (s.fuels && s.fuels[key]) || {status:'unknown', ts: 0};
       var rawStatus = (key in sheetPending) ? sheetPending[key] : f.status;
       var displayStatus = (rawStatus === 'low') ? 'ok' : rawStatus;
       var isKnown = (rawStatus !== 'unknown' && f.fresh_level !== 'gone') || (key in sheetPending);
+      var isOk = isKnown && displayStatus === 'ok';
+      var isNone = isKnown && displayStatus === 'none';
 
-      var numCls = 'fuel-num' + (key === 'dt' ? ' dt' : '');
-      var okCls = 'fuel-btn ok' + (isKnown && displayStatus === 'ok' ? ' current' : '');
-      var noneCls = 'fuel-btn none' + (isKnown && displayStatus === 'none' ? ' current' : '');
-
-      var fi = isKnown ? freshnessInfo(f.ts || Math.floor(Date.now()/1000)) : freshnessInfo(0);
-
-      fuelsHtml += '<div class="fuel-row">' +
-        '<button class="'+okCls+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="ok">Есть</button>' +
-        '<div><div class="'+numCls+'">'+escapeHtml(shortLabel)+'</div>' +
-          '<div class="fuel-fresh"><span class="dot" style="background:'+fi.color+'"></span>'+escapeHtml(fi.label)+'</div>' +
+      fuelsHtml += '<div class="fuel-cell">' +
+        '<div class="fuel-name">'+escapeHtml(shortLabel)+'</div>' +
+        '<div class="fuel-choices">' +
+          '<button class="fuel-ok'+(isOk?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="ok">ЕСТЬ</button>' +
+          '<button class="fuel-none'+(isNone?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="none">НЕТ</button>' +
         '</div>' +
-        '<button class="'+noneCls+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="none">Нет</button>' +
       '</div>';
     });
     fuelsHtml += '</div>';
 
     var isFavNow = isFav(s.id);
-    var favCls = 'action-btn' + (isFavNow ? ' fav-on' : '');
-    var favText = isFavNow ? '❤ Избранное' : '☆ В избранное';
+    var favGlyph = isFavNow ? '\u2665' : '\u2661';
 
     var isCustom = (s.id + '').indexOf('custom-') === 0;
     var adminDelete = (userId === ADMIN_ID && isCustom)
-      ? '<button class="action-btn danger full" data-act="delete-station">🗑 Удалить станцию</button>'
+      ? '<button class="action-btn danger full" data-act="delete-station"><span class="ai">\uD83D\uDDD1</span><span class="al">Удалить станцию</span></button>'
       : '';
-
-    var shareRow =
-      '<div class="share-btn-row">' +
-        '<button type="button" data-act="share">📣 Рассказать друзьям <span style="color:#FFB000;font-weight:800">+10</span></button>' +
-      '</div>';
 
     var photoHtml = '';
     if (s.last_photo && s.last_photo.url){
@@ -1117,33 +1160,35 @@
       photoHtml = '<div class="sh-photo">' +
         '<img src="'+escapeHtml(s.last_photo.url + cacheBust)+'" class="stell-photo" ' +
         'data-act="view-photo" data-url="'+escapeHtml(s.last_photo.url)+'" alt="Стелла">' +
-        '<div class="photo-meta">📷 '+escapeHtml(s.last_photo.ago||'')+'</div>' +
+        '<div class="photo-meta">\uD83D\uDCF7 '+escapeHtml(s.last_photo.ago||'')+'</div>' +
       '</div>';
     }
 
     body.innerHTML =
       '<div class="sh-head">' +
+        '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">\uD83C\uDFA4</button>' +
         '<div class="sh-brand">'+escapeHtml(s.name)+'</div>' +
         '<div class="sh-head-right">' +
-          '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">🎤</button>' +
-          '<button class="sh-close" data-act="close-sheet">✕</button>' +
+          '<button class="sh-fav'+(isFavNow?' on':'')+'" data-act="fav" title="В избранное">'+favGlyph+'</button>' +
+          '<button class="sh-close" data-act="close-sheet">\u2715</button>' +
         '</div>' +
       '</div>' +
       '<div class="sh-addr">'+escapeHtml(s.addr)+'</div>' +
       '<div class="sheet-stats" id="sheet-stats"></div>' +
       '<div class="voice-banner" id="voice-banner"></div>' +
       flagsHtml +
-      '<div class="sh-actions">' +
-        '<button class="action-btn" data-act="route">🧭 Маршрут</button>' +
-        '<button class="action-btn primary" data-act="photo">📷 Фото</button>' +
-        '<button class="'+favCls+' full" data-act="fav">'+favText+'</button>' +
-        '<button class="action-btn issue" data-act="issue">⚠ Сообщить о неточности</button>' +
-        adminDelete +
+      '<div class="sh-body">' +
+        fuelsHtml +
+        '<div class="sh-actions">' +
+          '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
+          '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
+          '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
+          '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
+        '</div>' +
       '</div>' +
-      fuelsHtml +
       photoHtml +
-      shareRow +
-      '<div class="sheet-promo">📣 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
+      adminDelete +
+      '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 
     var statsEl = document.getElementById('sheet-stats');
     if (statsEl && lastGlobalStats) {
@@ -1151,12 +1196,11 @@
       if (lastGlobalStats.reports_24h) parts.push('<b>' + lastGlobalStats.reports_24h + '</b> отчётов за 24ч по городу');
       if (lastGlobalStats.stations_reported) parts.push('<b>' + lastGlobalStats.stations_reported + '</b> станций с данными');
       if (parts.length) {
-        statsEl.innerHTML = '📊 ' + parts.join(' · ');
+        statsEl.innerHTML = '\uD83D\uDCCA ' + parts.join(' · ');
         statsEl.classList.add('show');
       }
     }
   }
-
   function openSheet(station, auto){
     var blockedUntil = reopenBlockedUntil[station.id] || 0;
     if (auto && Date.now() < blockedUntil) return;
@@ -1166,7 +1210,7 @@
     renderSheet();
     var sheetEl = document.getElementById('sheet');
     sheetEl.classList.add('show');
-    sheetEl.scrollTop = 0;
+    requestAnimationFrame(function(){ sheetEl.scrollTop = 0; });
   }
 
   function closeSheet(){

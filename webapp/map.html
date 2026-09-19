@@ -1678,15 +1678,24 @@
     if (!lastGoodPosition) return false;
     var dt = (pos.timestamp - lastGoodTimestamp) / 1000;
     if (dt <= 0) dt = 1;
+    var acc = pos.coords.accuracy || 0;
     var dist = haversine(lastGoodPosition.lat, lastGoodPosition.lng, pos.coords.latitude, pos.coords.longitude);
+    // Мелкое дрожание GPS (<5 м) — игнорируем
+    if (dist < 5) return true;
+    // Если смещение меньше погрешности GPS — это шум, не прыжок
+    if (acc > 0 && dist < acc) return true;
     var speed = dist / dt;
-    return speed > 55;
+    // 120 м/с = 432 км/ч — реальная езда не достигает
+    return speed > 120;
   }
 
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
+    // Watch уже активен — просто возобновляем слежение
     if (watchId !== null){
+      locateActive = true;
       followMode = true;
+      document.getElementById('btn-locate').classList.add('active');
       if (lastPosition) map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
       return;
     }
@@ -1719,12 +1728,13 @@
         }
       },
       function(){ toast('Не удалось определить местоположение'); stopLocate(); },
-      { enableHighAccuracy:true, maximumAge:2000, timeout:20000 }
+      { enableHighAccuracy:true, maximumAge:0, timeout:20000 }
     );
   }
 
   function stopLocate(){
-    if (watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+    // watchId НЕ сбрасываем — оставляем watch активным,
+    // чтобы браузер не запрашивал разрешение заново
     locateActive = false; followMode = false;
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }

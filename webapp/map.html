@@ -480,11 +480,11 @@
 
   #sheet {
     left: auto; right: 0;
-    top: calc(env(safe-area-inset-top, 0px) + 52px);
+    top: auto;
     bottom: 56px;
     transform: translateX(110%);
     width: min(400px, 44vw);
-    max-height: none;
+    max-height: calc(100vh - 96px - 56px);
     padding: 10px 12px 10px;
     border-radius: 14px 0 0 0;
     overflow-y: auto;

@@ -631,8 +631,9 @@
   var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
   var ADMIN_ID = 2145359728;
-  var PROXIMITY_OPEN_M = 200;
-  var SHEET_CLOSE_DELAY_MS = 2000;
+  var PROXIMITY_OPEN_M = 150;
+  var PROXIMITY_CLOSE_M = 50;
+  var SHEET_CLOSE_DELAY_MS = 3000;
   var SHEET_REOPEN_BLOCK_MS = 5 * 60 * 1000;
   var BATCH_SAVE_DELAY_MS = 2000;
   var NEARBY_MAX_KM = 30;
@@ -1711,6 +1712,10 @@
         var near = findNearestStation(lat, lng);
         if (near.station && near.distance <= PROXIMITY_OPEN_M){
           if (!sheetStation || sheetStation.id !== near.station.id) openSheet(near.station, true);
+        }
+        if (sheetStation){
+          var dToSheet = haversine(lat, lng, sheetStation.lat, sheetStation.lng);
+          if (dToSheet > PROXIMITY_CLOSE_M) closeSheet();
         }
       },
       function(){ toast('Не удалось определить местоположение'); stopLocate(); },

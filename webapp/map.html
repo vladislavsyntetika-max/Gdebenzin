@@ -1152,7 +1152,7 @@
 
     var isCustom = (s.id + '').indexOf('custom-') === 0;
     var adminDelete = (userId === ADMIN_ID && isCustom)
-      ? '<button class="action-btn danger full" data-act="delete-station"><span class="ai">\uD83D\uDDD1</span><span class="al">Удалить станцию</span></button>'
+      ? '<button class="action-btn danger" data-act="delete-station"><span class="ai">\uD83D\uDDD1</span><span class="al">Удалить станцию</span></button>'
       : '';
 
     var photoHtml = '';
@@ -1185,10 +1185,10 @@
           '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
           '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
           '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
+          adminDelete +
         '</div>' +
       '</div>' +
       photoHtml +
-      adminDelete +
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 
     var statsEl = document.getElementById('sheet-stats');

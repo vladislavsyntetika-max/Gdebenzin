@@ -442,14 +442,14 @@
     font-size: 22px; cursor: pointer; font-family: inherit;
     display: flex; align-items: center; justify-content: center;
   }
-  .sh-fav { color: #8A8F98; border-radius: 50%; }
+  .sh-fav { color: #8A8F98; }
   .sh-fav.on { color: #1B8A4A; border-color: #1B8A4A55; }
   .sh-close:active { background: #FFB000; color: #14171A; }
   .sh-head-right { display: flex; gap: 4px; flex: 0 0 auto; }
   .sh-brand {
     font-size: 26px; font-weight: 800; line-height: 1.15;
-    text-align: center; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; letter-spacing: -0.2px; color: #E8E6E1;
+    text-align: center; overflow-wrap: break-word; word-break: break-word;
+    letter-spacing: -0.2px; color: #E8E6E1;
   }
   .sh-body { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -538,8 +538,8 @@
 
   .sh-head { grid-template-columns: 40px 1fr auto; gap: 6px; margin-bottom: 2px; }
   .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; border-radius: 10px; }
-  .sh-fav { width: 40px; height: 40px; font-size: 20px; border-radius: 50%; }
-  .sh-brand { font-size: clamp(28px, 5.5vw, 44px); padding: 0 6px; }
+  .sh-fav { width: 40px; height: 40px; font-size: 20px; }
+  .sh-brand { font-size: clamp(20px, 4vw, 38px); padding: 0; }
   .sh-addr { font-size: 12px; margin: 0 0 6px; text-align: center; color: #8A8F98; }
   .sheet-stats { display: none !important; }
   .sheet-promo { display: none !important; }

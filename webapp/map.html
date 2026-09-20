@@ -1213,7 +1213,7 @@
     renderSheet();
     var sheetEl = document.getElementById('sheet');
     sheetEl.classList.add('show');
-    requestAnimationFrame(function(){ sheetEl.scrollTop = 0; });
+    sheetEl.scrollTop = 0; var bodyEl = document.getElementById('sheet-body'); if (bodyEl) bodyEl.scrollTop = 0; requestAnimationFrame(function(){ sheetEl.scrollTop = 0; if (bodyEl) bodyEl.scrollTop = 0; }); setTimeout(function(){ sheetEl.scrollTop = 0; if (bodyEl) bodyEl.scrollTop = 0; }, 50);
   }
 
   function closeSheet(){

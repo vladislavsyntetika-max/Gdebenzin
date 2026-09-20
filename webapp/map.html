@@ -537,7 +537,7 @@
   }
   #sheet.show { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
 
-  .sh-head { grid-template-columns: 40px 1fr auto; gap: 6px; margin-bottom: 2px; }
+  .sh-head { display: grid; grid-template-columns: 40px 1fr auto auto; gap: 6px; margin-bottom: 2px; align-items: center; }
   .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; border-radius: 10px; }
   .sh-fav { width: 40px; height: 40px; font-size: 20px; }
   .sh-brand { font-size: clamp(20px, 4vw, 38px); padding: 0; }

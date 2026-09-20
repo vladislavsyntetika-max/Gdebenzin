@@ -860,6 +860,28 @@
     clearTimeout(el._t);
     el._t = setTimeout(function(){ el.classList.remove('show'); }, 2400);
   }
+  var _audioCtx = null;
+  function playTone(freqStart, freqEnd, durMs){
+    try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
+    try {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+      var osc = _audioCtx.createOscillator();
+      var gain = _audioCtx.createGain();
+      osc.type = 'sine';
+      var now = _audioCtx.currentTime;
+      var dur = durMs / 1000;
+      osc.frequency.setValueAtTime(freqStart, now);
+      osc.frequency.exponentialRampToValueAtTime(freqEnd, now + dur);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.start(now); osc.stop(now + dur + 0.02);
+    } catch(e){}
+  }
+  function soundOpen(){ playTone(880, 1320, 140); }
+  function soundClose(){ playTone(1320, 880, 120); }
 
   function showSaving(on){
     var el = document.getElementById('saving-pill');
@@ -1210,6 +1232,7 @@
     if (auto && Date.now() < blockedUntil) return;
     sheetStation = station;
     sheetAutoOpened = !!auto;
+    if (auto) soundOpen();
     sheetPending = {};
     sheetPendingFlags = {};
     renderSheet();
@@ -1218,7 +1241,8 @@
     sheetEl.scrollTop = 0; var bodyEl = document.getElementById('sheet-body'); if (bodyEl) bodyEl.scrollTop = 0; requestAnimationFrame(function(){ sheetEl.scrollTop = 0; if (bodyEl) bodyEl.scrollTop = 0; }); setTimeout(function(){ sheetEl.scrollTop = 0; if (bodyEl) bodyEl.scrollTop = 0; }, 50);
   }
 
-  function closeSheet(){
+  function closeSheet(auto){
+    if (auto) soundClose();
     if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
     if (voiceListening && voiceRecognition){ try { voiceRecognition.stop(); } catch(e){} }
     hideVoiceBanner();
@@ -1781,7 +1805,7 @@
         }
         if (sheetStation && sheetAutoOpened){
           var dToSheet = haversine(lat, lng, sheetStation.lat, sheetStation.lng);
-          if (dToSheet > PROXIMITY_CLOSE_M) closeSheet();
+          if (dToSheet > PROXIMITY_CLOSE_M) closeSheet(true);
         }
       },
       function(){ toast('Не удалось определить местоположение'); stopLocate(); },

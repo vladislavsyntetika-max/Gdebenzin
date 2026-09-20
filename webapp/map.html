@@ -524,12 +524,11 @@
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
     transform: translate(-50%, calc(-50% + 24px)) scale(0.98);
-    width: min(560px, 60vw);
-    max-height: calc(100vh - 56px);
+    width: min(720px, 94vw);
+    max-height: calc(100vh - 72px);
     padding: 8px 12px 10px;
     border-radius: 16px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     border-top: 3px solid var(--sheet-accent, #FFB000);
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
@@ -548,14 +547,14 @@
   .sh-flags { gap: 6px; margin-bottom: 6px; }
   .flag-btn { padding: 8px 6px; font-size: 14px; font-weight: 700; min-height: 40px; border-radius: 10px; }
 
-  .sh-body { grid-template-columns: 1.05fr 1fr; gap: 8px; margin-bottom: 6px; }
-  .sh-fuels { gap: 6px; }
+  .sh-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0; align-items: stretch; }
+  .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 0; }
   .fuel-cell { padding: 6px 6px 8px; border-radius: 10px; gap: 4px; }
   .fuel-name { font-size: 24px; }
   .fuel-choices { gap: 4px; }
   .fuel-ok, .fuel-none { padding: 10px 4px; font-size: 16px; min-height: 44px; border-radius: 8px; }
 
-  .sh-actions { grid-template-columns: 1fr 1fr; gap: 6px; align-content: stretch; grid-auto-rows: 1fr; }
+  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: stretch; grid-auto-rows: 1fr; margin-bottom: 0; }
   .action-btn {
     padding: 10px 6px; font-size: 13px; min-height: 64px;
     flex-direction: column; gap: 4px; border-radius: 10px;
@@ -566,7 +565,7 @@
   .action-btn.primary { font-size: 13px; }
   .action-btn.danger.full { grid-column: 1 / -1 !important; min-height: 40px; flex-direction: row; }
 
-  .sh-photo { max-height: 56px; overflow: hidden; margin-top: 6px; }
+  .sh-photo { max-height: 44px; overflow: hidden; margin-top: 4px; }
   .stell-photo { max-height: 56px; }
   .photo-meta { font-size: 11px; }
 

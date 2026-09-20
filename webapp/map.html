@@ -533,8 +533,9 @@
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
     opacity: 0;
+    pointer-events: none;
   }
-  #sheet.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  #sheet.show { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
 
   .sh-head { grid-template-columns: 40px 1fr auto; gap: 6px; margin-bottom: 2px; }
   .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; border-radius: 10px; }

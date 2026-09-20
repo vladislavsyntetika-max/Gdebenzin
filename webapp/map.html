@@ -1380,17 +1380,17 @@
   // ---------- Поделиться (нативная или через копирование) ----------
   function shareProject(){
     var mapUrl = 'https://' + location.host + '/';
-    var shareText = 'Карта наличия топлива на АЗС СПб и ЛО. Водители сами отмечают, где есть бензин — в реальном времени. Глянь, полезно: @naidibenzin_bot';
-    var shortText = 'Слушай, наткнулся на карту — водители отмечают, где сейчас бензин есть, а где нет. Полезно: @naidibenzin_bot';
+    var shareText = 'В Питере и области больше не надо гадать, где есть бензин. Водители отмечают водителям — видно, где 95-й, где дизель, где пусто. Перед выездом загляни: @naidibenzin_bot';
+    var shortText = 'Карта — где в СПб сейчас есть бензин, а где пусто. Водители отмечают вживую. Перед выездом: @naidibenzin_bot';
 
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     bg.innerHTML =
       '<div class="modal">' +
-        '<h3>📣 Поделиться проектом</h3>' +
+        '<h3>📣 Расскажи водителю</h3>' +
         '<p style="margin:8px 0 16px;color:#B7BBC1;font-size:14px;line-height:1.45;">' +
-          'За первый репост в сутки — <b style="color:#FFB000">+10 баллов</b>.<br>' +
-          'Чем нас больше, тем точнее карта. Твой район станет живым.' +
+          '+10 баллов за первый репост в сутки.<br>' +
+          'Главное другое: чем больше водителей отмечают, тем точнее карта. И тем реже ты сам будешь приезжать на пустую заправку.' +
         '</p>' +
         '<button type="button" class="big-choice modal-primary" id="sh-tg">💬 Отправить в Telegram другу</button>' +
         '<button type="button" class="big-choice modal-secondary" id="sh-vk">📘 Поделиться в VK</button>' +

@@ -586,6 +586,7 @@
     <select id="fuel-select" class="ctrl"><option value="all">Топливо</option></select>
     <input id="search-input" class="search" type="search" placeholder="Поиск…" autocomplete="off">
     <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
+    <button id="sound-toggle" class="icon-btn" title="Sound">&#128266;</button>
     <button id="install-btn" class="icon-btn" title="Установить" style="display:none;">⤓</button>
   </div>
 </div>
@@ -2121,6 +2122,10 @@
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     document.getElementById('ios-close').addEventListener('click', function(){ bg.remove(); });
   }
+  var soundBtn = document.getElementById('sound-toggle');
+  function syncSoundIcon(){ var on = true; try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){} soundBtn.textContent = on ? String.fromCharCode(128266) : String.fromCharCode(128263); soundBtn.style.opacity = on ? '1' : '0.45'; }
+  syncSoundIcon();
+  soundBtn.addEventListener('click', function(){ var on = true; try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){} try { localStorage.setItem('azs_sound_on', on ? '0' : '1'); } catch(e){} syncSoundIcon(); });
   installBtn.addEventListener('click', function(){
     if (isIOS) { showIOSInstructions(); return; }
     if (deferredInstallPrompt){

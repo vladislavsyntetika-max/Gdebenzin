@@ -694,7 +694,7 @@
   var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
-  var PROXIMITY_CLOSE_M = 50;
+  var PROXIMITY_CLOSE_M = 250;
   var SHEET_CLOSE_DELAY_MS = 3000;
   var SHEET_REOPEN_BLOCK_MS = 5 * 60 * 1000;
   var BATCH_SAVE_DELAY_MS = 2000;
@@ -762,7 +762,7 @@
   var voiceListening = false;
 
   function favKey(){ return 'azs_favs'; }
-  function getFavs(){ try { return JSON.parse(localStorage.getItem(favKey()) || '[]'); } catch(e){ return []; } }
+  function getFavs(){ try { var v = JSON.parse(localStorage.getItem(favKey()) || '[]'); return Array.isArray(v) ? v : []; } catch(e){ return []; } }
   function isFav(id){ return getFavs().indexOf(id) !== -1; }
   function toggleFav(id){
     var f = getFavs(), i = f.indexOf(id);
@@ -817,11 +817,15 @@
     } catch(e){}
   }
 
+  var _flushingOffline = false;
   function flushOfflineQueue() {
+    if (_flushingOffline) return Promise.resolve();
+    _flushingOffline = true;
+    var done = function(){ _flushingOffline = false; };
     var q;
     try { q = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); }
-    catch(e){ return Promise.resolve(); }
-    if (!q.length) return Promise.resolve();
+    catch(e){ done(); return Promise.resolve(); }
+    if (!Array.isArray(q) || !q.length) { done(); return Promise.resolve(); }
     var rest = [];
     var chain = Promise.resolve();
     q.forEach(function(item){
@@ -839,7 +843,8 @@
       try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(rest)); } catch(e){}
       var sent = q.length - rest.length;
       if (sent > 0) toast('Синхронизировано: ' + sent);
-    });
+      done();
+    }).catch(function(){ done(); });
   }
 
   function sendOrQueue(url, body) {
@@ -1231,6 +1236,8 @@
   function openSheet(station, auto){
     var blockedUntil = reopenBlockedUntil[station.id] || 0;
     if (auto && Date.now() < blockedUntil) return;
+    if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
+    if (sheetStation && sheetStation.id !== station.id) { if (auto) return; flushBatch(false); }
     sheetStation = station;
     sheetAutoOpened = !!auto;
     if (auto) soundOpen();
@@ -1316,7 +1323,7 @@
       toast('Ошибка сети');
     }).then(function(){
       showSaving(false);
-      if (closing) sheetStation = null;
+      if (closing && sheetStation && sheetStation.id === stationId) sheetStation = null;
     });
   }
 
@@ -1404,7 +1411,7 @@
 
   // ---------- Поделиться (нативная или через копирование) ----------
   function shareProject(){
-    var mapUrl = 'https://' + location.host + '/';
+    var mapUrl = location.origin + '/map';
     var shareText = 'В Питере и области больше не надо гадать, где есть бензин. Водители отмечают водителям — видно, где 95-й, где дизель, где пусто. Перед выездом загляни: @naidibenzin_bot';
     var shortText = 'Карта — где в СПб сейчас есть бензин, а где пусто. Водители отмечают вживую. Перед выездом: @naidibenzin_bot';
 
@@ -1673,12 +1680,14 @@
 
   function fillFilterOptions(){
     var netSel = document.getElementById('net-select');
+    netSel.length = 1;
     Object.keys(networksData).forEach(function(k){
       var o = document.createElement('option');
       o.value = k; o.textContent = networksData[k].label;
       netSel.appendChild(o);
     });
     var fuelSel = document.getElementById('fuel-select');
+    fuelSel.length = 1;
     fuelsData.forEach(function(p){
       var o = document.createElement('option');
       o.value = p[0]; o.textContent = FUEL_SHORT[p[0]] || p[1];
@@ -1690,11 +1699,11 @@
     try {
       var res = await fetch('/api/stations');
       var data = await res.json();
-      stationsData = data.stations || [];
-      fuelsData = data.fuels || [];
-      statusesData = data.statuses || [];
-      stationFlagsData = data.station_flags || [];
-      networksData = data.networks || {};
+      stationsData = Array.isArray(data.stations) ? data.stations : [];
+      fuelsData = Array.isArray(data.fuels) ? data.fuels : [];
+      statusesData = Array.isArray(data.statuses) ? data.statuses : [];
+      stationFlagsData = Array.isArray(data.station_flags) ? data.station_flags : [];
+      networksData = (data.networks && typeof data.networks === 'object') ? data.networks : {};
       document.getElementById('stat-reports-24h').textContent = data.reports_24h || 0;
       lastGlobalStats = {
         reports_24h: data.reports_24h || 0,
@@ -1724,6 +1733,7 @@
     var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
     if (!isMobile) return;
     if (!navigator.geolocation) return;
+    var isOnboarding = true;
     navigator.geolocation.getCurrentPosition(function(pos){
       var lat = pos.coords.latitude, lng = pos.coords.longitude;
       lastPosition = { lat: lat, lng: lng };
@@ -1788,6 +1798,7 @@
     document.getElementById('btn-locate').classList.add('active');
     watchId = navigator.geolocation.watchPosition(
       function(pos){
+        if (!locateActive) return;
         if (isRealJump(pos)) return;
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
         lastPosition = { lat: lat, lng: lng };
@@ -2142,7 +2153,8 @@
 
   try { loadStations(); } catch(e){}
   document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) { loadStations(); flushOfflineQueue(); }
+    if (document.hidden) { flushBatch(true); flushOfflineQueue(); }
+    else { loadStations(); flushOfflineQueue(); }
   });
   setInterval(flushOfflineQueue, 30000);
   window.addEventListener('online', flushOfflineQueue);

@@ -28,7 +28,7 @@
 
   #top {
     position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
-    padding: 48px 8px 0; pointer-events: none;
+    padding: 78px 8px 0; pointer-events: none;
     display: flex; flex-direction: column; gap: 6px;
   }
   #top > * { pointer-events: auto; }
@@ -62,10 +62,7 @@
     position: absolute; right: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
-  #side-tools-right {
-    position: absolute; right: 10px; bottom: calc(108px + 4*56px + 3*8px + 16px); z-index: 1000;
-    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
-  }
+  #side-tools-right { display: none; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 56px; height: 56px; border-radius: 14px;
@@ -508,10 +505,12 @@
   body { font-size: 14px; }
   #top { padding: calc(env(safe-area-inset-top, 0px) + 44px) 6px 0; gap: 4px; }
   .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
-  .search { padding-left: 28px; }
+  .ctrl { display: none; }
+  #fav-toggle, #install-btn { display: none !important; }
+  .search { padding-left: 28px; max-width: calc(100vw - 130px); }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
-  #side-tools-left { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
-  #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
+  #side-tools-left { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
+  #side-tools-right { display: none; }
   .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
   .tool-btn svg { width: 20px; height: 20px; }
   #bottom {
@@ -532,7 +531,7 @@
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
     transform: translate(-50%, calc(-50% + 24px)) scale(0.98);
-    width: min(590px, 78vw);
+    width: min(500px, 66vw);
     max-height: calc(100vh - 72px);
     padding: 8px 12px 10px;
     border-radius: 16px;
@@ -562,10 +561,11 @@
   .fuel-choices { gap: 4px; }
   .fuel-ok, .fuel-none { padding: 10px 4px; font-size: 16px; min-height: 44px; border-radius: 8px; }
 
-  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: stretch; grid-auto-rows: 1fr; margin-bottom: 0; }
+  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; grid-auto-rows: auto; margin-bottom: 0; }
   .action-btn {
-    padding: 10px 6px; font-size: 13px; min-height: 64px;
-    flex-direction: column; gap: 4px; border-radius: 10px;
+    padding: 6px 4px; font-size: 12px; min-height: 0;
+    aspect-ratio: 1 / 1;
+    flex-direction: column; gap: 3px; border-radius: 12px;
     grid-column: auto !important;
   }
   .action-btn .ai { font-size: 22px; }
@@ -615,6 +615,21 @@
       <path d="M12 2 L19 22 L12 17 L5 22 Z" fill="currentColor" stroke="currentColor"/>
     </svg>
   </button>
+  <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="5" width="9" height="16" rx="1"/>
+      <path d="M8 9h3M8 12h3M8 15h3"/>
+      <path d="M14 9h2a2 2 0 0 1 2 2v8a1.5 1.5 0 0 0 3 0v-8"/>
+      <path d="M17 18h3"/>
+    </svg>
+  </button>
+  <button class="tool-btn" id="nearby-btn" title="Что рядом">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+    </svg>
+  </button>
   <button class="tool-btn" id="btn-route" title="Маршрут до АЗС">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/>
@@ -624,26 +639,14 @@
   </button>
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
-</div>
-<div id="side-tools-right">
-  <button class="tool-btn" id="nearby-btn" title="Что рядом">
+  <button class="tool-btn" id="support-btn" title="Поддержать проект">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
-    </svg>
-  </button>
-  <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-      <path d="M12 5v14M5 12h14"/>
-    </svg>
-  </button>
-  <button class="tool-btn" id="support-btn" title="Поддержать">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      <path d="M9 8h5M9 11h5M11 8v9M13 8v9"/>
     </svg>
   </button>
 </div>
+<div id="side-tools-right"></div>
 
 <div id="bottom">
   <div class="bottom-row">

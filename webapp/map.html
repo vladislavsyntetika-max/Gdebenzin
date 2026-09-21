@@ -1830,6 +1830,7 @@
       return;
     }
     locateActive = true; followMode = true;
+    try { localStorage.setItem('azs_locate_on', '1'); } catch(e){}
     document.getElementById('btn-locate').classList.add('active');
     watchId = navigator.geolocation.watchPosition(
       function(pos){
@@ -1867,6 +1868,7 @@
     // watchId НЕ сбрасываем — оставляем watch активным,
     // чтобы браузер не запрашивал разрешение заново
     locateActive = false; followMode = false;
+    try { localStorage.setItem('azs_locate_on', '0'); } catch(e){}
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
   }
@@ -2184,7 +2186,12 @@
   try { loadStations(); } catch(e){}
   document.addEventListener('visibilitychange', function(){
     if (document.hidden) { flushBatch(true); flushOfflineQueue(); }
-    else { loadStations(); flushOfflineQueue(); }
+    else {
+      loadStations(); flushOfflineQueue();
+      var wasOn = false;
+      try { wasOn = localStorage.getItem('azs_locate_on') === '1'; } catch(e){}
+      if (wasOn && !locateActive){ startLocate(); }
+    }
   });
   setInterval(flushOfflineQueue, 30000);
   window.addEventListener('online', flushOfflineQueue);

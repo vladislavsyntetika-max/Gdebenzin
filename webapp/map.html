@@ -121,6 +121,7 @@
     border-top-left-radius: 18px; border-top-right-radius: 18px;
     z-index: 2500;
     padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0));
+    max-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     box-shadow: 0 -8px 32px rgba(0,0,0,.75);
     border-top: 3px solid var(--sheet-accent, #FFB000);
     transform: translateY(110%);
@@ -129,7 +130,7 @@
   }
   #sheet.show { transform: translateY(0); }
 
-  .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: sticky; top: -12px; background: #1A1D21; z-index: 5; padding-top: 12px; margin-top: -12px; padding-bottom: 4px; }
   .sh-brand {
     font-size: 28px;
     font-weight: 800;
@@ -505,9 +506,8 @@
   }
   @media (orientation: landscape) and (max-height: 500px) {
   body { font-size: 14px; }
-  #top { padding: calc(env(safe-area-inset-top, 0px) + 4px) 6px 0; gap: 4px; }
+  #top { padding: calc(env(safe-area-inset-top, 0px) + 44px) 6px 0; gap: 4px; }
   .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
-  .ctrl { display: none; }
   .search { padding-left: 28px; }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
   #side-tools-left { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
@@ -525,14 +525,14 @@
   .stat b { font-size: 12px; margin-left: 1px; }
   .pill-btn { padding: 5px 8px; font-size: 11.5px; border-radius: 7px; flex: 0 0 auto; min-height: 30px; }
   .pill-btn.primary { padding: 6px 10px; }
-  .promo-line { display: block; font-size: 22px; padding: 2px 0; order: 0; color: #FFB000; font-weight: 800; text-align: center; letter-spacing: 0.2px; }
-  .bottom-row:first-child { order: 1; padding-left: 50px; }
+  .promo-line { display: block; font-size: 22px; padding: 4px 0; flex-basis: 100%; order: -1; color: #FFB000; font-weight: 800; text-align: center; letter-spacing: 0.2px; }
+  .bottom-row:first-child { flex-basis: 100%; justify-content: center; order: 0; }
   .bottom-row:last-child { display: none; }
 
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
     transform: translate(-50%, calc(-50% + 24px)) scale(0.98);
-    width: min(720px, 94vw);
+    width: min(590px, 78vw);
     max-height: calc(100vh - 72px);
     padding: 8px 12px 10px;
     border-radius: 16px;
@@ -634,17 +634,13 @@
     </svg>
   </button>
   <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15"/>
-      <path d="M3 11h10"/>
-      <path d="M14 9h3a2 2 0 0 1 2 2v7a1.5 1.5 0 0 0 3 0v-8l-3-3"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
     </svg>
   </button>
   <button class="tool-btn" id="support-btn" title="Поддержать">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 9h11a3 3 0 0 1 0 6h-1"/>
-      <path d="M6 6h11v9a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4V6z"/>
-      <path d="M4 21h14"/>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
     </svg>
   </button>
 </div>
@@ -716,8 +712,8 @@
   };
 
   var BOT_USERNAME = 'naidibenzin_bot';
-  var SUPPORT_TEXT = 'Перевод по номеру счёта в приложении банка (Т-Банк / любой банк — по реквизитам).';
-  var SUPPORT_REQ = 'Получатель: Синтетика В.\nСчёт: 40817810000000000000\nТ-Банк';
+  var SUPPORT_TEXT = 'Проект живёт на энтузиазме одного человека. Серверы, карты, домены, разработка — всё оплачивается из своего кармана. Каждый рубль идёт на то, чтобы карта была точнее и быстрее.';
+  var SUPPORT_REQ = 'Ориентир: 100 руб — месяц хостинга, 500 руб — месяц карт, 1000 руб — неделя разработки.' + String.fromCharCode(10) + 'Возможность донатить появится в ближайшее время. Спасибо, что ты с нами.';
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
   var PROXIMITY_CLOSE_M = 250;

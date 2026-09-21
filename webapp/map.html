@@ -1769,14 +1769,8 @@
     if (!lastGoodPosition) return false;
     var dt = (pos.timestamp - lastGoodTimestamp) / 1000;
     if (dt <= 0) dt = 1;
-    var acc = pos.coords.accuracy || 0;
     var dist = haversine(lastGoodPosition.lat, lastGoodPosition.lng, pos.coords.latitude, pos.coords.longitude);
-    // Мелкое дрожание GPS (<5 м) — игнорируем
-    if (dist < 5) return true;
-    // Если смещение меньше погрешности GPS — это шум, не прыжок
-    if (acc > 0 && dist < acc) return true;
     var speed = dist / dt;
-    // 120 м/с = 432 км/ч — реальная езда не достигает
     return speed > 120;
   }
 

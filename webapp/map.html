@@ -58,10 +58,15 @@
   }
   .icon-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
 
-  #side-tools {
+  #side-tools-left {
     position: absolute; right: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
+  #side-tools-right {
+    position: absolute; right: 10px; bottom: calc(108px + 4*56px + 3*8px + 16px); z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+  }
+  .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 56px; height: 56px; border-radius: 14px;
     background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1;
@@ -96,8 +101,8 @@
   .promo-line {
     display: none;
     color: #FFB000;
-    font-weight: 700;
-    font-size: 13px;
+    font-weight: 800;
+    font-size: 24px;
     letter-spacing: 0.2px;
     text-align: center;
     padding: 0 8px;
@@ -505,7 +510,8 @@
   .ctrl { display: none; }
   .search { padding-left: 28px; }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
-  #side-tools { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
+  #side-tools-left { right: auto; left: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
+  #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
   .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
   .tool-btn svg { width: 20px; height: 20px; }
   #bottom {
@@ -519,7 +525,9 @@
   .stat b { font-size: 12px; margin-left: 1px; }
   .pill-btn { padding: 5px 8px; font-size: 11.5px; border-radius: 7px; flex: 0 0 auto; min-height: 30px; }
   .pill-btn.primary { padding: 6px 10px; }
-  .promo-line { display: block; font-size: 11px; padding: 2px 0; flex-basis: 100%; order: -1; color: #FFB000; font-weight: 700; text-align: center; }
+  .promo-line { display: block; font-size: 22px; padding: 2px 0; order: 0; color: #FFB000; font-weight: 800; text-align: center; letter-spacing: 0.2px; }
+  .bottom-row:first-child { order: 1; padding-left: 50px; }
+  .bottom-row:last-child { display: none; }
 
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
@@ -601,7 +609,7 @@
   <button class="tgb-go" id="tg-banner-go">Открыть</button>
   <button class="tgb-close" id="tg-banner-close" aria-label="Закрыть">×</button>
 </div>
-<div id="side-tools">
+<div id="side-tools-left">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
       <path d="M12 2 L19 22 L12 17 L5 22 Z" fill="currentColor" stroke="currentColor"/>
@@ -617,6 +625,29 @@
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
+<div id="side-tools-right">
+  <button class="tool-btn" id="nearby-btn" title="Что рядом">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+    </svg>
+  </button>
+  <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15"/>
+      <path d="M3 11h10"/>
+      <path d="M14 9h3a2 2 0 0 1 2 2v7a1.5 1.5 0 0 0 3 0v-8l-3-3"/>
+    </svg>
+  </button>
+  <button class="tool-btn" id="support-btn" title="Поддержать">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9h11a3 3 0 0 1 0 6h-1"/>
+      <path d="M6 6h11v9a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4V6z"/>
+      <path d="M4 21h14"/>
+    </svg>
+  </button>
+</div>
 
 <div id="bottom">
   <div class="bottom-row">
@@ -624,12 +655,7 @@
     <div class="stat" id="stat-reported-item">С отчётом: <b id="stat-reported">0</b></div>
     <div class="stat" id="stat-reports-24h-item">За 24ч: <b id="stat-reports-24h">0</b></div>
   </div>
-  <div class="promo-line" id="promo-line">ГДЕ БЕНЗИН!? — @naidibenzin_bot · расскажи друзьям</div>
-  <div class="bottom-row">
-    <button class="pill-btn nearby" id="nearby-btn">🎯 Что рядом</button>
-    <button class="pill-btn" id="support-btn">☕</button>
-    <button class="pill-btn primary" id="add-station-btn">+ АЗС</button>
-  </div>
+  <div class="promo-line" id="promo-line">ГДЕ БЕНЗИН!? · @naidibenzin_bot</div>
 </div>
 
 <div id="sheet">

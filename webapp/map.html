@@ -582,9 +582,12 @@
   .nearby-sheet.show { transform: translate(-50%, 0); }
 }
 #sheet{padding:16px 18px calc(16px + env(safe-area-inset-bottom,0));background:#1C1C1E;border-top-left-radius:22px;border-top-right-radius:22px;box-shadow:0 -12px 40px rgba(0,0,0,.5);border-top:3px solid var(--sheet-accent,#FFB000);max-height:calc(100vh - 90px);overflow-y:auto;-webkit-overflow-scrolling:touch;} .sh-head{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;margin-bottom:2px;} .sh-mic,.sh-close,.sh-fav{width:44px;height:44px;border-radius:50%;border:none;background:transparent;color:#8E8E93;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;} .sh-mic{color:#FFB000;} .sh-close{font-size:18px;} .sh-fav.on{color:#FF5E5E;} .sh-head-right{display:flex;gap:0;flex:0 0 auto;} .sh-brand{font-size:22px;font-weight:700;color:#FFFFFF;letter-spacing:-0.3px;line-height:1.2;word-break:break-word;text-align:center;padding:0 4px;} .sh-addr{font-size:14px;color:#8E8E93;margin:2px 0 14px;text-align:center;line-height:1.35;} .sheet-stats{background:#2C2C2E;border-radius:12px;padding:8px 10px;font-size:12px;color:#8E8E93;margin-bottom:10px;line-height:1.3;text-align:center;border:none;} .sheet-stats b{color:#FFFFFF;font-weight:600;} .sh-flags{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;} .flag-btn{padding:12px;border-radius:12px;border:none;background:#2C2C2E;color:#FFFFFF;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;} .flag-btn.on{background:#FFB000;color:#1C1C1E;} .sh-body{display:flex;flex-direction:column;gap:12px;margin-bottom:12px;} .sh-fuels{display:grid;grid-template-columns:1fr 1fr;gap:8px;} .fuel-cell{background:#2C2C2E;border-radius:14px;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;border:none;} .fuel-name{font-size:26px;font-weight:700;color:#FFFFFF;text-align:center;line-height:1;letter-spacing:-0.5px;} .fuel-choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;} .fuel-ok,.fuel-none{padding:11px 6px;border-radius:10px;border:none;background:#3A3A3C;color:#FFFFFF;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;} .fuel-ok.current{background:#30D158;color:#FFFFFF;} .fuel-none.current{background:#FF453A;color:#FFFFFF;} .sh-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;} .action-btn{padding:14px 8px;border-radius:14px;border:none;background:#2C2C2E;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:72px;} .action-btn .ai{font-size:24px;line-height:1;} .action-btn .al{font-size:13px;font-weight:600;line-height:1.15;text-align:center;} .action-btn.primary{background:#FFB000;color:#1C1C1E;} .action-btn.issue{color:#8E8E93;} .action-btn.danger{color:#FF453A;} .action-btn.fav-on{color:#FF5E5E;} .sh-photo{margin-top:0;border-radius:14px;overflow:hidden;} .stell-photo{width:100%;max-height:140px;object-fit:cover;border-radius:14px;display:block;cursor:zoom-in;background:#0F1215;} .photo-meta{font-size:12px;color:#8E8E93;margin-top:6px;text-align:center;} .sheet-promo{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);font-size:12.5px;color:#636366;text-align:center;line-height:1.45;} .sheet-promo b{color:#FFB000;font-weight:700;}
-  @keyframes mkPulse { 0% { box-shadow: 0 0 0 0 var(--mk-c); opacity: .85; } 70% { box-shadow: 0 0 0 14px transparent; opacity: 0; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 0; } }
+  @keyframes mkPulse { 0% { box-shadow: 0 0 0 0 var(--mk-c); opacity: .9; } 70% { box-shadow: 0 0 0 var(--mk-w) transparent; opacity: 0; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 0; } }
   .mk{width:16px;height:16px;border-radius:50%;border:2px solid #14171A;box-sizing:border-box;position:relative;}
   .mk-fresh::after{content:"";position:absolute;inset:-2px;border-radius:50%;box-shadow:0 0 0 0 var(--mk-c);animation:mkPulse 1.8s ease-out infinite;}
+  .mk-fresh-s::after{--mk-w:14px;}
+  .mk-fresh-m::after{--mk-w:18px;}
+  .mk-fresh-l::after{--mk-w:22px;}
 </style>
 </head>
 <body>
@@ -814,9 +817,15 @@
     return worst === 0 ? 'ok' : worst === 1 ? 'low' : 'none';
   }
 
-  function makeIcon(color, fresh){
-    var cls = fresh ? 'mk mk-fresh' : 'mk';
-    var html = '<div class="' + cls + '" style="background:' + color + ';--mk-c:' + color + '"></div>';
+  function makeIcon(color, freshInfo){
+    var cls = 'mk';
+    var pulseCss = '';
+    if (freshInfo && freshInfo.count > 0){
+      var sz = freshInfo.count >= 3 ? 'l' : (freshInfo.count === 2 ? 'm' : 's');
+      cls += ' mk-fresh mk-fresh-' + sz;
+      pulseCss = ';--mk-c:' + freshInfo.color;
+    }
+    var html = '<div class="' + cls + '" style="background:' + color + pulseCss + '"></div>';
     return L.divIcon({ className:'', html: html, iconSize:[16,16], iconAnchor:[8,8] });
   }
 
@@ -1656,13 +1665,19 @@
     });
   }
 
-  function isFresh(s){
+  function getFreshInfo(s){
     var now = Date.now() / 1000;
+    var count = 0, freshestTs = 0, freshestStatus = null;
     for (var k in s.fuels){
       var f = s.fuels[k];
-      if (f.status && f.status !== 'unknown' && f.ts && (now - f.ts) < 1800) return true;
+      if (f && f.status && f.status !== 'unknown' && f.ts && (now - f.ts) < 1800){
+        count++;
+        if (f.ts > freshestTs){ freshestTs = f.ts; freshestStatus = f.status; }
+      }
     }
-    return false;
+    if (!count) return { count: 0, color: '#8A8F98' };
+    var c = freshestStatus === 'ok' ? '#30D158' : (freshestStatus === 'none' ? '#FF453A' : '#FFB000');
+    return { count: count, color: c };
   }
 
   function updateMarkerFor(stationId){
@@ -1670,7 +1685,7 @@
     var m = markers[stationId];
     if (!s || !m) return;
     var st = statusFor(s.fuels, activeFuel);
-    m.setIcon(makeIcon(STATUS_COLOR[st], isFresh(s)));
+    m.setIcon(makeIcon(STATUS_COLOR[st], getFreshInfo(s)));
     applyMarkerOpacity();
   }
 
@@ -1687,7 +1702,7 @@
       if (favOnly && !isFav(s.id)) return;
       if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
 
-      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], isFresh(s)) }).addTo(map);
+      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s)) }).addTo(map);
       markers[s.id] = m;
       bindMarkerClick(s);
     });

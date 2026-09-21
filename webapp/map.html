@@ -796,6 +796,7 @@
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
 
   map.on('dragstart', function(){ followMode = false; });
+  map.on('zoomstart', function(e){ if (e && e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 1) followMode = false; });
   map.on('zoomend', applyMarkerOpacity);
 
   function statusFor(fuels, fuelKey){

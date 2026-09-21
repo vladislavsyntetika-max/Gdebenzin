@@ -62,7 +62,7 @@
     position: absolute; right: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
-  #side-tools-right { position: absolute; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+  #side-tools-right { position: absolute; right: 10px; bottom: calc(108px + 4*56px + 3*8px + 16px); z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 56px; height: 56px; border-radius: 14px;
@@ -510,7 +510,7 @@
   .search { padding-left: 28px; max-width: calc(100vw - 130px); }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
   #side-tools-left { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
-  #side-tools-right { display: none; }
+  #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; display: flex; }
   .tool-btn { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; }
   .tool-btn svg { width: 20px; height: 20px; }
   #bottom {
@@ -630,13 +630,6 @@
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
 <div id="side-tools-right">
-  <button class="tool-btn" id="nearby-btn" title="Что рядом">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
-    </svg>
-  </button>
   <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M5 21 V6 a1.5 1.5 0 0 1 1.5 -1.5 h6 a1.5 1.5 0 0 1 1.5 1.5 V21"/>
@@ -647,6 +640,13 @@
       <circle cx="9" cy="7" r="0.6" fill="currentColor" stroke="none"/>
       <circle cx="10.5" cy="17.5" r="0.5" fill="currentColor" stroke="none"/>
       <path d="M8.5 4 L10 2.5 L11.5 4"/>
+    </svg>
+  </button>
+  <button class="tool-btn" id="nearby-btn" title="Что рядом">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
     </svg>
   </button>
   <button class="tool-btn" id="support-btn" title="Поддержать проект">

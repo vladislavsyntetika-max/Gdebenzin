@@ -561,17 +561,17 @@
   .fuel-choices { gap: 4px; }
   .fuel-ok, .fuel-none { padding: 10px 4px; font-size: 16px; min-height: 44px; border-radius: 8px; }
 
-  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; grid-auto-rows: auto; margin-bottom: 0; }
+  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; align-content: stretch; margin-bottom: 0; }
   .action-btn {
-    padding: 6px 4px; font-size: 12px; min-height: 56px;
+    padding: 6px 4px; font-size: 12px; height: 100%; min-height: 0;
     flex-direction: column; gap: 3px; border-radius: 12px;
     grid-column: auto !important;
   }
-  .action-btn.full, .action-btn.issue, .action-btn.danger { min-height: 40px !important; flex-direction: row !important; }
+  .action-btn.full, .action-btn.issue, .action-btn.danger { flex-direction: row !important; }
   .action-btn .ai { font-size: 22px; }
   .action-btn .al { font-size: 12.5px; font-weight: 700; }
   .action-btn.primary { font-size: 13px; }
-  .action-btn.danger.full { grid-column: 1 / -1 !important; min-height: 40px; flex-direction: row; }
+  .action-btn.danger.full { grid-column: 1 / -1 !important; flex-direction: row; }
 
   .sh-photo { max-height: 44px; overflow: hidden; margin-top: 4px; }
   .stell-photo { max-height: 56px; }

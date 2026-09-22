@@ -563,11 +563,11 @@
 
   .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; grid-auto-rows: auto; margin-bottom: 0; }
   .action-btn {
-    padding: 6px 4px; font-size: 12px; min-height: 0;
-    aspect-ratio: 1 / 1;
+    padding: 6px 4px; font-size: 12px; min-height: 56px;
     flex-direction: column; gap: 3px; border-radius: 12px;
     grid-column: auto !important;
   }
+  .action-btn.full, .action-btn.issue, .action-btn.danger { min-height: 40px !important; flex-direction: row !important; }
   .action-btn .ai { font-size: 22px; }
   .action-btn .al { font-size: 12.5px; font-weight: 700; }
   .action-btn.primary { font-size: 13px; }

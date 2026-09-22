@@ -877,12 +877,11 @@ def reject_pending_station(pid):
 
 
 def kb_main():
-    rows = [[InlineKeyboardButton(text=f"{v['dot']} {v['label']}", callback_data=f"net:{k}")]
-            for k, v in NETWORKS.items()]
+    rows = []
+    if MAP_URL:
+        rows.append([InlineKeyboardButton(text="🗺 ОТКРЫТЬ КАРТУ", web_app=WebAppInfo(url=MAP_URL))])
     rows.append([InlineKeyboardButton(text="🕓 Последние отчёты", callback_data="feed")])
     rows.append([InlineKeyboardButton(text="⚠️ Сообщить об ошибке в боте", callback_data="err:")])
-    if MAP_URL:
-        rows.append([InlineKeyboardButton(text="🗺 Открыть карту", web_app=WebAppInfo(url=MAP_URL))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -1028,8 +1027,8 @@ async def on_start(message, command: CommandObject):
         "Навигатор знает, <b>где</b> заправка.\n"
         "Мы знаем, <b>есть ли там топливо сейчас</b>.\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "<b>3 тапа — 10 секунд</b>\n"
-        "1️⃣ Сеть → 2️⃣ Станция → 3️⃣ ✅ или ❌\n"
+        "<b>Открой карту, тапни АЗС, ответь «Есть» или «Нет».</b>\n"
+        "10 секунд — и следующий водитель уже знает.\n"
         "━━━━━━━━━━━━━━━━━━\n\n"
         "<b>Твои баллы</b>\n"
         "• Отчёт — <b>+2</b>\n"

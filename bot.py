@@ -421,6 +421,14 @@ def init_db():
             )
         """)
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS station_overrides (
+                id TEXT PRIMARY KEY,
+                name TEXT, net TEXT, addr TEXT, lat REAL, lng REAL,
+                deleted INTEGER NOT NULL DEFAULT 0,
+                updated_ts INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS photos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, station_id TEXT NOT NULL,
                 file_path TEXT NOT NULL, user_id INTEGER, username TEXT, ts INTEGER NOT NULL
@@ -810,6 +818,36 @@ def delete_custom_station(station_id):
     conn.execute("DELETE FROM reports WHERE station_id=?", (station_id,))
     conn.execute("DELETE FROM feed WHERE station_id=?", (station_id,))
     conn.commit()
+    conn.close()
+
+
+def upsert_station_override(station_id, name=None, net=None, addr=None, lat=None, lng=None, deleted=0):
+    import time as _t
+    conn = db()
+    now = int(_t.time())
+    cur = conn.execute("SELECT id FROM station_overrides WHERE id=?", (station_id,)).fetchone()
+    if cur:
+        conn.execute(
+            "UPDATE station_overrides SET name=COALESCE(?,name), net=COALESCE(?,net), "
+            "addr=COALESCE(?,addr), lat=COALESCE(?,lat), lng=COALESCE(?,lng), "
+            "deleted=?, updated_ts=? WHERE id=?",
+            (name, net, addr, lat, lng, int(deleted), now, station_id),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO station_overrides (id, name, net, addr, lat, lng, deleted, updated_ts) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (station_id, name, net, addr, lat, lng, int(deleted), now),
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_station_overrides():
+    conn = db()
+    rows = conn.execute("SELECT id, name, net, addr, lat, lng, deleted FROM station_overrides").fetchall()
+    conn.close()
+    return rows
     conn.close()
     STATION_BY_ID.pop(station_id, None)
 

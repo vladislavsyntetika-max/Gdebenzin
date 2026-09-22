@@ -224,9 +224,35 @@ def _build_stations_payload():
             "last_photo": last_photo_for(sid),
         }
 
+    try:
+        ov_rows = core.get_station_overrides()
+    except AttributeError:
+        ov_rows = []
+    ov = {}
+    for r in ov_rows:
+        ov[r[0]] = {"name": r[1], "net": r[2], "addr": r[3], "lat": r[4], "lng": r[5], "deleted": r[6]}
+
+    def apply_ov(sid, name, net, addr, lat, lng):
+        o = ov.get(sid)
+        if not o:
+            return (sid, name, net, addr, lat, lng, False)
+        if o["deleted"]:
+            return None
+        return (
+            sid,
+            o["name"] if o["name"] is not None else name,
+            o["net"] if o["net"] is not None else net,
+            o["addr"] if o["addr"] is not None else addr,
+            o["lat"] if o["lat"] is not None else lat,
+            o["lng"] if o["lng"] is not None else lng,
+            False,
+        )
+
     result = []
     for sid, name, net, addr, lat, lng in core.STATIONS:
-        result.append(build_station_obj(sid, name, net, addr, lat, lng))
+        row = apply_ov(sid, name, net, addr, lat, lng)
+        if row:
+            result.append(build_station_obj(row[0], row[1], row[2], row[3], row[4], row[5]))
 
     try:
         custom_rows = core.get_custom_stations()
@@ -234,7 +260,9 @@ def _build_stations_payload():
         custom_rows = []
     for row in custom_rows:
         sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
-        result.append(build_station_obj(sid, name, net, addr, lat, lng))
+        r2 = apply_ov(sid, name, net, addr, lat, lng)
+        if r2:
+            result.append(build_station_obj(r2[0], r2[1], r2[2], r2[3], r2[4], r2[5]))
 
     payload = {
         "stations": result,
@@ -589,6 +617,39 @@ async def handle_delete_station(request):
     return web.json_response({"ok": True})
 
 
+async def handle_edit_station(request):
+    try:
+        data = await request.json()
+        station_id = str(data["station_id"])
+        user_id = int(data.get("user_id") or 0)
+        fields = {}
+        for k in ("name", "net", "addr"):
+            if k in data and data[k] is not None:
+                fields[k] = str(data[k]).strip()[:200]
+        for k in ("lat", "lng"):
+            if k in data and data[k] is not None:
+                v = float(data[k])
+                if (k == "lat" and not -90 <= v <= 90) or (k == "lng" and not -180 <= v <= 180):
+                    return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
+                fields[k] = v
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    admin_id = getattr(core, "ADMIN_ID", 0)
+    if not admin_id or user_id != admin_id:
+        return web.json_response({"ok": False, "error": "forbidden"}, status=403)
+
+    if fields.get("net") and fields["net"] not in core.NETWORKS:
+        return web.json_response({"ok": False, "error": "unknown_network"}, status=400)
+
+    try:
+        core.upsert_station_override(station_id, **fields)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    return web.json_response({"ok": True})
+
+
 async def handle_upload_photo(request):
     try:
         reader = await request.multipart()
@@ -727,6 +788,7 @@ def build_app() -> web.Application:
     app.router.add_post("/api/share-credit", handle_share_credit)
     app.router.add_post("/api/add-station", handle_add_station)
     app.router.add_post("/api/delete-station", handle_delete_station)
+    app.router.add_post("/api/edit-station", handle_edit_station)
     app.router.add_post("/api/upload-photo", handle_upload_photo)
     app.router.add_get("/api/photo/{station_id}/{filename}", handle_get_photo)
     app.router.add_route("OPTIONS", "/api/{tail:.*}", lambda request: web.Response())

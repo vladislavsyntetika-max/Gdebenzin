@@ -1228,7 +1228,8 @@
 
     var isCustom = (s.id + '').indexOf('custom-') === 0;
     var adminDelete = (userId === ADMIN_ID)
-      ? '<button class="action-btn danger" data-act="delete-station"><span class="ai">\uD83D\uDDD1</span><span class="al">Удалить станцию</span></button>'
+      ? '<button class="action-btn" data-act="edit-station"><span class="ai">\u270F\uFE0F</span><span class="al">Редактировать</span></button>' +
+        '<button class="action-btn danger" data-act="delete-station"><span class="ai">\uD83D\uDDD1</span><span class="al">Удалить станцию</span></button>'
       : '';
 
     var photoHtml = '';
@@ -1402,6 +1403,7 @@
     }
     if (act === 'share'){ shareProject(); return; }
     if (act === 'issue'){ if (sheetStation) reportStationIssue(sheetStation.id); return; }
+    if (act === 'edit-station'){ if (sheetStation) openEditStationDialog(sheetStation); return; }
     if (act === 'delete-station'){ if (sheetStation) confirmDeleteStation(sheetStation.id); return; }
     if (act === 'view-photo'){ openLightbox(t.getAttribute('data-url')); return; }
   });
@@ -1992,6 +1994,72 @@
       setTimeout(function(){ openBotDeepLink(payload); }, 150);
     }
   });
+
+  function openEditStationDialog(st){
+    var brands = [
+      { key:'gpn', label:'Газпромнефть' }, { key:'lukoil', label:'Лукойл' },
+      { key:'rosneft', label:'Роснефть' }, { key:'tatneft', label:'Татнефть' },
+      { key:'ptk', label:'ПТК' }, { key:'kirishi', label:'Киришиавтосервис' },
+      { key:'teboil', label:'Teboil' }, { key:'faeton', label:'Фаэтон' },
+      { key:'other', label:'Другое' }
+    ];
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    var html = '<div class="modal"><h3>\u270F\uFE0F Редактировать АЗС</h3>' +
+      '<p style="font-size:12px;color:#8A8F98;">ID: '+escapeHtml(st.id)+'</p>' +
+      '<label style="display:block;font-size:13px;color:#B7BBC1;margin-top:12px;">Название</label>' +
+      '<input id="es-name" type="text" value="'+escapeHtml(st.name)+'" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:15px;box-sizing:border-box;">' +
+      '<label style="display:block;font-size:13px;color:#B7BBC1;margin-top:10px;">Адрес</label>' +
+      '<input id="es-addr" type="text" value="'+escapeHtml(st.addr||'')+'" style="width:100%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:15px;box-sizing:border-box;">' +
+      '<label style="display:block;font-size:13px;color:#B7BBC1;margin-top:10px;">Сеть</label>' +
+      '<div class="brand-grid" id="es-net">';
+    brands.forEach(function(b){
+      html += '<button type="button" class="brand-btn'+(b.key===st.net?' selected':'')+'" data-net="'+b.key+'">'+b.label+'</button>';
+    });
+    html += '</div>' +
+      '<label style="display:block;font-size:13px;color:#B7BBC1;margin-top:10px;">Координаты</label>' +
+      '<input id="es-lat" type="text" value="'+st.lat+'" style="width:48%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:14px;box-sizing:border-box;"> ' +
+      '<input id="es-lng" type="text" value="'+st.lng+'" style="width:48%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:14px;box-sizing:border-box;">' +
+      '<div class="modal-btns">' +
+        '<button type="button" class="modal-secondary" id="es-cancel">Отмена</button>' +
+        '<button type="button" class="modal-primary" id="es-save">Сохранить</button>' +
+      '</div></div>';
+    bg.innerHTML = html;
+    document.body.appendChild(bg);
+
+    var pickedNet = st.net;
+    bg.querySelectorAll('.brand-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        bg.querySelectorAll('.brand-btn').forEach(function(b){ b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        pickedNet = btn.getAttribute('data-net');
+      });
+    });
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#es-cancel').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#es-save').addEventListener('click', async function(){
+      var payload = {
+        station_id: st.id,
+        user_id: userId,
+        name: bg.querySelector('#es-name').value.trim(),
+        addr: bg.querySelector('#es-addr').value.trim(),
+        net: pickedNet,
+        lat: parseFloat(bg.querySelector('#es-lat').value),
+        lng: parseFloat(bg.querySelector('#es-lng').value)
+      };
+      if (!payload.name){ toast('Введите название'); return; }
+      if (isNaN(payload.lat) || isNaN(payload.lng)){ toast('Некорректные координаты'); return; }
+      try {
+        var r = await fetch('/api/edit-station', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        var j = await r.json();
+        if (j && j.ok){ toast('Сохранено'); bg.remove(); closeSheet(); await loadStations(); }
+        else toast('Ошибка: ' + (j.error || ''));
+      } catch(e){ toast('Ошибка сети'); }
+    });
+  }
 
   function openAddStationDialog(lat, lng){
     var brands = [

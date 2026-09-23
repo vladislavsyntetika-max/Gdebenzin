@@ -70,11 +70,11 @@
     cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,.45);
-    font-size: 56px; font-weight: 700; line-height: 1; font-family: inherit;
+    font-size: 32px; font-weight: 700; line-height: 1; font-family: inherit;
   }
   .tool-btn:active { transform: scale(0.96); }
   .tool-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
-  .tool-btn svg { width: 48px; height: 48px; display: block; }
+  #btn-zoom-in, #btn-zoom-out { font-size: 64px; padding: 0 0 6px; }
 
   #bottom {
     position: absolute; bottom: 0; left: 0; right: 0; min-height: 88px;
@@ -511,8 +511,8 @@
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
   #side-tools-left { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
   #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; display: flex; }
-  .tool-btn { width: 64px; height: 64px; font-size: 90px; font-weight: 700; border-radius: 14px; }
-  .tool-btn svg { width: 40px; height: 40px; }
+  .tool-btn { width: 64px; height: 64px; font-size: 26px; font-weight: 700; border-radius: 14px; }
+  #btn-zoom-in, #btn-zoom-out { font-size: 48px; padding: 0 0 4px; }
   #bottom {
     min-height: 44px; flex-direction: row; flex-wrap: nowrap; align-items: center;
     padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0)); gap: 4px 8px;
@@ -613,7 +613,7 @@
   <button class="tgb-close" id="tg-banner-close" aria-label="Закрыть">×</button>
 </div>
 <div id="side-tools-left">
-  <button class="tool-btn" id="btn-locate" title="Моё местоположение">🧭</button>
+  <button class="tool-btn" id="btn-locate" title="Моё местоположение">🛰</button>
   <button class="tool-btn" id="btn-route" title="Маршрут до ближайшей АЗС">↗️</button>
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>

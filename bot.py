@@ -1153,16 +1153,21 @@ async def cb_add_save(cq: CallbackQuery):
                 fuels_lines.append(f"{FUEL_SHORT.get(key, label)}: {STATUS_LABEL[data['fuels'][key]]}")
         fuels_text = "\n".join(fuels_lines) if fuels_lines else "не указано"
         admin_text = (
-            f"🆕 <b>Заявка на новую АЗС #{pid}</b>\n\n"
-            f"Бренд: <b>{name}</b>\n"
-            f"Координаты: <code>{data['lat']:.6f}, {data['lng']:.6f}</code>\n"
-            f"Топливо:\n{fuels_text}\n\n"
-            f"От: {format_display(username)} (id {user_id})"
-        )
-        mod_kb = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
-        ]])
+    f"🆕 <b>Заявка на новую АЗС #{pid}</b>\n\n"
+    f"Бренд: <b>{name}</b>\n"
+    f"Координаты: <code>{data['lat']:.6f}, {data['lng']:.6f}</code>\n"
+    f"Топливо:\n{fuels_text}\n\n"
+    f"От: {format_display(username)} (id {user_id})"
+)
+_map_base = (MAP_URL or "https://azs-spb-bot-syntetika.amvera.io/map").rstrip("/")
+_pin_link = f"{_map_base}?pin={data['lat']:.6f},{data['lng']:.6f}&brand={net_key}"
+mod_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="📍 Открыть на карте", url=_pin_link)],
+    [
+        InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
+        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
+    ],
+])
         try:
             await cq.bot.send_message(ADMIN_ID, admin_text, reply_markup=mod_kb)
         except TelegramBadRequest:

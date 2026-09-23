@@ -2266,6 +2266,27 @@
   });
 
   try { loadStations(); } catch(e){}
+  
+// Deep-link из бота: ?pin=lat,lng — открыть диалог добавления АЗС
+(function(){
+  try {
+    var p = new URLSearchParams(location.search);
+    var pin = p.get('pin');
+    if (!pin) return;
+    var parts = pin.split(',');
+    if (parts.length !== 2) return;
+    var plat = parseFloat(parts[0]);
+    var plng = parseFloat(parts[1]);
+    if (!isFinite(plat) || !isFinite(plng)) return;
+    if (plat < -90 || plat > 90 || plng < -180 || plng > 180) return;
+    setTimeout(function(){
+      map.setView([plat, plng], 17, { animate: false });
+      if (typeof openAddStationDialog === 'function') {
+        openAddStationDialog(plat, plng);
+      }
+    }, 900);
+  } catch(e){}
+})();
   document.addEventListener('visibilitychange', function(){
     if (document.hidden) { flushBatch(true); flushOfflineQueue(); }
     else {

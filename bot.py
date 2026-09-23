@@ -1159,10 +1159,15 @@ async def cb_add_save(cq: CallbackQuery):
             f"Топливо:\n{fuels_text}\n\n"
             f"От: {format_display(username)} (id {user_id})"
         )
-        mod_kb = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
-        ]])
+        _map_base = (MAP_URL or "https://azs-spb-bot-syntetika.amvera.io/map").rstrip("/")
+        _pin_link = f"{_map_base}?pin={data['lat']:.6f},{data['lng']:.6f}&brand={net_key}"
+        mod_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📍 Открыть на карте", web_app=WebAppInfo(url=_pin_link))],
+            [
+                InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
+                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),
+            ],
+        ])
         try:
             await cq.bot.send_message(ADMIN_ID, admin_text, reply_markup=mod_kb)
         except TelegramBadRequest:

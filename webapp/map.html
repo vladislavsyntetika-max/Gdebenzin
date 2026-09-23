@@ -62,7 +62,7 @@
     position: absolute; left: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
-  #side-tools-right { position: absolute; right: 10px; bottom: 188px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+  #side-tools-right { position: absolute; right: 10px; left: auto; bottom: 108px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 72px; height: 72px; border-radius: 18px;
@@ -509,7 +509,7 @@
   #fav-toggle, #install-btn { display: none !important; }
   .search { padding-left: 28px; max-width: calc(100vw - 130px); }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
-  #side-tools-left { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
+  #side-tools-left { left: 8px; right: auto; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
   #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; display: flex; }
   .tool-btn { width: 64px; height: 64px; font-size: 26px; font-weight: 700; border-radius: 14px; }
   #btn-zoom-in, #btn-zoom-out { font-size: 48px; padding: 0 0 4px; }
@@ -2287,9 +2287,6 @@
     if (document.hidden) { flushBatch(true); flushOfflineQueue(); }
     else {
       loadStations(); flushOfflineQueue();
-      var wasOn = false;
-      try { wasOn = localStorage.getItem('azs_locate_on') === '1'; } catch(e){}
-      if (wasOn && !locateActive){ startLocate(); }
     }
   });
   setInterval(flushOfflineQueue, 30000);

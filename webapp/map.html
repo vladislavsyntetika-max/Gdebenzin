@@ -62,7 +62,7 @@
     position: absolute; left: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
-  #side-tools-right { position: absolute; right: 10px; bottom: 28px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+  #side-tools-right { position: absolute; right: 10px; bottom: 200px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 72px; height: 72px; border-radius: 18px;
@@ -1998,6 +1998,7 @@
       '<label style="display:block;font-size:13px;color:#B7BBC1;margin-top:10px;">Координаты</label>' +
       '<input id="es-lat" type="text" value="'+st.lat+'" style="width:48%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:14px;box-sizing:border-box;"> ' +
       '<input id="es-lng" type="text" value="'+st.lng+'" style="width:48%;padding:10px;border-radius:10px;border:1px solid #2B3036;background:#1E2227;color:#E8E6E1;font-size:14px;box-sizing:border-box;">' +
+      '<button type="button" id="es-pick" style="width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px dashed #FFB00055;background:#2C2C2E;color:#FFB000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📍 Указать точку на карте</button>' +
       '<div class="modal-btns">' +
         '<button type="button" class="modal-secondary" id="es-cancel">Отмена</button>' +
         '<button type="button" class="modal-primary" id="es-save">Сохранить</button>' +
@@ -2015,6 +2016,19 @@
     });
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     bg.querySelector('#es-cancel').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#es-pick').addEventListener('click', function(){
+      var keep = {
+        name: bg.querySelector('#es-name').value,
+        addr: bg.querySelector('#es-addr').value,
+        net: pickedNet
+      };
+      bg.remove();
+      startPinMode().then(function(pos){
+        if (!pos) { openEditStationDialog(st); return; }
+        var st2 = Object.assign({}, st, { name: keep.name, addr: keep.addr, net: keep.net, lat: pos.lat, lng: pos.lng });
+        openEditStationDialog(st2);
+      });
+    });
     bg.querySelector('#es-save').addEventListener('click', async function(){
       var payload = {
         station_id: st.id,

@@ -59,18 +59,18 @@
   .icon-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
 
   #side-tools-left {
-    position: absolute; right: 10px; bottom: 108px; z-index: 1000;
+    position: absolute; left: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
   #side-tools-right { position: absolute; right: 10px; top: 140px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
-    width: 72px; height: 72px; border-radius: 18px; font-size: 90px; font-weight: 700;
+    width: 72px; height: 72px; border-radius: 18px;
     background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1;
     cursor: pointer; padding: 0;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,.45);
-    font-size: 24px; font-weight: 700; line-height: 1; font-family: inherit;
+    font-size: 56px; font-weight: 700; line-height: 1; font-family: inherit;
   }
   .tool-btn:active { transform: scale(0.96); }
   .tool-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
@@ -613,37 +613,14 @@
   <button class="tgb-close" id="tg-banner-close" aria-label="Закрыть">×</button>
 </div>
 <div id="side-tools-left">
-  <button class="tool-btn" id="btn-locate" title="Моё местоположение">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M12 2 L19 22 L12 17 L5 22 Z" fill="currentColor" stroke="currentColor"/>
-    </svg>
-  </button>
-  <button class="tool-btn" id="btn-route" title="Маршрут до ближайшей АЗС">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 21 V13 a3 3 0 0 1 3 -3 h4" />
-      <path d="M13 7 L17 10 L13 13" />
-      <path d="M6 21 h9" />
-    </svg>
-  </button>
+  <button class="tool-btn" id="btn-locate" title="Моё местоположение">🧭</button>
+  <button class="tool-btn" id="btn-route" title="Маршрут до ближайшей АЗС">↗️</button>
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
 <div id="side-tools-right">
-  <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12 h8 M7 8 v8" />
-      <path d="M15 21 V7 a1.5 1.5 0 0 1 1.5 -1.5 h3 a1.5 1.5 0 0 1 1.5 1.5 V21" />
-      <path d="M14 21 h7" />
-      <path d="M15 11 h6" />
-    </svg>
-  </button>
-  <button class="tool-btn" id="nearby-btn" title="Что рядом">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
-    </svg>
-  </button>
+  <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">⛽</button>
+  <button class="tool-btn" id="nearby-btn" title="Что рядом">📍</button>
   <button class="tool-btn" id="support-btn" title="Поддержать проект">
     🙏
   </button>

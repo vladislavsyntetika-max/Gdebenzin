@@ -1162,7 +1162,7 @@ async def cb_add_save(cq: CallbackQuery):
         _map_base = (MAP_URL or "https://azs-spb-bot-syntetika.amvera.io/map").rstrip("/")
         _pin_link = f"{_map_base}?pin={data['lat']:.6f},{data['lng']:.6f}&brand={net_key}"
         mod_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📍 Открыть на карте", url=_pin_link)],
+            [InlineKeyboardButton(text="📍 Открыть на карте", web_app=WebAppInfo(url=_pin_link))],
             [
                 InlineKeyboardButton(text="✅ Одобрить", callback_data=f"appmod:{pid}:approve"),
                 InlineKeyboardButton(text="❌ Отклонить", callback_data=f"appmod:{pid}:reject"),

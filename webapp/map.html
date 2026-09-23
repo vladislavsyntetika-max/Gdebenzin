@@ -62,7 +62,7 @@
     position: absolute; left: 10px; bottom: 108px; z-index: 1000;
     display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
   }
-  #side-tools-right { position: absolute; right: 10px; bottom: 200px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+  #side-tools-right { position: absolute; right: 10px; bottom: 28px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
   .tool-btn.accent { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .tool-btn {
     width: 72px; height: 72px; border-radius: 18px;
@@ -890,6 +890,16 @@
       var dur = durMs / 1000;
       osc.frequency.setValueAtTime(freqStart, now);
       osc.frequency.exponentialRampToValueAtTime(freqEnd, now + dur);
+      var osc2 = _audioCtx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freqStart * 2, now);
+      osc2.frequency.exponentialRampToValueAtTime(freqEnd * 2, now + dur);
+      var gain2 = _audioCtx.createGain();
+      gain2.gain.setValueAtTime(0.0001, now);
+      gain2.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      osc2.connect(gain2); gain2.connect(_audioCtx.destination);
+      osc2.start(now); osc2.stop(now + dur + 0.02);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(0.5, now + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);

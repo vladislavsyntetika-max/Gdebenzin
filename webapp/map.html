@@ -120,15 +120,16 @@
     padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0));
     max-height: calc(100vh - 100px); overflow-y: auto; -webkit-overflow-scrolling: touch;
     box-shadow: 0 -8px 32px rgba(0,0,0,.75);
-    border-top: 6px solid var(--sheet-accent, #FFB000);
+    border-top: 8px solid var(--sheet-accent, #FFB000);
     transform: translateY(110%);
     transition: transform .25s ease;
     display: flex; flex-direction: column;
   }
   #sheet.show { transform: translateY(0); }
+  #sheet::before { content:''; position:absolute; top:0; left:0; right:0; height:100px; background:var(--sheet-accent,#FFB000); opacity:0.22; pointer-events:none; border-top-left-radius:14px; border-top-right-radius:14px; }
 
   .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: sticky; top: -12px; background: #1A1D21; z-index: 5; padding-top: 12px; margin-top: -12px; padding-bottom: 4px; }
-  .sh-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; vertical-align: middle; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
+  .sh-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 10px; vertical-align: middle; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
   .sh-brand {
     font-size: 28px;
     font-weight: 800;
@@ -162,6 +163,7 @@
   .sh-close:active { background: #FFB000; color: #14171A; }
 
   .sh-addr { font-size: 14px; color: #8A8F98; margin: 6px 0 10px; line-height: 1.35; }
+  .sheet-stats, .sheet-promo { display: none !important; }
 
   .voice-banner {
     display: none;
@@ -221,7 +223,7 @@
   .action-btn.full { grid-column: 1 / -1; }
 
   .sh-photo { margin-top: 6px; }
-  .stell-photo { width: 100%; max-height: 120px; object-fit: cover; border-radius: 10px; display: block; cursor: zoom-in; background: #0F1215; }
+  .stell-photo { width: 100%; max-height: 70px; object-fit: cover; border-radius: 10px; display: block; cursor: zoom-in; background: #0F1215; }
   .photo-meta { font-size: 12px; color: #8A8F98; margin-top: 4px; }
 
   /* Реклама проекта в попапе */
@@ -537,7 +539,7 @@
     padding: 8px 12px 10px;
     border-radius: 16px;
     overflow: hidden;
-    border-top: 6px solid var(--sheet-accent, #FFB000);
+    border-top: 8px solid var(--sheet-accent, #FFB000);
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
     opacity: 0;
@@ -941,12 +943,10 @@
   function freshnessInfo(ts){
     if (!ts) return { color: '#6B6F76', label: 'нет данных' };
     var diffMin = (Date.now() / 1000 - ts) / 60;
-    if (diffMin < 30) return { color: '#4CAF7D', label: 'только что' };
-    if (diffMin < 120) return { color: '#8BC34A', label: Math.round(diffMin) + ' мин' };
-    if (diffMin < 480) return { color: '#FFC107', label: Math.round(diffMin / 60) + ' ч' };
-    if (diffMin < 1440) return { color: '#FF9800', label: 'вчера' };
-    if (diffMin < 2880) return { color: '#8A8F98', label: '2 дня' };
-    return { color: '#6B6F76', label: 'архив' };
+    if (diffMin < 1) return { color: '#4CAF7D', label: 'только что' };
+    if (diffMin < 60) return { color: '#8BC34A', label: Math.round(diffMin) + ' мин назад' };
+    if (diffMin < 1440) return { color: '#FFC107', label: Math.round(diffMin / 60) + ' ч назад' };
+    return { color: '#8A8F98', label: Math.round(diffMin / 1440) + ' дн назад' };
   }
 
   // =====================================================

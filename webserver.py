@@ -606,11 +606,11 @@ async def handle_delete_station(request):
     if not admin_id or user_id != admin_id:
         return web.json_response({"ok": False, "error": "forbidden"}, status=403)
 
-    if not station_id.startswith("custom-"):
-        return web.json_response({"ok": False, "error": "only_custom_stations"}, status=400)
-
     try:
-        core.delete_custom_station(station_id)
+        if station_id.startswith("custom-"):
+            core.delete_custom_station(station_id)
+        else:
+            core.upsert_station_override(station_id, deleted=1)
     except AttributeError:
         return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
 

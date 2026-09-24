@@ -268,7 +268,7 @@ def _build_stations_payload():
         dps_rows = core.get_active_dps_reports(ttl_sec=1800)
     except AttributeError:
         dps_rows = []
-    dps_list = [{"lat": r[0], "lng": r[1], "ts": r[2]} for r in dps_rows]
+    dps_list = [{"lat": r[0], "lng": r[1], "ts": r[2], "kind": (r[3] if len(r) > 3 else "dps")} for r in dps_rows]
 
     payload = {
         "stations": result,
@@ -608,6 +608,9 @@ async def handle_dps_report(request):
         lng = float(data["lng"])
         user_id = int(data.get("user_id") or 0)
         username = str(data.get("username") or "")[:64]
+        kind = str(data.get("kind") or "dps")
+        if kind not in ("dps", "camera"):
+            kind = "dps"
     except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return web.json_response({"ok": False, "error": "bad_request"}, status=400)
 
@@ -615,7 +618,7 @@ async def handle_dps_report(request):
         return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
 
     try:
-        core.save_dps_report(lat, lng, user_id, username)
+        core.save_dps_report(lat, lng, user_id, username, kind=kind)
     except AttributeError:
         return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
 

@@ -455,6 +455,10 @@ def init_db():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_dps_ts ON dps_reports(ts)")
+        try:
+            conn.execute("ALTER TABLE dps_reports ADD COLUMN kind TEXT NOT NULL DEFAULT 'dps'")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
         log.info("init_db: схема БД готова, WAL активен")
     finally:
@@ -527,12 +531,14 @@ def get_recent_feed(limit=12):
     return rows
 
 
-def save_dps_report(lat, lng, user_id, username=None):
+def save_dps_report(lat, lng, user_id, username=None, kind="dps"):
+    if kind not in ("dps", "camera"):
+        kind = "dps"
     now = int(time.time())
     conn = db()
     conn.execute(
-        "INSERT INTO dps_reports (lat, lng, user_id, username, ts) VALUES (?,?,?,?,?)",
-        (float(lat), float(lng), user_id or 0, username, now),
+        "INSERT INTO dps_reports (lat, lng, user_id, username, ts, kind) VALUES (?,?,?,?,?,?)",
+        (float(lat), float(lng), user_id or 0, username, now, kind),
     )
     conn.commit()
     conn.close()
@@ -543,7 +549,7 @@ def get_active_dps_reports(ttl_sec=1800):
     cutoff = int(time.time()) - ttl_sec
     conn = db()
     rows = conn.execute(
-        "SELECT lat, lng, ts FROM dps_reports WHERE ts > ? ORDER BY ts DESC LIMIT 200",
+        "SELECT lat, lng, ts, kind FROM dps_reports WHERE ts > ? ORDER BY ts DESC LIMIT 200",
         (cutoff,),
     ).fetchall()
     conn.close()

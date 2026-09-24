@@ -118,9 +118,9 @@
     border-top-left-radius: 18px; border-top-right-radius: 18px;
     z-index: 2500;
     padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0));
-    max-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 100px); overflow-y: auto; -webkit-overflow-scrolling: touch;
     box-shadow: 0 -8px 32px rgba(0,0,0,.75);
-    border-top: 3px solid var(--sheet-accent, #FFB000);
+    border-top: 6px solid var(--sheet-accent, #FFB000);
     transform: translateY(110%);
     transition: transform .25s ease;
     display: flex; flex-direction: column;
@@ -128,6 +128,7 @@
   #sheet.show { transform: translateY(0); }
 
   .sh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; position: sticky; top: -12px; background: #1A1D21; z-index: 5; padding-top: 12px; margin-top: -12px; padding-bottom: 4px; }
+  .sh-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; vertical-align: middle; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
   .sh-brand {
     font-size: 28px;
     font-weight: 800;
@@ -536,7 +537,7 @@
     padding: 8px 12px 10px;
     border-radius: 16px;
     overflow: hidden;
-    border-top: 3px solid var(--sheet-accent, #FFB000);
+    border-top: 6px solid var(--sheet-accent, #FFB000);
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
     opacity: 0;
@@ -686,7 +687,7 @@
     rosneft: '#C98A2E',
     tatneft: '#8B5FBF',
     ptk: '#E07A3F',
-    faeton: '#4A4F55',
+    faeton: '#8A8F98',
     kirishi: '#C7A400',
     teboil: '#2F7FBF',
     other: '#8A8F98'
@@ -1192,12 +1193,14 @@
       var isOk = isKnown && displayStatus === 'ok';
       var isNone = isKnown && displayStatus === 'none';
 
+      var _fi = isKnown ? freshnessInfo(f.ts || 0) : freshnessInfo(0);
       fuelsHtml += '<div class="fuel-cell">' +
         '<div class="fuel-name">'+escapeHtml(shortLabel)+'</div>' +
         '<div class="fuel-choices">' +
           '<button class="fuel-ok'+(isOk?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="ok">ЕСТЬ</button>' +
           '<button class="fuel-none'+(isNone?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="none">НЕТ</button>' +
         '</div>' +
+        '<div class="fuel-fresh"><span class="dot" style="background:'+_fi.color+'"></span>'+escapeHtml(_fi.label)+'</div>' +
       '</div>';
     });
     fuelsHtml += '</div>';
@@ -1224,7 +1227,7 @@
     body.innerHTML =
       '<div class="sh-head">' +
         '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">\uD83C\uDFA4</button>' +
-        '<div class="sh-brand">'+escapeHtml(s.name)+'</div>' +
+        '<div class="sh-brand" style="color:var(--sheet-accent)"><span class="sh-dot" style="background:var(--sheet-accent)"></span>'+escapeHtml(s.name)+'</div>' +
         '<div class="sh-head-right">' +
           '<button class="sh-fav'+(isFavNow?' on':'')+'" data-act="fav" title="В избранное">'+favGlyph+'</button>' +
           '<button class="sh-close" data-act="close-sheet">\u2715</button>' +

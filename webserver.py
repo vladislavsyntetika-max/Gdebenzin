@@ -264,6 +264,12 @@ def _build_stations_payload():
         if r2:
             result.append(build_station_obj(r2[0], r2[1], r2[2], r2[3], r2[4], r2[5]))
 
+    try:
+        dps_rows = core.get_active_dps_reports(ttl_sec=1800)
+    except AttributeError:
+        dps_rows = []
+    dps_list = [{"lat": r[0], "lng": r[1], "ts": r[2]} for r in dps_rows]
+
     payload = {
         "stations": result,
         "networks": core.NETWORKS,
@@ -271,6 +277,7 @@ def _build_stations_payload():
         "statuses": core.STATUSES,
         "station_flags": core.STATION_FLAGS,
         "reports_24h": reports_24h,
+        "dps": dps_list,
     }
     return payload
 
@@ -594,6 +601,27 @@ async def handle_add_station(request):
     })
 
 
+async def handle_dps_report(request):
+    try:
+        data = await request.json()
+        lat = float(data["lat"])
+        lng = float(data["lng"])
+        user_id = int(data.get("user_id") or 0)
+        username = str(data.get("username") or "")[:64]
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
+
+    try:
+        core.save_dps_report(lat, lng, user_id, username)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    return web.json_response({"ok": True})
+
+
 async def handle_delete_station(request):
     try:
         data = await request.json()
@@ -781,6 +809,7 @@ def build_app() -> web.Application:
     app.router.add_get("/apple-touch-icon-precomposed.png", handle_apple_icon)
     app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/stations", handle_stations)
+    app.router.add_post("/api/dps-report", handle_dps_report)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)

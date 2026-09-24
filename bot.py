@@ -446,6 +446,15 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_ts ON feed(ts)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_feed_station_fuel ON feed(station_id, fuel, ts DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_points_log_user_station ON points_log(user_id, station_id, ts)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS dps_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lat REAL NOT NULL, lng REAL NOT NULL,
+                user_id INTEGER, username TEXT,
+                ts INTEGER NOT NULL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dps_ts ON dps_reports(ts)")
         conn.commit()
         log.info("init_db: схема БД готова, WAL активен")
     finally:
@@ -513,6 +522,29 @@ def get_recent_feed(limit=12):
     conn = db()
     rows = conn.execute(
         "SELECT ts, station_id, fuel, status, username FROM feed ORDER BY ts DESC LIMIT ?", (limit,)
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def save_dps_report(lat, lng, user_id, username=None):
+    now = int(time.time())
+    conn = db()
+    conn.execute(
+        "INSERT INTO dps_reports (lat, lng, user_id, username, ts) VALUES (?,?,?,?,?)",
+        (float(lat), float(lng), user_id or 0, username, now),
+    )
+    conn.commit()
+    conn.close()
+    return now
+
+
+def get_active_dps_reports(ttl_sec=1800):
+    cutoff = int(time.time()) - ttl_sec
+    conn = db()
+    rows = conn.execute(
+        "SELECT lat, lng, ts FROM dps_reports WHERE ts > ? ORDER BY ts DESC LIMIT 200",
+        (cutoff,),
     ).fetchall()
     conn.close()
     return rows

@@ -591,6 +591,19 @@
   .mk-fresh-s::after{--mk-w:14px;}
   .mk-fresh-m::after{--mk-w:18px;}
   .mk-fresh-l::after{--mk-w:22px;}
+
+#onboard { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+#onboard.show { display: flex; }
+.ob-card { width: min(420px, 92vw); background: #1C1C1E; border-radius: 22px; padding: 36px 24px 24px; text-align: center; position: relative; box-shadow: 0 16px 48px rgba(0,0,0,.7); }
+.ob-skip { position: absolute; top: 12px; right: 16px; background: transparent; border: none; color: #8E8E93; font-size: 14px; cursor: pointer; font-family: inherit; padding: 8px; }
+.ob-art { font-size: 92px; line-height: 1; margin-bottom: 22px; }
+.ob-title { font-size: 22px; font-weight: 700; color: #FFFFFF; margin-bottom: 10px; letter-spacing: -0.3px; }
+.ob-text { font-size: 15px; color: #B7BBC1; line-height: 1.5; min-height: 66px; }
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin: 24px 0 18px; }
+.ob-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.2); transition: all .2s; }
+.ob-dot.on { background: #FFB000; width: 22px; border-radius: 4px; }
+.ob-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: #FFB000; color: #1C1C1E; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.ob-btn:active { background: #E09A00; }
 </style>
 </head>
 <body>
@@ -2296,7 +2309,64 @@
   setInterval(flushOfflineQueue, 30000);
   window.addEventListener('online', flushOfflineQueue);
 
+
+  (function(){
+    var ONBOARD_KEY = 'azs_onboard_v1';
+    try { if (localStorage.getItem(ONBOARD_KEY) === '1') return; } catch(e){ return; }
+    var slides = [
+      { art: '🚗', title: 'Привет!', text: 'Карта наличия топлива на АЗС СПб и ЛО. Отметки ставят сами водители — как ты.' },
+      { art: '📡', title: 'Включи GPS', text: 'Кнопка со спутником в левой колонке. Подсветится жёлтым — слежение включено.' },
+      { art: '⛽', title: 'Проезжаешь мимо АЗС', text: 'Попап открывается сам. Отметь что видишь: Есть или Нет по каждому топливу.' },
+      { art: '🎯', title: 'Перед выездом', text: '«Что рядом» — 12 ближайших АЗС с топливом. «Маршрут» построит путь.' },
+      { art: '🏆', title: 'За отчёты — баллы', text: 'Новые АЗС +50, исправления +20, разведка +5. Звания и топ недели — в боте.' }
+    ];
+    var idx = 0;
+    var el = document.getElementById('onboard');
+    var artEl = document.getElementById('ob-art');
+    var titleEl = document.getElementById('ob-title');
+    var textEl = document.getElementById('ob-text');
+    var dotsEl = document.getElementById('ob-dots');
+    var nextBtn = document.getElementById('ob-next');
+    var skipBtn = document.getElementById('ob-skip');
+    var dotHtml = '';
+    for (var i = 0; i < slides.length; i++) dotHtml += '<div class="ob-dot"></div>';
+    dotsEl.innerHTML = dotHtml;
+    var dotEls = dotsEl.querySelectorAll('.ob-dot');
+    function render(){
+      var s = slides[idx];
+      artEl.textContent = s.art;
+      titleEl.textContent = s.title;
+      textEl.textContent = s.text;
+      for (var i = 0; i < dotEls.length; i++) dotEls[i].classList.toggle('on', i === idx);
+      nextBtn.textContent = (idx === slides.length - 1) ? 'Понятно' : 'Дальше';
+    }
+    function close(){
+      el.classList.remove('show');
+      try { localStorage.setItem(ONBOARD_KEY, '1'); } catch(e){}
+    }
+    nextBtn.addEventListener('click', function(){
+      if (idx === slides.length - 1) { close(); return; }
+      idx++; render();
+    });
+    skipBtn.addEventListener('click', close);
+    setTimeout(function(){
+      if (sheetStation) return;
+      el.classList.add('show');
+      render();
+    }, 1500);
+  })();
+
 })();
 </script>
+<div id="onboard">
+  <div class="ob-card">
+    <button class="ob-skip" id="ob-skip">Пропустить</button>
+    <div class="ob-art" id="ob-art"></div>
+    <div class="ob-title" id="ob-title"></div>
+    <div class="ob-text" id="ob-text"></div>
+    <div class="ob-dots" id="ob-dots"></div>
+    <button class="ob-btn" id="ob-next">Дальше</button>
+  </div>
+</div>
 </body>
 </html>

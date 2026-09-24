@@ -73,6 +73,9 @@
     font-size: 32px; font-weight: 700; line-height: 1; font-family: inherit;
   }
   .tool-btn:active { transform: scale(0.96); }
+  .dps-marker { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,.6); border: 2px solid #14171A; }
+  .dps-marker.dps { background: #1E88E5; }
+  .dps-marker.camera { background: #FFB000; }
   .tool-btn.active { background: #FFB000; color: #14171A; border-color: #FFB000; }
   #btn-zoom-in, #btn-zoom-out { font-size: 64px; padding: 0 0 6px; }
 
@@ -637,6 +640,8 @@
 <div id="side-tools-right">
   <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">⛽</button>
   <button class="tool-btn" id="nearby-btn" title="Что рядом">🧲</button>
+    <button class="tool-btn" id="dps-btn" title="DPS">🛡</button>
+    <button class="tool-btn" id="cam-btn" title="Camera">📷</button>
   <button class="tool-btn" id="support-btn" title="Поддержать проект">
     🙏
   </button>
@@ -797,6 +802,41 @@
   map.on('zoomstart', dropFollow);
   map.getContainer().addEventListener('touchstart', function(e){ if (e.touches && e.touches.length > 1) dropFollow(); }, { passive: true });
   map.on('zoomend', applyMarkerOpacity);
+
+  var dpsData = [];
+  var dpsMarkers = [];
+
+  function sendDpsReport(kind){
+    var pos = lastPosition || map.getCenter();
+    var lat = pos.lat, lng = pos.lng;
+    fetch("/api/dps-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: lat, lng: lng, user_id: userId, username: effectiveUsername || "", kind: kind })
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok){
+        toast(kind === "dps" ? "Shield placed" : "Camera placed");
+        dpsData.push({ lat: lat, lng: lng, ts: Math.floor(Date.now()/1000), kind: kind });
+        renderDpsMarkers();
+      } else { toast("Failed"); }
+    }).catch(function(){ toast("Network error"); });
+  }
+
+  function renderDpsMarkers(){
+    dpsMarkers.forEach(function(m){ map.removeLayer(m); });
+    dpsMarkers = [];
+    if (!dpsData || !dpsData.length) return;
+    dpsData.forEach(function(d){
+      var icon = L.divIcon({
+        className: "",
+        html: "<div class=\"dps-marker " + (d.kind === "camera" ? "camera" : "dps") + "\">" + (d.kind === "camera" ? "📷" : "🛡") + "</div>",
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+      });
+      var m = L.marker([d.lat, d.lng], { icon: icon, interactive: false, zIndexOffset: 500 }).addTo(map);
+      dpsMarkers.push(m);
+    });
+  }
 
   function statusFor(fuels, fuelKey){
     if (fuelKey !== 'all'){
@@ -1752,6 +1792,7 @@
       fuelsData = Array.isArray(data.fuels) ? data.fuels : [];
       statusesData = Array.isArray(data.statuses) ? data.statuses : [];
       stationFlagsData = Array.isArray(data.station_flags) ? data.station_flags : [];
+      dpsData = Array.isArray(data.dps) ? data.dps : [];
       networksData = (data.networks && typeof data.networks === 'object') ? data.networks : {};
       document.getElementById('stat-reports-24h').textContent = data.reports_24h || 0;
       lastGlobalStats = {
@@ -1765,6 +1806,7 @@
       };
       fillFilterOptions();
       renderMarkers();
+      renderDpsMarkers();
       var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
       if (pts.length && !lastPosition) map.fitBounds(pts, { padding:[30,30] });
       if (!window.__onboarding_done) {
@@ -1887,6 +1929,8 @@
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
   }
 
+  document.getElementById('dps-btn').addEventListener('click', function(){ sendDpsReport('dps'); });
+  document.getElementById('cam-btn').addEventListener('click', function(){ sendDpsReport('camera'); });
   document.getElementById('btn-locate').addEventListener('click', function(){
     if (locateActive){
       if (!followMode && lastPosition){

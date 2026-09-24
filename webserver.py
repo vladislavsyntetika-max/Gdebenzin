@@ -455,6 +455,18 @@ async def handle_report_batch(request):
             core.save_report(station_id, fuel_key, status_val, user_id, username)
             saved_fuel = True
 
+    # Автоснятие остальных очередей: если активен один flag_queue_N — остальные false
+    queue_flags = ["flag_queue_1", "flag_queue_2", "flag_queue_3"]
+    active_queue = None
+    for fq in queue_flags:
+        if fq in flags and flags[fq]:
+            active_queue = fq
+            break
+    if active_queue:
+        for fq in queue_flags:
+            if fq != active_queue:
+                flags[fq] = False
+
     for flag_key, on in flags.items():
         if flag_key in flag_keys:
             core.save_report(station_id, flag_key, "on" if on else "off", user_id, username)

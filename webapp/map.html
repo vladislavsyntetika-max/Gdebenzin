@@ -1224,7 +1224,12 @@
     var queueLevel = 0;
     ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk, i){
       var fl = s.flags ? s.flags[fk] : null;
-      var on = (fk in sheetPendingFlags) ? sheetPendingFlags[fk] : (fl && fl.on);
+      var on;
+      if (fk in sheetPendingFlags) {
+        on = (sheetPendingFlags[fk] === true || sheetPendingFlags[fk] === 'on');
+      } else {
+        on = (fl && fl.on) ? true : false;
+      }
       if (on) queueLevel = i + 1;
     });
     var flagsHtml = '<div class="sh-flags">' +
@@ -1427,9 +1432,9 @@
       var level = parseInt(t.getAttribute('data-level'), 10) || 0;
       if (sheetStation && sheetStation.flags){
         ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk, i){
-          var want = (i + 1 === level) ? 'on' : 'off';
+          var want = (i + 1 === level);
           if (!sheetStation.flags[fk]) sheetStation.flags[fk] = {on:false, ts:0};
-          sheetStation.flags[fk].on = (want === 'on');
+          sheetStation.flags[fk].on = want;
           sheetStation.flags[fk].ts = Math.floor(Date.now() / 1000);
           sheetPendingFlags[fk] = want;
         });
@@ -1811,6 +1816,15 @@
       statusesData = Array.isArray(data.statuses) ? data.statuses : [];
       stationFlagsData = Array.isArray(data.station_flags) ? data.station_flags : [];
       dpsData = Array.isArray(data.dps) ? data.dps : [];
+      // Нормализуем flag_queue_*: booleans
+      (data.stations || []).forEach(function(st){
+        if (!st.flags) return;
+        ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk){
+          if (st.flags[fk] && typeof st.flags[fk].on !== 'boolean') {
+            st.flags[fk].on = (st.flags[fk].on === true || st.flags[fk].on === 'on');
+          }
+        });
+      });
       networksData = (data.networks && typeof data.networks === 'object') ? data.networks : {};
       document.getElementById('stat-reports-24h').textContent = data.reports_24h || 0;
       lastGlobalStats = {

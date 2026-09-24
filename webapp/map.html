@@ -180,7 +180,7 @@
   .voice-banner .vb-text { color: #E8E6E1; }
   .voice-banner .vb-hint { font-size: 11px; color: #8A8F98; margin-top: 4px; }
 
-  .sh-flags { display: flex; gap: 8px; margin-bottom: 10px; }
+  .sh-flags { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
   .flag-btn {
     flex: 1; padding: 13px 10px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227;
@@ -1221,16 +1221,18 @@
     var accent = NETWORK_COLORS[s.net] || '#FFB000';
     document.getElementById('sheet').style.setProperty('--sheet-accent', accent);
 
-    var flagBtns = '';
-    (stationFlagsData || []).forEach(function(fp){
-      var fkey = fp[0], flabel = fp[1];
-      if (fkey === 'flag_limit') return;
-      var fl = s.flags ? s.flags[fkey] : null;
-      var on = (fkey in sheetPendingFlags) ? sheetPendingFlags[fkey] : (fl && fl.on);
-      var short = FLAG_SHORT[fkey] || flabel;
-      flagBtns += '<button class="flag-btn'+(on?' on':'')+'" data-act="flag" data-flag="'+escapeHtml(fkey)+'">'+escapeHtml(short)+'</button>';
+    var queueLevel = 0;
+    ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk, i){
+      var fl = s.flags ? s.flags[fk] : null;
+      var on = (fk in sheetPendingFlags) ? sheetPendingFlags[fk] : (fl && fl.on);
+      if (on) queueLevel = i + 1;
     });
-    var flagsHtml = flagBtns ? '<div class="sh-flags">'+flagBtns+'</div>' : '';
+    var flagsHtml = '<div class="sh-flags">' +
+      '<button class="flag-btn'+(queueLevel===0?' on':'')+'" data-act="queue" data-level="0">Нет</button>' +
+      '<button class="flag-btn'+(queueLevel===1?' on':'')+'" data-act="queue" data-level="1">🚗</button>' +
+      '<button class="flag-btn'+(queueLevel===2?' on':'')+'" data-act="queue" data-level="2">🚗🚗</button>' +
+      '<button class="flag-btn'+(queueLevel===3?' on':'')+'" data-act="queue" data-level="3">🚗🚗🚗</button>' +
+    '</div>';
 
     var FUEL_ORDER = ['f92', 'f95', 'dt', 'f98'];
     var fuelsHtml = '<div class="sh-fuels">';
@@ -1419,6 +1421,22 @@
       var status = t.getAttribute('data-status');
       // ВСЕГДА обновляем статус (не переключаем)
       queueChange(fuelKey, status);
+      return;
+    }
+    if (act === 'queue'){
+      var level = parseInt(t.getAttribute('data-level'), 10) || 0;
+      if (sheetStation && sheetStation.flags){
+        ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk, i){
+          var want = (i + 1 === level) ? 'on' : 'off';
+          if (!sheetStation.flags[fk]) sheetStation.flags[fk] = {on:false, ts:0};
+          sheetStation.flags[fk].on = (want === 'on');
+          sheetStation.flags[fk].ts = Math.floor(Date.now() / 1000);
+          sheetPendingFlags[fk] = want;
+        });
+      }
+      renderSheet();
+      scheduleCloseTimer();
+      scheduleBatchSave();
       return;
     }
     if (act === 'flag'){

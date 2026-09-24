@@ -57,7 +57,7 @@ FUEL_SHORT = {"f92": "92", "f95": "95", "f98": "98", "dt": "ДТ"}
 STATUSES = [("ok","✅ Есть"),("low","🟡 Мало"),("none","❌ Нет")]
 STATUS_LABEL = {k: v for k, v in STATUSES}
 
-STATION_FLAGS = [("flag_queue","🚗 Очередь"),("flag_limit","⛔ Лимит на литры")]
+STATION_FLAGS = [("flag_queue_1","🚗"),("flag_queue_2","🚗🚗"),("flag_queue_3","🚗🚗🚗"),("flag_limit","⛔ Лимит на литры")]
 STATION_FLAG_LABEL = {k: v for k, v in STATION_FLAGS}
 
 POINTS_REPORT = 2

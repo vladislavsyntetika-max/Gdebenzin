@@ -550,7 +550,7 @@
   .sh-head { grid-template-columns: 40px 1fr auto; gap: 6px; margin-bottom: 2px; }
   .sh-mic, .sh-close { width: 40px; height: 40px; font-size: 20px; border-radius: 10px; }
   .sh-fav { width: 40px; height: 40px; font-size: 20px; }
-  .sh-brand { font-size: clamp(16px, 2.6vw, 26px); padding: 0; }
+  .sh-brand { font-size: clamp(14px, 2.2vw, 22px); padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sh-addr { font-size: 12px; margin: 0 0 6px; text-align: center; color: #8A8F98; }
   .sheet-stats { display: none !important; }
   .sheet-promo { display: none !important; }
@@ -1227,7 +1227,7 @@
     body.innerHTML =
       '<div class="sh-head">' +
         '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">\uD83C\uDFA4</button>' +
-        '<div class="sh-brand" style="color:var(--sheet-accent)"><span class="sh-dot" style="background:var(--sheet-accent)"></span>'+escapeHtml(s.name)+'</div>' +
+        '<div class="sh-brand" style="color:var(--sheet-accent)">'+escapeHtml(s.name)+'</div>' +
         '<div class="sh-head-right">' +
           '<button class="sh-fav'+(isFavNow?' on':'')+'" data-act="fav" title="В избранное">'+favGlyph+'</button>' +
           '<button class="sh-close" data-act="close-sheet">\u2715</button>' +

@@ -136,15 +136,19 @@
   <div class="features">
     <div class="feature">
       <div class="ico">⚡</div>
-      <div class="txt"><b>3 тапа — и готово</b>Выбери сеть → станцию → «Есть» или «Нет». Отчёт сразу видят другие водители.</div>
+      <div class="txt"><b>10 секунд на отчёт</b>Проезжаешь мимо АЗС — попап открывается сам. Отметил «Есть» или «Нет» — следующий водитель уже знает.</div>
+    </div>
+    <div class="feature">
+      <div class="ico">🚗</div>
+      <div class="txt"><b>Очередь и лимиты</b>Видно, сколько машин стоит: 1, 2 или 3+. Плюс лимиты на литры — если кто-то отметил.</div>
+    </div>
+    <div class="feature">
+      <div class="ico">🛡</div>
+      <div class="txt"><b>ДПС и камеры</b>Отмечай экипажи ДПС и камеры — метки видят все водители рядом. Работает в обе стороны.</div>
     </div>
     <div class="feature">
       <div class="ico">🎯</div>
       <div class="txt"><b>Работает без Telegram</b>Карта открывается прямо в браузере. Хочешь баллы и топ недели — подключишь Telegram позже.</div>
-    </div>
-    <div class="feature">
-      <div class="ico">🚗</div>
-      <div class="txt"><b>Помогает другим</b>Ни навигаторы, ни сами сети не публикуют, есть ли топливо на колонке прямо сейчас. Только водители.</div>
     </div>
   </div>
 
@@ -163,6 +167,7 @@
 (function(){
   'use strict';
 
+  var ref = new URLSearchParams(location.search).get('ref') || '';
   var isTG = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
   var ua = navigator.userAgent || '';
   var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
@@ -172,7 +177,7 @@
 
   // Уже в Telegram — сразу на карту
   if (isTG) {
-    location.replace('/map');
+    location.replace('/map' + (ref ? ('?ref=' + encodeURIComponent(ref)) : ''));
     return;
   }
 
@@ -189,11 +194,14 @@
   }
 
   btnMap.addEventListener('click', function(){
-    location.href = '/map?onboarding=1';
+    var u = '/map?onboarding=1';
+    if (ref) u += '&ref=' + encodeURIComponent(ref);
+    location.href = u;
   });
 
   btnTg.addEventListener('click', function(){
     var url = 'https://t.me/naidibenzin_bot';
+    if (ref) url += '?start=' + encodeURIComponent('ref_' + ref);
     location.href = url;
   });
 

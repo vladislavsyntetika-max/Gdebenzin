@@ -1849,7 +1849,7 @@
     var m = markers[stationId];
     if (!s || !m) return;
     var st = statusFor(s.fuels, activeFuel);
-    m.setIcon(makeIcon(STATUS_COLOR[st], getFreshInfo(s)));
+    m.setIcon(makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s)));
     applyMarkerOpacity();
   }
 

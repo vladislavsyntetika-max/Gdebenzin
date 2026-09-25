@@ -817,10 +817,9 @@
   var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false }).setView([59.94, 30.31], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
 
-  function dropFollow(e){ if (e && e.hard === false) return; followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
+  function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
   map.on('dragstart', dropFollow);
-  map.on('zoomstart', dropFollow);
-  map.getContainer().addEventListener('touchstart', function(e){ if (e.touches && e.touches.length > 1){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); } }, { passive: true });
+  map.getContainer().addEventListener('touchstart', function(e){ if (e.touches && e.touches.length > 1) dropFollow(); }, { passive: true });
   map.on('zoomend', applyMarkerOpacity);
 
   var dpsData = [];

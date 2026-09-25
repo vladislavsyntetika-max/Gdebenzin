@@ -592,6 +592,7 @@
 }
   @keyframes mkPulse { 0% { box-shadow: 0 0 0 0 var(--mk-c); opacity: .9; } 70% { box-shadow: 0 0 0 var(--mk-w) transparent; opacity: 0; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 0; } }
   .mk{width:16px;height:16px;border-radius:50%;border:2px solid #14171A;box-sizing:border-box;position:relative;}
+  .mk-q { position: absolute; top: -8px; right: -8px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 3px rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.9)); pointer-events: none; }
   .mk-fresh::after{content:"";position:absolute;inset:-2px;border-radius:50%;box-shadow:0 0 0 0 var(--mk-c);animation:mkPulse 1.8s ease-out infinite;}
   .mk-fresh-s::after{--mk-w:14px;}
   .mk-fresh-m::after{--mk-w:18px;}
@@ -859,7 +860,16 @@
     return worst === 0 ? 'ok' : worst === 1 ? 'low' : 'none';
   }
 
-  function makeIcon(color, freshInfo){
+  function queueLevelFor(s){
+    if (!s || !s.flags) return 0;
+    for (var i = 1; i <= 3; i++){
+      var f = s.flags['flag_queue_' + i];
+      if (f && f.on) return i;
+    }
+    return 0;
+  }
+
+  function makeIcon(color, freshInfo, queueLvl){
     var cls = 'mk';
     var pulseCss = '';
     if (freshInfo && freshInfo.count > 0){
@@ -867,7 +877,11 @@
       cls += ' mk-fresh mk-fresh-' + sz;
       pulseCss = ';--mk-c:' + freshInfo.color;
     }
-    var html = '<div class="' + cls + '" style="background:' + color + pulseCss + '"></div>';
+    var badge = '';
+    if (queueLvl > 0){
+      badge = '<div class="mk-q">🚗</div>';
+    }
+    var html = '<div class="' + cls + '" style="background:' + color + pulseCss + '">' + badge + '</div>';
     return L.divIcon({ className:'', html: html, iconSize:[16,16], iconAnchor:[8,8] });
   }
 
@@ -1782,7 +1796,7 @@
       if (favOnly && !isFav(s.id)) return;
       if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
 
-      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s)) }).addTo(map);
+      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s)) }).addTo(map);
       markers[s.id] = m;
       bindMarkerClick(s);
     });

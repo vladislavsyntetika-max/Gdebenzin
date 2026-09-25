@@ -714,6 +714,9 @@
 <script>
 (function(){
   'use strict';
+  // DEBUG: блокируем GPS полностью, чтобы понять источник запроса
+  var _realGeo = navigator.geolocation;
+  try { Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: function(){}, watchPosition: function(){ return 0; }, clearWatch: function(){} }, configurable: true }); } catch(e){}
 
   var FUEL_SHORT = { f92: '92', f95: '95', f98: '98', dt: 'ДТ' };
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };

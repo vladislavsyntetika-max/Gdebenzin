@@ -73,6 +73,8 @@
     font-size: 32px; font-weight: 700; line-height: 1; font-family: inherit;
   }
   .tool-btn:active { transform: scale(0.96); }
+  .osm-lost-marker { width: 28px; height: 28px; border-radius: 50%; background: #E53935; border: 3px solid #FFF; box-sizing: border-box; box-shadow: 0 0 0 2px #E53935, 0 2px 8px rgba(0,0,0,.7); animation: osmPulse 1.6s ease-out infinite; }
+  @keyframes osmPulse { 0% { box-shadow: 0 0 0 2px #E53935, 0 0 0 0 rgba(229,57,53,.7); } 70% { box-shadow: 0 0 0 2px #E53935, 0 0 0 16px rgba(229,57,53,0); } 100% { box-shadow: 0 0 0 2px #E53935, 0 0 0 0 rgba(229,57,53,0); } }
   .dps-marker { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,.6); border: 2px solid #14171A; }
   .dps-marker.dps { background: #1E88E5; }
   .dps-marker.camera { background: #FFB000; }
@@ -644,6 +646,7 @@
   <button class="tool-btn accent" id="add-station-btn" title="Добавить АЗС">⛽</button>
   <button class="tool-btn" id="nearby-btn" title="Что рядом">🧲</button>
     <button class="tool-btn" id="dps-btn" title="DPS">🛡</button>
+    <button class="tool-btn" id="osm-scan-btn" title="OSM scan" style="display:none;">🔍</button>
     <button class="tool-btn" id="cam-btn" title="Camera">📷</button>
   <button class="tool-btn" id="support-btn" title="Поддержать проект">
     🙏
@@ -808,6 +811,73 @@
 
   var dpsData = [];
   var dpsMarkers = [];
+  var osmMarkers = [];
+  var osmScanBusy = false;
+
+  function haversineM(lat1, lon1, lat2, lon2){
+    var R = 6371000;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function clearOsmMarkers(){
+    osmMarkers.forEach(function(m){ map.removeLayer(m); });
+    osmMarkers = [];
+  }
+
+  function scanOsmFuel(){
+    if (osmScanBusy) return;
+    if (osmMarkers.length){
+      clearOsmMarkers();
+      toast('OSM markers cleared');
+      return;
+    }
+    var b = map.getBounds();
+    var south = b.getSouth(), west = b.getWest(), north = b.getNorth(), east = b.getEast();
+    var q = '[out:json][timeout:25];node["amenity"="fuel"](' + south + ',' + west + ',' + north + ',' + east + ');out body;';
+    osmScanBusy = true;
+    toast('Scanning OSM...');
+    fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(q)
+    }).then(function(r){ return r.json(); }).then(function(j){
+      osmScanBusy = false;
+      var nodes = (j && j.elements) ? j.elements : [];
+      var lost = [];
+      nodes.forEach(function(n){
+        var lat = n.lat, lng = n.lon;
+        if (typeof lat !== 'number' || typeof lng !== 'number') return;
+        var minD = Infinity;
+        for (var i = 0; i < stationsData.length; i++){
+          var sd = stationsData[i];
+          var d = haversineM(lat, lng, sd.lat, sd.lng);
+          if (d < minD) minD = d;
+          if (minD < 50) break;
+        }
+        if (minD > 50) lost.push({ lat: lat, lng: lng, name: (n.tags && n.tags.name) || '' });
+      });
+      if (!lost.length){ toast('No lost stations in view'); return; }
+      lost.forEach(function(p){
+        var icon = L.divIcon({ className: '', html: '<div class="osm-lost-marker"></div>', iconSize: [28,28], iconAnchor: [14,14] });
+        var m = L.marker([p.lat, p.lng], { icon: icon, zIndexOffset: 400 }).addTo(map);
+        m.on('click', function(){
+          if (confirm('Lost OSM station' + (p.name ? ('\n' + p.name) : '') + '\n\nAdd to our map?')){
+            openAddStationDialog(p.lat, p.lng);
+          }
+        });
+        osmMarkers.push(m);
+      });
+      toast('Lost: ' + lost.length);
+    }).catch(function(e){
+      osmScanBusy = false;
+      toast('OSM unavailable, try later');
+    });
+  }
 
   function sendDpsReport(kind){
     var pos = lastPosition || map.getCenter();
@@ -1979,6 +2049,13 @@
 
   document.getElementById('dps-btn').addEventListener('click', function(){ sendDpsReport('dps'); });
   document.getElementById('cam-btn').addEventListener('click', function(){ sendDpsReport('camera'); });
+  if (userId && userId === ADMIN_ID){
+    var osmBtn = document.getElementById('osm-scan-btn');
+    if (osmBtn){
+      osmBtn.style.display = 'flex';
+      osmBtn.addEventListener('click', scanOsmFuel);
+    }
+  }
   document.getElementById('btn-locate').addEventListener('click', function(){
     if (locateActive){
       if (!followMode && lastPosition){

@@ -524,7 +524,7 @@
     .flag-btn { font-size: 14px; padding: 10px; }
     .sheet-promo { font-size: 12px; }
   }
-  @media (orientation: landscape) and (max-height: 500px) {
+  @media (orientation: landscape) and (max-height: 700px) {
   body { font-size: 14px; }
   #top { padding: calc(env(safe-area-inset-top, 0px) + 44px) 108px 0 6px; gap: 4px; }
   .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
@@ -532,9 +532,11 @@
   #fav-toggle, #install-btn { display: none !important; }
   .search { padding-left: 28px; max-width: calc(100vw - 130px); }
   .icon-btn { width: 34px; height: 34px; font-size: 16px; }
-  #side-tools-left { left: 8px; right: auto; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; }
-  #side-tools-right { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 6px; display: flex; }
-  .tool-btn { width: 54px; height: 54px; font-size: 22px; font-weight: 700; border-radius: 12px; }
+  #side-tools-left { left: 6px; right: auto; bottom: auto; top: 50%; transform: translateY(-50%); gap: 4px; }
+  #side-tools-right { left: auto; right: 6px; bottom: auto; top: 50%; transform: translateY(-50%); gap: 4px; display: flex; }
+  .tool-btn { width: 44px; height: 44px; font-size: 18px; font-weight: 700; border-radius: 10px; }
+  .tool-btn.accent { width: 44px; height: 44px; font-size: 18px; }
+  #btn-zoom-in, #btn-zoom-out { font-size: 38px; padding: 0 0 4px; }
   #btn-zoom-in, #btn-zoom-out { font-size: 48px; padding: 0 0 4px; }
   #bottom {
     min-height: 44px; flex-direction: row; flex-wrap: nowrap; align-items: center;

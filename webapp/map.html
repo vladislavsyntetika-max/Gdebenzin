@@ -40,7 +40,7 @@
     appearance: none; -webkit-appearance: none;
   }
   .ctrl {
-    flex: 0 0 auto; width: 106px; max-width: 106px;
+    flex: 0 0 auto; width: 94px; max-width: 94px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238A8F98' stroke-width='2' fill='none'/></svg>");
     background-repeat: no-repeat; background-position: right 10px center;
     padding-right: 28px;
@@ -1959,38 +1959,9 @@
       renderDpsMarkers();
       var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
       if (pts.length && !lastPosition) map.fitBounds(pts, { padding:[30,30] });
-      if (!window.__onboarding_done) {
-        window.__onboarding_done = true;
-        tryOnboarding();
-      }
       // На десктопе без onboarding=1 попап не открываем автоматически
     } catch(e){ toast('Не удалось загрузить данные'); }
     flushOfflineQueue();
-  }
-  function tryOnboarding() {
-    // Только с лендинга (?onboarding=1) и только на мобильных
-    if (!/[?&]onboarding=1/.test(location.search)) return;
-    var ua = navigator.userAgent || '';
-    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-    if (!isMobile) return;
-    if (!navigator.geolocation) return;
-    var isOnboarding = true;
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      lastPosition = { lat: lat, lng: lng };
-      lastGoodPosition = lastPosition;
-      lastGoodTimestamp = pos.timestamp;
-      if (isOnboarding) {
-        map.setView([lat, lng], 15, { animate: true });
-      }
-      var near = findNearestStation(lat, lng);
-      if (near.station && near.distance <= 5000) {
-        setTimeout(function(){ openSheet(near.station, false); }, 500);
-        if (isOnboarding) {
-          setTimeout(function(){ toast('Тапни «Есть» или «Нет» — это 3 секунды'); }, 1200);
-        }
-      }
-    }, function(){ /* отказ — ничего */ }, { timeout: 6000, maximumAge: 60000 });
   }
   document.getElementById('net-select').addEventListener('change', function(e){ activeNet = e.target.value; renderMarkers(); });
   document.getElementById('fuel-select').addEventListener('change', function(e){ activeFuel = e.target.value; renderMarkers(); });

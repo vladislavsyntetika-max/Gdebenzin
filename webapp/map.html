@@ -1504,6 +1504,7 @@
       if (j && j.ok){
         if (j.points_earned) toast('+' + j.points_earned + ' баллов');
         updateMarkerFor(stationId);
+        bumpReportCount();
       } else {
         toast('Не сохранилось: ' + (j.error || ''));
       }
@@ -1589,6 +1590,24 @@
   }
 
     // ---------- Баннер апселла в Telegram (только для веб-гостей) ----------
+  function bumpReportCount(){
+    if (isTelegramWebApp) return;
+    var countKey = 'azs_report_count';
+    var dismissedKey = 'azs_tg_banner_dismissed_at';
+    var n = 0;
+    try { n = parseInt(localStorage.getItem(countKey) || '0', 10) || 0; } catch(e){}
+    n += 1;
+    try { localStorage.setItem(countKey, String(n)); } catch(e){}
+    if (n < 3) return;
+    var dismissedAt = 0;
+    try { dismissedAt = parseInt(localStorage.getItem(dismissedKey) || '0', 10) || 0; } catch(e){}
+    var sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - dismissedAt < sevenDays) return;
+    var banner = document.getElementById('tg-banner');
+    if (!banner) return;
+    setTimeout(function(){ banner.classList.add('show'); }, 600);
+  }
+
   (function initTgBanner(){
     if (isTelegramWebApp) return;
     var banner = document.getElementById('tg-banner');

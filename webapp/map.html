@@ -2093,6 +2093,7 @@
     if (locateActive){
       if (!followMode && lastPosition){
         followMode = true;
+        document.getElementById('btn-locate').classList.add('active');
         map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
         toast('Слежение включено');
       } else { stopLocate(); toast('Слежение выключено'); }

@@ -614,6 +614,11 @@ async def handle_add_station(request):
         if fuel_key in dict(core.FUELS) and status_val in dict(core.STATUSES):
             core.save_report(station_id, fuel_key, status_val, user_id, username)
 
+    try:
+        _refresh_stations_cache()
+    except Exception:
+        core.log.exception("cache refresh after add failed")
+
     return web.json_response({
         "ok": True,
         "station": {"id": station_id, "name": core.NETWORKS[net]["label"]},
@@ -663,6 +668,11 @@ async def handle_delete_station(request):
             core.upsert_station_override(station_id, deleted=1)
     except AttributeError:
         return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    try:
+        _refresh_stations_cache()
+    except Exception:
+        core.log.exception("cache refresh after delete failed")
 
     return web.json_response({"ok": True})
 

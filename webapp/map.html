@@ -714,9 +714,6 @@
 <script>
 (function(){
   'use strict';
-  // DEBUG: блокируем GPS полностью, чтобы понять источник запроса
-  var _realGeo = navigator.geolocation;
-  try { Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: function(){}, watchPosition: function(){ return 0; }, clearWatch: function(){} }, configurable: true }); } catch(e){}
 
   var FUEL_SHORT = { f92: '92', f95: '95', f98: '98', dt: 'ДТ' };
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
@@ -2557,7 +2554,6 @@
     var _lc = parseInt(localStorage.getItem('azs_load_count') || '0', 10) || 0;
     localStorage.setItem('azs_load_count', String(_lc + 1));
     console.log('[GDEBENZIN] page load count =', _lc + 1);
-    setTimeout(function(){ toast('🔄 Загрузка #' + (_lc + 1)); }, 800);
   } catch(e){}
   try { loadStations(); } catch(e){}
   

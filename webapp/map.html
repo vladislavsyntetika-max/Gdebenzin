@@ -284,7 +284,7 @@
     text-shadow: 0 1px 4px rgba(0,0,0,.7); padding: 0 16px; pointer-events: none;
   }
 
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 4000; display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
   .modal {
     background: #1A1D21; border: 1px solid #262B31; border-radius: 16px;
     padding: 14px 16px 16px; max-width: 440px; width: 100%; color: #E8E6E1;
@@ -296,7 +296,7 @@
   .modal-btns button { flex: 1; padding: 16px 0; border-radius: 12px; font-size: 17px; font-weight: 800; cursor: pointer; font-family: inherit; }
   .modal-primary { background: #FFB000; color: #14171A; border: none; }
   .modal-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
-  .help-modal { max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px 16px 20px; position: relative; }
+  .help-modal { padding: 18px 16px 20px; position: relative; }
   .help-modal h3 { margin: 0 0 4px; font-size: 22px; font-weight: 800; color: #FFFFFF; padding-right: 44px; }
   .help-close { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 50%; background: #2C2C2E; border: none; color: #FFFFFF; font-size: 22px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 10; }
   .help-close:active { background: #3A3A3C; }
@@ -308,7 +308,7 @@
   .help-sec[open] summary::after { transform: rotate(180deg); }
   .help-sec .help-body { font-size: 14px; color: #B7BBC1; line-height: 1.55; padding: 8px 0 4px; }
   .help-sec .help-body b { color: #E8E6E1; }
-  .help-sec .help-body .row { margin-bottom: 6px; }
+  .help-sec .help-body .row { margin-bottom: 6px; display: block; text-align: left; }
   .help-footer { margin-top: 18px; padding-top: 14px; border-top: 1px dashed #2B3036; font-size: 13px; color: #8A8F98; text-align: center; }
   .help-footer a { color: #FFB000; text-decoration: none; font-weight: 700; }
   .big-choice { width: 100%; padding: 18px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; text-align: center; border: none; }
@@ -2484,19 +2484,19 @@
       '<details class="help-sec"><summary>🚗 Очередь на заправке</summary><div class="help-body">' +
         '<div class="row">Оцени, сколько машин стоит, и выбери кнопку:</div>' +
         '<div class="row">• до 5 машин — очереди нет, не жми ничего</div>' +
-        '<div class="row">• 5–10 машин — короткая, жми <b>🚗</b></div>' +
+        '<div class="row">• 5–10 машин — короткая, жми 🚗</div>' +
         '<div class="row">• 10–30 машин — средняя, жми <b>🚗🚗</b></div>' +
         '<div class="row">• больше 30 — длинная, жми <b>🚗🚗🚗</b></div>' +
       '</div></details>' +
 
       '<details class="help-sec"><summary>🛡 ДПС и 🎥 камеры</summary><div class="help-body">' +
-        '<div class="row">Видишь экипаж ДПС — тапни <b>🛡</b> в правой колонке. Синяя метка появится на карте.</div>' +
-        '<div class="row">Видишь камеру (тренога, стационарная) — тапни <b>🎥</b>. Жёлтая метка.</div>' +
+        '<div class="row">Видишь экипаж ДПС — тапни 🛡 в правой колонке. Синяя метка появится на карте.</div>' +
+        '<div class="row">Видишь камеру (тренога, стационарная) — тапни 🎥. Жёлтая метка.</div>' +
         '<div class="row">Метки держатся 30 минут и исчезают сами.</div>' +
       '</div></details>' +
 
       '<details class="help-sec"><summary>🎤 Голосовой ввод</summary><div class="help-body">' +
-        '<div class="row">В движении — надиктуй голосом. В карточке станции тапни <b>🎤</b> (слева от названия).</div>' +
+        '<div class="row">В движении — надиктуй голосом. В карточке станции тапни 🎤 (слева от названия).</div>' +
         '<div class="row">Скажи одной фразой: «девяносто пятый есть, девяносто восьмого нет».</div>' +
         '<div class="row">Система распознает и закроет карточку сама.</div>' +
       '</div></details>' +
@@ -2514,7 +2514,7 @@
 
       '<details class="help-sec"><summary>💬 Помощь и связь</summary><div class="help-body">' +
         '<div class="row">Что-то не работает — команда <b>/проблема</b> в боте.</div>' +
-        '<div class="row">Поддержать проект — кнопка <b>🙏</b> в правой колонке.</div>' +
+        '<div class="row">Поддержать проект — кнопка 🙏 в правой колонке.</div>' +
         '<div class="row">Бот: <b>@naidibenzin_bot</b></div>' +
       '</div></details>' +
 

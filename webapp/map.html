@@ -285,24 +285,26 @@
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 16px; }
   .modal {
     background: #1A1D21; border: 1px solid #262B31; border-radius: 16px;
-    padding: 20px; max-width: 400px; width: 100%; color: #E8E6E1;
-    max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 14px 16px 16px; max-width: 440px; width: 100%; color: #E8E6E1;
+    max-height: 94vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   .modal h3 { margin: 0 0 10px; font-size: 19px; }
   .modal p { margin: 8px 0; font-size: 15px; color: #B7BBC1; line-height: 1.5; }
-  .modal-btns { display: flex; gap: 8px; margin-top: 18px; }
-  .modal-btns button { flex: 1; padding: 13px 0; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .modal-btns { display: flex; gap: 10px; margin-top: 14px; }
+  .modal-btns button { flex: 1; padding: 16px 0; border-radius: 12px; font-size: 17px; font-weight: 800; cursor: pointer; font-family: inherit; }
   .modal-primary { background: #FFB000; color: #14171A; border: none; }
   .modal-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
   .big-choice { width: 100%; padding: 18px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; text-align: center; border: none; }
 
-  .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-  .brand-btn { padding: 14px 8px; border-radius: 10px; border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
+  .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .brand-btn { padding: 13px 8px; border-radius: 10px; border: 1px solid #3A3A3C; background: #2C2C2E; color: #FFFFFF; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; }
+  .brand-btn:active { background: #3A3A3C; }
   .brand-btn.selected { background: #FFB000; color: #14171A; border-color: #FFB000; }
-  .fuel-line { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-  .fuel-line label { font-size: 15px; width: 55px; color: #B7BBC1; font-weight: 700; }
-  .fuel-line .btns { display: flex; gap: 6px; flex: 1; }
-  .fuel-line button { flex: 1; padding: 10px 0; border-radius: 8px; border: 1px solid #2B3036; background: #1E2227; color: #B7BBC1; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .fuel-line { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .fuel-line label { font-size: 19px; width: 48px; color: #FFFFFF; font-weight: 800; text-align: center; }
+  .fuel-line .btns { display: flex; gap: 8px; flex: 1; }
+  .fuel-line button { flex: 1; padding: 13px 0; border-radius: 10px; border: 1px solid #3A3A3C; background: #2C2C2E; color: #FFFFFF; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .fuel-line button:active { background: #3A3A3C; }
   .fuel-line button.ok.selected { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
   .fuel-line button.none.selected { background: #C62828; color: #fff; border-color: #C62828; }
 
@@ -2159,14 +2161,14 @@
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     var html = '<div class="modal"><h3>➕ Добавить АЗС</h3>'+
-      '<p style="font-size:13px;color:#8A8F98;">Координаты: '+lat.toFixed(5)+', '+lng.toFixed(5)+'</p>'+
-      '<p style="font-weight:700;margin-top:14px;font-size:15px;">1. Бренд</p>'+
+      '<p style="font-size:13px;color:#8A8F98;margin:0 0 8px;">Координаты: '+lat.toFixed(5)+', '+lng.toFixed(5)+'</p>'+
+      '<p style="font-weight:800;margin:8px 0 0;font-size:17px;color:#FFFFFF;">1. Бренд</p>'+
       '<div class="brand-grid" id="brand-grid">';
     brands.forEach(function(b){
       html += '<button type="button" class="brand-btn" data-brand="'+b.key+'">'+b.label+'</button>';
     });
     html += '</div>';
-    html += '<p style="font-weight:700;margin-top:18px;font-size:15px;">2. Топливо (по желанию)</p>';
+    html += '<p style="font-weight:800;margin:14px 0 0;font-size:17px;color:#FFFFFF;">2. Топливо (по желанию)</p>';
     fuelsData.forEach(function(p){
       var short = FUEL_SHORT[p[0]] || p[1];
       html += '<div class="fuel-line" data-fuel="'+p[0]+'">'+

@@ -18,6 +18,17 @@ MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
 
 # ---------- Статика ----------
 
+def _record_ref(request, where):
+    try:
+        ref = (request.query.get("ref") or "").strip().lower()
+        ref = "".join(c for c in ref if c.isalnum() or c in "_-")[:20]
+        core.inc_metric(f"{where}_view")
+        if ref:
+            core.inc_metric(f"ref_{where}_{ref}")
+    except Exception:
+        core.log.exception("_record_ref failed")
+
+
 async def handle_landing(request):
     """Рендерит лендинг с актуальным числом станций."""
     try:
@@ -27,6 +38,7 @@ async def handle_landing(request):
         core.log.exception("landing.html не прочитан: %s", e)
         return web.Response(status=500, text="landing template error")
 
+    _record_ref(request, "landing")
     total = len(core.STATIONS)
     try:
         total += len(core.get_custom_stations())
@@ -40,6 +52,7 @@ async def handle_landing(request):
 
 
 async def handle_map(request):
+    _record_ref(request, "map")
     return web.FileResponse("webapp/map.html")
 
 

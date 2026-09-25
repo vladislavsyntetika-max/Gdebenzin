@@ -661,7 +661,7 @@
   <button class="tool-btn" id="nearby-btn" title="Что рядом">🧲</button>
     <button class="tool-btn" id="dps-btn" title="DPS">🛡</button>
     <button class="tool-btn" id="osm-scan-btn" title="OSM scan" style="display:none;">🔍</button>
-    <button class="tool-btn" id="cam-btn" title="Camera">📷</button>
+    <button class="tool-btn" id="cam-btn" title="Camera">🎥</button>
   <button class="tool-btn" id="support-btn" title="Поддержать проект">
     🙏
   </button>
@@ -2550,6 +2550,12 @@
 
   document.getElementById('help-toggle').addEventListener('click', openHelpModal);
 
+  try {
+    var _lc = parseInt(localStorage.getItem('azs_load_count') || '0', 10) || 0;
+    localStorage.setItem('azs_load_count', String(_lc + 1));
+    console.log('[GDEBENZIN] page load count =', _lc + 1);
+    setTimeout(function(){ toast('🔄 Загрузка #' + (_lc + 1)); }, 800);
+  } catch(e){}
   try { loadStations(); } catch(e){}
   
 // Deep-link из бота: ?pin=lat,lng — открыть диалог добавления АЗС

@@ -300,12 +300,18 @@ async def handle_stations(request):
         core.inc_metric("api_hits")
     except Exception:
         core.log.exception("metrics api_hits failed")
+    _no_cache_headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
     now = time.time()
     if _STATIONS_CACHE["json"] is not None and (now - _STATIONS_CACHE["ts"]) < _STATIONS_CACHE_TTL:
         return web.Response(
             body=_STATIONS_CACHE["json"],
             content_type="application/json",
             charset="utf-8",
+            headers=_no_cache_headers,
         )
     # Холодный кэш — считаем синхронно
     _refresh_stations_cache()
@@ -313,6 +319,7 @@ async def handle_stations(request):
         body=_STATIONS_CACHE["json"],
         content_type="application/json",
         charset="utf-8",
+        headers=_no_cache_headers,
     )
 
 

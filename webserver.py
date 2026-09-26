@@ -59,7 +59,11 @@ async def handle_landing(request):
 
 async def handle_map(request):
     _record_ref(request, "map")
-    return web.FileResponse("webapp/map.html")
+    resp = web.FileResponse("webapp/map.html")
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 async def handle_leaflet_js(request):

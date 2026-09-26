@@ -59,6 +59,21 @@
     background: #1E2227; color: #B7BBC1; border: 1px solid #2B3036;
   }
   .badge b { color: #FFB000; }
+  .cmp { margin: 28px 0 12px; }
+  .cmp h3 { font-size: 18px; font-weight: 800; color: #FFFFFF; margin: 0 0 4px; text-align: center; letter-spacing: -0.3px; }
+  .cmp .cmp-sub { font-size: 13px; color: #8A8F98; text-align: center; margin: 0 0 16px; }
+  .cmp table { width: 100%; border-collapse: collapse; background: #1A1D21; border: 1px solid #262B31; border-radius: 12px; overflow: hidden; }
+  .cmp th, .cmp td { padding: 10px 8px; text-align: left; font-size: 13.5px; }
+  .cmp thead th { background: #1E2227; color: #8A8F98; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; text-align: center; }
+  .cmp thead th:first-child { text-align: left; }
+  .cmp tbody tr { border-top: 1px solid #232830; }
+  .cmp tbody td:first-child { color: #B7BBC1; }
+  .cmp tbody td:not(:first-child) { text-align: center; width: 80px; font-size: 16px; }
+  .cmp .yes { color: #30D158; font-weight: 700; }
+  .cmp .no { color: #636366; }
+  .cmp .part { color: #FFB000; font-weight: 700; font-size: 12.5px; }
+  .cmp-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .cmp-buttons .cta { padding: 14px 12px; font-size: 15px; }
   .channels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 24px 0 8px; }
   .channel { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 12px; border-radius: 12px; background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1; text-decoration: none; font-size: 14px; font-weight: 700; transition: background .15s; }
   .channel:active { background: #232830; }
@@ -175,6 +190,43 @@
     <a href="/rules" style="color:#FFB000;text-decoration:none;font-weight:600;">Полные правила →</a>
   </div>
 
+  <div class="cmp">
+    <h3>Что доступно</h3>
+    <p class="cmp-sub">Веб работает сразу. Telegram — полный доступ.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Функция</th>
+          <th>Веб</th>
+          <th>Telegram</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>АЗС на карте с адресами</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>Есть/нет по 92 / 95 / 98 / ДТ</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>Поставить отметку</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>Очередь на заправке</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>Флаг «Бензовоз на АЗС»</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>Точная свежесть («5 мин назад»)</td><td class="part">общая</td><td class="yes">✅</td></tr>
+        <tr><td>Фото стелл — цены и состояние</td><td class="part">превью</td><td class="yes">✅</td></tr>
+        <tr><td>«Что рядом» — ближайшие АЗС</td><td class="part">3 шт</td><td class="yes">✅ 12 шт</td></tr>
+        <tr><td>ДПС и камеры — актуальные метки</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>Баллы и звания</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>Топ недели водителей</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>Голосовой ввод в движении</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>Молнии — кто первый узнал</td><td class="no">❌</td><td class="yes">✅</td></tr>
+      </tbody>
+    </table>
+    <div class="cmp-buttons">
+      <button class="cta cta-secondary" id="cmp-tg">
+        <span class="cta-icon">✈️</span> В Telegram
+      </button>
+      <button class="cta cta-secondary" id="cmp-map">
+        <span class="cta-icon">🗺</span> В вебе
+      </button>
+    </div>
+  </div>
+
   <div class="channels">
     <a class="channel" href="https://t.me/naidibenzin" target="_blank" rel="noopener">
       <span class="ico">📢</span> Канал Telegram
@@ -220,6 +272,19 @@
   }
 
   btnMap.addEventListener('click', function(){
+    var u = '/map?onboarding=1';
+    if (ref) u += '&ref=' + encodeURIComponent(ref);
+    location.href = u;
+  });
+
+  var cmpTg = document.getElementById('cmp-tg');
+  var cmpMap = document.getElementById('cmp-map');
+  if (cmpTg) cmpTg.addEventListener('click', function(){
+    var url = 'https://t.me/naidibenzin_bot';
+    if (ref) url += '?start=' + encodeURIComponent('ref_' + ref);
+    location.href = url;
+  });
+  if (cmpMap) cmpMap.addEventListener('click', function(){
     var u = '/map?onboarding=1';
     if (ref) u += '&ref=' + encodeURIComponent(ref);
     location.href = u;

@@ -59,6 +59,10 @@
     background: #1E2227; color: #B7BBC1; border: 1px solid #2B3036;
   }
   .badge b { color: #FFB000; }
+  .channels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 24px 0 8px; }
+  .channel { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 12px; border-radius: 12px; background: #1A1D21; border: 1px solid #262B31; color: #E8E6E1; text-decoration: none; font-size: 14px; font-weight: 700; transition: background .15s; }
+  .channel:active { background: #232830; }
+  .channel .ico { font-size: 18px; }
 
   .ios-help {
     display: none;
@@ -169,6 +173,15 @@
     <b style="color:#E8E6E1;display:block;margin-bottom:6px;">Правила коротко</b>
     Отмечай только то, что видел лично. Не ставь ложные отметки — от этого страдают другие водители.
     <a href="/rules" style="color:#FFB000;text-decoration:none;font-weight:600;">Полные правила →</a>
+  </div>
+
+  <div class="channels">
+    <a class="channel" href="https://t.me/naidibenzin" target="_blank" rel="noopener">
+      <span class="ico">📢</span> Канал Telegram
+    </a>
+    <a class="channel" href="https://max.ru/channel_naidibenzin" target="_blank" rel="noopener">
+      <span class="ico">📢</span> Канал MAX
+    </a>
   </div>
 
   <footer>

@@ -1378,6 +1378,44 @@ async def on_stats_cmd(message: Message):
     lines.append("")
     lines.append(f"Всего отчётов в БД: {total_feed}")
     lines.append(f"За 24ч: станций {stations_24h}, юзеров {users_24h}")
+
+    # Источники трафика за 7 дней
+    days_list = [
+        time.strftime("%Y-%m-%d", time.gmtime(int(time.time()) - i * 86400))
+        for i in range(6, -1, -1)
+    ]
+    conn = db()
+    try:
+        ph = ",".join("?" * len(days_list))
+        ref_rows = conn.execute(
+            f"SELECT key, SUM(value) FROM metrics_counters "
+            f"WHERE day IN ({ph}) AND (key LIKE 'ref_%' OR key IN ('landing_view','map_view')) "
+            f"GROUP BY key",
+            days_list,
+        ).fetchall()
+    finally:
+        conn.close()
+    refs = {k: v for k, v in ref_rows}
+    landing_total = refs.get("landing_view", 0)
+    map_total = refs.get("map_view", 0)
+    if landing_total or map_total:
+        lines.append("")
+        lines.append("<b>📥 Источники (7 дней)</b>")
+        lines.append(f"Лендинг: <b>{landing_total}</b>  ·  Карта: <b>{map_total}</b>")
+        srcs = {}
+        for k, v in refs.items():
+            if k.startswith("ref_landing_"):
+                name = k[len("ref_landing_"):]
+                srcs.setdefault(name, {"landing": 0, "map": 0})
+                srcs[name]["landing"] = v
+            elif k.startswith("ref_map_"):
+                name = k[len("ref_map_"):]
+                srcs.setdefault(name, {"landing": 0, "map": 0})
+                srcs[name]["map"] = v
+        for name in sorted(srcs, key=lambda n: -srcs[n]["landing"]):
+            s_ = srcs[name]
+            lines.append(f"• <b>{name}</b>: лендинг {s_['landing']}, карта {s_['map']}")
+
     await message.answer("\n".join(lines), reply_markup=kb_main())
 @dp.message(Command("смотрители", "районы"))
 async def on_ambassadors_cmd(message: Message):

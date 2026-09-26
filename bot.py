@@ -57,7 +57,7 @@ FUEL_SHORT = {"f92": "92", "f95": "95", "f98": "98", "dt": "ДТ"}
 STATUSES = [("ok","✅ Есть"),("low","🟡 Мало"),("none","❌ Нет")]
 STATUS_LABEL = {k: v for k, v in STATUSES}
 
-STATION_FLAGS = [("flag_queue_1","🚗"),("flag_queue_2","🚗🚗"),("flag_queue_3","🚗🚗🚗"),("flag_limit","⛔ Лимит на литры")]
+STATION_FLAGS = [("flag_queue_1","🚗"),("flag_queue_2","🚗🚗"),("flag_queue_3","🚗🚗🚗"),("flag_delivery","🚛 Бензовоз на АЗС"),("flag_limit","⛔ Лимит на литры")]
 STATION_FLAG_LABEL = {k: v for k, v in STATION_FLAGS}
 
 POINTS_REPORT = 2
@@ -766,6 +766,15 @@ def time_ago(ts):
 
 def is_stale(ts):
     return (int(time.time()) - ts) > 8 * 3600
+
+
+FLAG_DELIVERY_TTL = 30 * 60
+
+
+def is_flag_stale(fkey, ts):
+    if fkey == "flag_delivery":
+        return (int(time.time()) - ts) > FLAG_DELIVERY_TTL
+    return is_stale(ts)
 def inc_metric(key, delta=1):
     today = time.strftime("%Y-%m-%d", time.gmtime())
     conn = db()
@@ -978,7 +987,7 @@ def kb_station_card(station_id):
             for key, label in FUELS]
     flag_row = []
     for fkey, flabel in STATION_FLAGS:
-        is_on = fkey in rep and rep[fkey][0] == "on" and not is_stale(rep[fkey][1])
+        is_on = fkey in rep and rep[fkey][0] == "on" and not is_flag_stale(fkey, rep[fkey][1])
         mark = "✅ " if is_on else ""
         flag_row.append(InlineKeyboardButton(text=f"{mark}{flabel}", callback_data=f"flag:{station_id}:{fkey}"))
     rows.append(flag_row)

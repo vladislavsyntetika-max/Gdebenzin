@@ -234,10 +234,15 @@ def _build_stations_payload():
                 fuels[key] = {"status": "unknown", "label": label, "ago": None,
                               "stale": False, "ts": 0, "confidence": None}
         flags = {}
+        _flag_stale = getattr(core, "is_flag_stale", None)
         for key, label in core.STATION_FLAGS:
             if key in rep:
                 status, ts = rep[key]
-                flags[key] = {"on": status == "on" and not core.is_stale(ts),
+                if _flag_stale:
+                    stale = _flag_stale(key, ts)
+                else:
+                    stale = core.is_stale(ts)
+                flags[key] = {"on": status == "on" and not stale,
                               "label": label, "ago": core.time_ago(ts), "ts": ts}
             else:
                 flags[key] = {"on": False, "label": label, "ago": None, "ts": 0}

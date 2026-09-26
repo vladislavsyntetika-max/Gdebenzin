@@ -74,6 +74,10 @@ async def handle_leaflet_css(request):
     return web.FileResponse("webapp/leaflet.css")
 
 
+async def handle_telegram_js(request):
+    return web.FileResponse("webapp/telegram-web-app.js")
+
+
 async def handle_manifest(request):
     manifest = {
         "name": "ГДЕ БЕНЗИН!? — топливо в реале",
@@ -875,6 +879,7 @@ def build_app() -> web.Application:
     app.router.add_get("/map", handle_map)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
+    app.router.add_get("/telegram-web-app.js", handle_telegram_js)
     app.router.add_get("/manifest.json", handle_manifest)
     app.router.add_get("/sw.js", handle_sw)
     app.router.add_get("/rules", handle_rules)

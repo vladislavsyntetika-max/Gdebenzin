@@ -25,10 +25,11 @@
   }
   #map { position: absolute; inset: 0; background: #14171A; }
   .leaflet-container { background: #14171A; touch-action: none; }
+  html.in-tg #top { padding-top: 78px; }
 
   #top {
     position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
-    padding: 78px 8px 0; pointer-events: none;
+    padding: 8px 8px 0; pointer-events: none;
     display: flex; flex-direction: column; gap: 6px;
   }
   #top > * { pointer-events: auto; }
@@ -759,6 +760,7 @@
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
   var isTelegramWebApp = !!(tg && tg.initData && tg.initData.length > 0);
+  if (isTelegramWebApp) { try { document.documentElement.classList.add('in-tg'); } catch(e){} }
   var userId = user ? user.id : 0;
   var username = user ? (user.username || user.first_name || '') : '';
 
@@ -1602,10 +1604,6 @@
     n += 1;
     try { localStorage.setItem(countKey, String(n)); } catch(e){}
     if (n < 3) return;
-    var dismissedAt = 0;
-    try { dismissedAt = parseInt(localStorage.getItem(dismissedKey) || '0', 10) || 0; } catch(e){}
-    var sevenDays = 7 * 24 * 60 * 60 * 1000;
-    if (Date.now() - dismissedAt < sevenDays) return;
     var banner = document.getElementById('tg-banner');
     if (!banner) return;
     setTimeout(function(){ banner.classList.add('show'); }, 600);

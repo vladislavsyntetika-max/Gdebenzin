@@ -44,6 +44,12 @@ async def handle_landing(request):
         total += len(core.get_custom_stations())
     except AttributeError:
         pass
+    # Вычесть override-deleted станции (они скрыты на карте)
+    try:
+        deleted = sum(1 for r in core.get_station_overrides() if r[6])
+        total = max(0, total - deleted)
+    except Exception:
+        pass
 
     html_out = tpl.replace("{{COUNT}}", str(total))
     resp = web.Response(text=html_out, content_type="text/html", charset="utf-8")

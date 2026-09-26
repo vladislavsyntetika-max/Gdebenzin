@@ -2498,7 +2498,7 @@
       if (x.dist > NEARBY_MAX_KM * 1000) return false;
       if (statusFor(x.s.fuels, 'all') === 'none') return false;
       return true;
-    }).sort(function(a, b){ return b.score - a.score; }).slice(0, 12);
+    }).sort(function(a, b){ return b.score - a.score; }).slice(0, isTelegramWebApp ? 12 : 3);
 
     if (!scored.length){
       list.innerHTML = '<div class="nearby-empty">Нет станций в радиусе ' + NEARBY_MAX_KM + ' км.</div>';
@@ -2512,7 +2512,10 @@
         for (var fk in s.fuels){ if (s.fuels[fk].status === 'ok' && !s.fuels[fk].stale) fu.push(FUEL_SHORT[fk] || fk); }
         var fuelLine = fu.length ? fu.join(' · ') + ' ✅' : 'нет данных';
         var flags = [];
-        if (s.flags && s.flags.flag_queue && s.flags.flag_queue.on) flags.push('🚗');
+        if (s.flags && s.flags.flag_queue_1 && s.flags.flag_queue_1.on) flags.push('🚗');
+        if (s.flags && s.flags.flag_queue_2 && s.flags.flag_queue_2.on) flags.push('🚗🚗');
+        if (s.flags && s.flags.flag_queue_3 && s.flags.flag_queue_3.on) flags.push('🚗🚗🚗');
+        if (s.flags && s.flags.flag_delivery && s.flags.flag_delivery.on) flags.push('🚛');
         if (s.flags && s.flags.flag_limit && s.flags.flag_limit.on) flags.push('⛔');
         var flagStr = flags.length ? ' ' + flags.join(' ') : '';
         var item = document.createElement('div');

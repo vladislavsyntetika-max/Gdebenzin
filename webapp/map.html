@@ -958,6 +958,12 @@
     return 0;
   }
 
+  function hasDelivery(s){
+    if (!s || !s.flags) return false;
+    var d = s.flags.flag_delivery;
+    return !!(d && d.on);
+  }
+
   function makeIcon(color, freshInfo, queueLvl){
     var cls = 'mk';
     var pulseCss = '';
@@ -969,6 +975,9 @@
     var badge = '';
     if (queueLvl > 0){
       badge = '<div class="mk-q">🚗</div>';
+    }
+    if (hasDelivery(s)) {
+      badge += '<div class="mk-q" style="top:-8px;right:auto;left:-8px;">🚛</div>';
     }
     var html = '<div class="' + cls + '" style="background:' + color + pulseCss + '">' + badge + '</div>';
     return L.divIcon({ className:'', html: html, iconSize:[16,16], iconAnchor:[8,8] });
@@ -1337,11 +1346,23 @@
       }
       if (on) queueLevel = i + 1;
     });
+    var deliveryOn = false;
+    if (sheetStation && sheetStation.flags) {
+      if ('flag_delivery' in sheetPendingFlags) {
+        deliveryOn = (sheetPendingFlags.flag_delivery === true || sheetPendingFlags.flag_delivery === 'on');
+      } else {
+        var dlv = sheetStation.flags.flag_delivery;
+        deliveryOn = (dlv && dlv.on) ? true : false;
+      }
+    }
     var flagsHtml = '<div class="sh-flags">' +
       '<button class="flag-btn'+(queueLevel===0?' on':'')+'" data-act="queue" data-level="0">Нет</button>' +
       '<button class="flag-btn'+(queueLevel===1?' on':'')+'" data-act="queue" data-level="1">🚗</button>' +
       '<button class="flag-btn'+(queueLevel===2?' on':'')+'" data-act="queue" data-level="2">🚗🚗</button>' +
       '<button class="flag-btn'+(queueLevel===3?' on':'')+'" data-act="queue" data-level="3">🚗🚗🚗</button>' +
+    '</div>' +
+    '<div class="sh-flags" style="grid-template-columns:1fr;">' +
+      '<button class="flag-btn'+(deliveryOn?' on':'')+'" data-act="delivery">🚛 Бензовоз на АЗС</button>' +
     '</div>';
 
     var FUEL_ORDER = ['f92', 'f95', 'dt', 'f98'];
@@ -1532,6 +1553,20 @@
       var status = t.getAttribute('data-status');
       // ВСЕГДА обновляем статус (не переключаем)
       queueChange(fuelKey, status);
+      return;
+    }
+    if (act === 'delivery'){
+      if (sheetStation && sheetStation.flags){
+        if (!sheetStation.flags.flag_delivery) sheetStation.flags.flag_delivery = {on:false, ts:0};
+        var cur = sheetStation.flags.flag_delivery.on;
+        var next = !cur;
+        sheetStation.flags.flag_delivery.on = next;
+        sheetStation.flags.flag_delivery.ts = Math.floor(Date.now() / 1000);
+        sheetPendingFlags.flag_delivery = next;
+      }
+      renderSheet();
+      scheduleCloseTimer();
+      scheduleBatchSave();
       return;
     }
     if (act === 'queue'){

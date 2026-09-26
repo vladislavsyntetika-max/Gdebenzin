@@ -1732,6 +1732,74 @@ async def weekly_leaderboard_task(bot: Bot):
         await asyncio.sleep(POLL_INTERVAL)
 
 
+
+
+
+def get_daily_leaderboard(limit=3):
+    day_ago = int(time.time()) - 24 * 3600
+    conn = db()
+    rows = conn.execute("""
+        SELECT p.user_id, COALESCE(u.username, 'id' || p.user_id) AS username, COUNT(*) AS cnt
+        FROM points_log p LEFT JOIN user_points u ON u.user_id = p.user_id
+        WHERE p.ts > ? AND p.reason = 'report'
+        GROUP BY p.user_id ORDER BY cnt DESC LIMIT ?
+    """, (day_ago, limit)).fetchall()
+    conn.close()
+    return rows
+
+
+def format_daily_leaderboard_text(rows):
+    medals = ["🥇", "🥈", "🥉"]
+    lines = ["📊 <b>Топ информаторов за сутки</b>", ""]
+    if not rows:
+        lines.append("Пока никто не отметился. Будь первым!")
+    else:
+        for i, (uid, username, cnt) in enumerate(rows):
+            mark = medals[i] if i < 3 else (str(i + 1) + ".")
+            display = format_display(username, uid)
+            if cnt % 10 == 1 and cnt % 100 != 11:
+                word = "отчёт"
+            elif 2 <= cnt % 10 <= 4 and not (12 <= cnt % 100 <= 14):
+                word = "отчёта"
+            else:
+                word = "отчётов"
+            lines.append(mark + " " + display + " — " + str(cnt) + " " + word)
+        lines.append("")
+    lines.append("Спасибо вам! Присоединяйтесь: @naidibenzin_bot")
+    return "\n".join(lines)
+
+
+async def post_daily_leaderboard(bot: Bot):
+    if not CHANNEL_ID:
+        return False
+    rows = get_daily_leaderboard(3)
+    text = format_daily_leaderboard_text(rows)
+    await bot.send_message(CHANNEL_ID, text, parse_mode="HTML")
+    log.info("Топ дня опубликован в канал %s", CHANNEL_ID)
+    return True
+
+
+async def daily_leaderboard_task(bot: Bot):
+    if not CHANNEL_ID:
+        log.info("CHANNEL_ID не задан — автопост топа дня отключён.")
+        return
+    POST_HOUR_UTC = 17
+    POLL_INTERVAL = 600
+    while True:
+        now = datetime.utcnow()
+        if now.hour >= POST_HOUR_UTC:
+            today_str = now.strftime("%Y-%m-%d")
+            if get_state("last_daily_post_date") != today_str:
+                sent = False
+                try:
+                    sent = await post_daily_leaderboard(bot)
+                except Exception:
+                    log.exception("Ошибка при публикации топа дня")
+                if sent:
+                    set_state("last_daily_post_date", today_str)
+        await asyncio.sleep(POLL_INTERVAL)
+
+
 async def main():
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN.")
@@ -1757,6 +1825,7 @@ async def main():
     await webserver.run_webserver(PORT)
 
     asyncio.create_task(weekly_leaderboard_task(bot))
+    asyncio.create_task(daily_leaderboard_task(bot))
 
     await dp.start_polling(bot, request_timeout=15)
 

@@ -1818,7 +1818,7 @@ async def post_daily_leaderboard(bot: Bot):
     rows = get_daily_leaderboard(3)
     text = format_daily_leaderboard_text(rows)
     kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="\U0001F5FA \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0440\u0442\u0443", url="https://t.me/naidibenzin_bot?start=daily_top")
+        InlineKeyboardButton(text="\U0001F5FA \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0440\u0442\u0443", url="https://t.me/naidibenzin_bot/azs")
     ]])
     await bot.send_message(CHANNEL_ID, text, parse_mode="HTML", reply_markup=kb)
     log.info("Топ дня опубликован в канал %s", CHANNEL_ID)

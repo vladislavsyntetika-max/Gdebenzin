@@ -1358,6 +1358,22 @@ async def on_top_cmd(message: Message):
     text = format_leaderboard_text(rows, title="🏆 <b>Топ-10 недели</b>")
     await message.answer(text, reply_markup=kb_main())
 
+@dp.message(Command("daily_now"))
+async def on_daily_now_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    try:
+        ok = await post_daily_leaderboard(message.bot)
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    if ok:
+        await message.answer("Топ дня опубликован в канал.")
+    else:
+        await message.answer("Не опубликовано (нет CHANNEL_ID или ошибка).")
+
+
 @dp.message(Command("проблема", "проблемы", "баг"))
 async def on_problem_cmd(message: Message):
     pending_issue[message.from_user.id] = "__bot__"

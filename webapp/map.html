@@ -1672,7 +1672,14 @@
 
   // ---------- Поделиться (нативная или через копирование) ----------
   function shareProject(){
-    var mapUrl = location.origin + '/map';
+    var refId;
+    if (userId && userId > 0) {
+      refId = 'u' + userId;
+    } else {
+      var an = (effectiveUsername || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8);
+      refId = 'web' + (an || 'anon');
+    }
+    var mapUrl = location.origin + '/map?ref=share_' + refId;
     var shareText = 'В Питере и области больше не надо гадать, где есть бензин. Водители отмечают водителям — видно, где 95-й, где дизель, где пусто. Перед выездом загляни: @naidibenzin_bot';
     var shortText = 'Карта — где в СПб сейчас есть бензин, а где пусто. Водители отмечают вживую. Перед выездом: @naidibenzin_bot';
 

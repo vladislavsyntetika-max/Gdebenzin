@@ -271,7 +271,14 @@
     btnIosHelp.style.display = 'none';
   }
 
+  function trackClick(key) {
+    try {
+      fetch('/api/track-click', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: key}), keepalive: true }).catch(function(){});
+    } catch(e){}
+  }
+
   btnMap.addEventListener('click', function(){
+    trackClick('landing_click_map');
     var u = '/map?onboarding=1';
     if (ref) u += '&ref=' + encodeURIComponent(ref);
     location.href = u;
@@ -280,17 +287,20 @@
   var cmpTg = document.getElementById('cmp-tg');
   var cmpMap = document.getElementById('cmp-map');
   if (cmpTg) cmpTg.addEventListener('click', function(){
+    trackClick('landing_click_tg');
     var url = 'https://t.me/naidibenzin_bot';
     if (ref) url += '?start=' + encodeURIComponent('ref_' + ref);
     location.href = url;
   });
   if (cmpMap) cmpMap.addEventListener('click', function(){
+    trackClick('landing_click_map');
     var u = '/map?onboarding=1';
     if (ref) u += '&ref=' + encodeURIComponent(ref);
     location.href = u;
   });
 
   btnTg.addEventListener('click', function(){
+    trackClick('landing_click_tg');
     var url = 'https://t.me/naidibenzin_bot';
     if (ref) url += '?start=' + encodeURIComponent('ref_' + ref);
     location.href = url;

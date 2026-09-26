@@ -653,6 +653,21 @@ async def handle_add_station(request):
     })
 
 
+async def handle_track_click(request):
+    try:
+        data = await request.json()
+        key = str(data.get("key") or "").strip()[:30]
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+    if key not in ("landing_click_map", "landing_click_tg"):
+        return web.json_response({"ok": False, "error": "unknown_key"}, status=400)
+    try:
+        core.inc_metric(key)
+    except Exception:
+        core.log.exception("inc_metric track_click failed")
+    return web.json_response({"ok": True})
+
+
 async def handle_dps_report(request):
     try:
         data = await request.json()
@@ -870,6 +885,7 @@ def build_app() -> web.Application:
     app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_post("/api/dps-report", handle_dps_report)
+    app.router.add_post("/api/track-click", handle_track_click)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)

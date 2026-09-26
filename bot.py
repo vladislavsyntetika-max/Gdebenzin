@@ -1423,6 +1423,12 @@ async def on_stats_cmd(message: Message):
         lines.append("")
         lines.append("<b>📥 Источники (7 дней)</b>")
         lines.append(f"Лендинг: <b>{landing_total}</b>  ·  Карта: <b>{map_total}</b>")
+        clicks_map = refs.get("landing_click_map", 0)
+        clicks_tg = refs.get("landing_click_tg", 0)
+        if landing_total and (clicks_map or clicks_tg):
+            pct_map = round(clicks_map / landing_total * 100) if landing_total else 0
+            pct_tg = round(clicks_tg / landing_total * 100) if landing_total else 0
+            lines.append(f"Клики: карта <b>{clicks_map}</b> ({pct_map}%)  ·  TG <b>{clicks_tg}</b> ({pct_tg}%)")
         srcs = {}
         for k, v in refs.items():
             if k.startswith("ref_landing_"):

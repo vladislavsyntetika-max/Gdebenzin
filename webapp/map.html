@@ -1121,6 +1121,13 @@
   function freshnessInfo(ts){
     if (!ts) return { color: '#6B6F76', label: 'нет данных' };
     var diffMin = (Date.now() / 1000 - ts) / 60;
+    // В вебе — только общая давность (без точных минут)
+    if (!isTelegramWebApp) {
+      if (diffMin < 1440) return { color: '#8BC34A', label: 'сегодня' };
+      if (diffMin < 2880) return { color: '#FFC107', label: 'вчера' };
+      return { color: '#8A8F98', label: 'давно' };
+    }
+    // В Telegram — точная
     if (diffMin < 1) return { color: '#4CAF7D', label: 'только что' };
     if (diffMin < 60) return { color: '#8BC34A', label: Math.round(diffMin) + ' мин назад' };
     if (diffMin < 1440) return { color: '#FFC107', label: Math.round(diffMin / 60) + ' ч назад' };
@@ -2093,7 +2100,7 @@
       var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
       if (pts.length && !lastPosition) map.fitBounds(pts, { padding:[30,30] });
       // На десктопе без onboarding=1 попап не открываем автоматически
-    } catch(e){ toast('Не удалось загрузить данные'); }
+    } catch(e){ console.error('[loadStations]', e); toast('Не удалось загрузить данные'); }
     flushOfflineQueue();
   }
   document.getElementById('net-select').addEventListener('change', function(e){ activeNet = e.target.value; renderMarkers(); });

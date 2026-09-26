@@ -975,7 +975,7 @@
     return !!(d && d.on);
   }
 
-  function makeIcon(color, freshInfo, queueLvl){
+  function makeIcon(color, freshInfo, queueLvl, s){
     var cls = 'mk';
     var pulseCss = '';
     if (freshInfo && freshInfo.count > 0){
@@ -2038,7 +2038,7 @@
       if (favOnly && !isFav(s.id)) return;
       if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
 
-      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s)) }).addTo(map);
+      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s) }).addTo(map);
       markers[s.id] = m;
       bindMarkerClick(s);
     });

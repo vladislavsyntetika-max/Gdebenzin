@@ -1,4 +1,4 @@
-aiogram==3.15.0
+aiogram==3.25.0
 python-dotenv==1.0.1
 
 # rebuild-marker 2026-09-16-2

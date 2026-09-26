@@ -964,7 +964,7 @@ def reject_pending_station(pid):
 def kb_main():
     rows = []
     if MAP_URL:
-        rows.append([InlineKeyboardButton(text="🗺 ОТКРЫТЬ КАРТУ", web_app=WebAppInfo(url=MAP_URL))])
+        rows.append([InlineKeyboardButton(text="🗺 ОТКРЫТЬ КАРТУ — свежие данные", web_app=WebAppInfo(url=MAP_URL), style="primary")])
     rows.append([InlineKeyboardButton(text="🕓 Последние отчёты", callback_data="feed")])
     rows.append([
         InlineKeyboardButton(text="📢 Канал Telegram", url="https://t.me/naidibenzin"),

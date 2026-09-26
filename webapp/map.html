@@ -279,6 +279,17 @@
   }
   .capture-close { width: 52px; height: 52px; background: rgba(255,255,255,.2); color: #fff; font-size: 28px; }
   .capture-shoot { width: 84px; height: 84px; background: #FFB000; color: #14171A; font-size: 16px; font-weight: 700; box-shadow: 0 4px 16px rgba(255,176,0,.5); }
+  .capture-zoom {
+    position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; background: rgba(0,0,0,.55);
+    padding: 8px; border-radius: 100px; backdrop-filter: blur(6px);
+  }
+  .capture-zoom button {
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: transparent; color: #fff; font-size: 14px; font-weight: 800;
+    cursor: pointer; font-family: inherit; padding: 0;
+  }
+  .capture-zoom button.on { background: #FFB000; color: #14171A; }
   .capture-hint {
     position: absolute; top: 16px; left: 0; right: 0;
     text-align: center; color: #fff; font-size: 15px;
@@ -1825,17 +1836,95 @@
     bg.className = 'photo-capture';
     bg.innerHTML = '<div class="capture-frame"><video autoplay playsinline muted></video>'+
       '<div class="capture-hint">Наведите камеру на стеллу</div>'+
+      '<div class="capture-zoom" style="display:none;"></div>'+
       '<div class="capture-controls"><button class="capture-close">×</button>'+
       '<button class="capture-shoot">📸 Снять</button></div></div>';
     document.body.appendChild(bg);
     var video = bg.querySelector('video');
+    var zoomPanel = bg.querySelector('.capture-zoom');
+    var videoTrack = null;
+    var zoomCaps = null;
+    var currentZoom = 1;
+
     function stopStream(){ if (stream){ try { stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} stream = null; } }
     function closeCapture(){ stopStream(); bg.remove(); }
     bg.querySelector('.capture-close').addEventListener('click', closeCapture);
+
+    function applyZoom(z){
+      if (!videoTrack || !zoomCaps) return;
+      try {
+        videoTrack.applyConstraints({ advanced: [{ zoom: z }] });
+        currentZoom = z;
+        var btns = zoomPanel.querySelectorAll('button');
+        btns.forEach(function(b){ b.classList.toggle('on', parseFloat(b.getAttribute('data-z')) === z); });
+      } catch(e){}
+    }
+
+    function buildZoomPanel(){
+      if (!zoomCaps || !zoomCaps.zoom) return;
+      var minZ = zoomCaps.zoom.min || 1;
+      var maxZ = zoomCaps.zoom.max || 5;
+      var steps = zoomCaps.zoom.step || 0.1;
+      var presets = [];
+      var base = minZ;
+      [1, 2, 3, 4, 5].forEach(function(v){ if (v >= minZ && v <= maxZ) presets.push(v); });
+      if (base < 1) presets.unshift(base);
+      presets = presets.filter(function(v, i, a){ return a.indexOf(v) === i; });
+      if (presets.length < 2) return;
+      var html = '';
+      presets.forEach(function(v){
+        var label = (v < 1) ? v.toFixed(1) + '×' : v + '×';
+        html += '<button data-z="' + v + '"' + (v === 1 ? ' class="on"' : '') + '>' + label + '</button>';
+      });
+      zoomPanel.innerHTML = html;
+      zoomPanel.style.display = 'flex';
+      zoomPanel.querySelectorAll('button').forEach(function(b){
+        b.addEventListener('click', function(){ applyZoom(parseFloat(b.getAttribute('data-z'))); });
+      });
+    }
+
+    // Pinch-zoom на видео
+    var pinchStartDist = 0;
+    var pinchStartZoom = 1;
+    function getDist(touches){
+      var dx = touches[0].clientX - touches[1].clientX;
+      var dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx*dx + dy*dy);
+    }
+    video.addEventListener('touchstart', function(e){
+      if (e.touches.length === 2 && zoomCaps && zoomCaps.zoom){
+        pinchStartDist = getDist(e.touches);
+        pinchStartZoom = currentZoom;
+      }
+    }, { passive: true });
+    video.addEventListener('touchmove', function(e){
+      if (e.touches.length === 2 && zoomCaps && zoomCaps.zoom && pinchStartDist > 0){
+        e.preventDefault();
+        var d = getDist(e.touches);
+        var scale = d / pinchStartDist;
+        var newZ = pinchStartZoom * scale;
+        newZ = Math.max(zoomCaps.zoom.min || 1, Math.min(zoomCaps.zoom.max || 5, newZ));
+        applyZoom(newZ);
+      }
+    }, { passive: false });
+    video.addEventListener('touchend', function(){ pinchStartDist = 0; }, { passive: true });
+
     navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } }, audio: false
-    }).then(function(s){ stream = s; video.srcObject = s; try { video.play(); } catch(e){} })
-     .catch(function(){ closeCapture(); toast('Камера недоступна'); openFileInput(stationId); });
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
+    }).then(function(s){
+      stream = s;
+      video.srcObject = s;
+      try { video.play(); } catch(e){}
+      var tracks = s.getVideoTracks();
+      if (tracks && tracks.length){
+        videoTrack = tracks[0];
+        try {
+          zoomCaps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : null;
+        } catch(e){ zoomCaps = null; }
+        if (zoomCaps && zoomCaps.zoom) buildZoomPanel();
+      }
+    }).catch(function(){ closeCapture(); toast('Камера недоступна'); openFileInput(stationId); });
+
     bg.querySelector('.capture-shoot').addEventListener('click', function(){
       if (!video.videoWidth){ toast('Не готова…'); return; }
       var canvas = document.createElement('canvas');

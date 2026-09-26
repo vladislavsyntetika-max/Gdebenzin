@@ -1770,6 +1770,17 @@ def get_daily_leaderboard(limit=3):
     return rows
 
 
+def get_daily_totals():
+    day_ago = int(time.time()) - 24 * 3600
+    conn = db()
+    row = conn.execute("""
+        SELECT COUNT(*), COUNT(DISTINCT user_id) FROM points_log
+        WHERE ts > ? AND reason = 'report' AND station_id IS NOT NULL
+    """, (day_ago,)).fetchone()
+    conn.close()
+    return (row[0] or 0, row[1] or 0)
+
+
 def format_daily_leaderboard_text(rows):
     medals = ["\U0001F947", "\U0001F948", "\U0001F949"]
     cta = "Хочешь быть здесь завтра? Отмечай наличие топлива:\nt.me/naidibenzin_bot?start=daily_top"
@@ -1788,6 +1799,13 @@ def format_daily_leaderboard_text(rows):
         display = format_display(username, uid)
         lines.append(mark + " " + display + " — " + str(cnt) + " АЗС")
     lines.append("")
+    try:
+        total_reports, total_users = get_daily_totals()
+        if total_users >= 2:
+            lines.append("Сегодня в городе: " + str(total_reports) + " отчётов от " + str(total_users) + " человек.")
+            lines.append("")
+    except Exception:
+        pass
     lines.append("Каждый отчёт — это чей-то заправленный бак.")
     lines.append("")
     lines.append(cta)
@@ -1799,7 +1817,10 @@ async def post_daily_leaderboard(bot: Bot):
         return False
     rows = get_daily_leaderboard(3)
     text = format_daily_leaderboard_text(rows)
-    await bot.send_message(CHANNEL_ID, text, parse_mode="HTML")
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="\U0001F5FA \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0440\u0442\u0443", url="https://t.me/naidibenzin_bot?start=daily_top")
+    ]])
+    await bot.send_message(CHANNEL_ID, text, parse_mode="HTML", reply_markup=kb)
     log.info("Топ дня опубликован в канал %s", CHANNEL_ID)
     return True
 

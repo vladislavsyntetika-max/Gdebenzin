@@ -957,6 +957,10 @@ def kb_main():
     if MAP_URL:
         rows.append([InlineKeyboardButton(text="🗺 ОТКРЫТЬ КАРТУ", web_app=WebAppInfo(url=MAP_URL))])
     rows.append([InlineKeyboardButton(text="🕓 Последние отчёты", callback_data="feed")])
+    rows.append([
+        InlineKeyboardButton(text="📢 Канал Telegram", url="https://t.me/naidibenzin"),
+        InlineKeyboardButton(text="📢 Канал MAX", url="https://max.ru/channel_naidibenzin"),
+    ])
     rows.append([InlineKeyboardButton(text="⚠️ Сообщить об ошибке в боте", callback_data="err:")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

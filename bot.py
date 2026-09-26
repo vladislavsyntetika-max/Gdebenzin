@@ -1078,7 +1078,12 @@ pending_add = {}
 async def on_start(message, command: CommandObject):
     payload = command.args
     if payload:
-        if payload.startswith("err_"):
+        if payload == "daily_top":
+            try:
+                inc_metric("ref_daily_top")
+            except Exception:
+                log.exception("metric ref_daily_top failed")
+        elif payload.startswith("err_"):
             station_id = payload[len("err_"):].replace("_", "-")
             if station_exists(station_id):
                 pending_issue[message.from_user.id] = station_id
@@ -1755,9 +1760,10 @@ def get_daily_leaderboard(limit=3):
     day_ago = int(time.time()) - 24 * 3600
     conn = db()
     rows = conn.execute("""
-        SELECT p.user_id, COALESCE(u.username, 'id' || p.user_id) AS username, COUNT(*) AS cnt
+        SELECT p.user_id, COALESCE(u.username, 'id' || p.user_id) AS username,
+               COUNT(DISTINCT p.station_id) AS cnt
         FROM points_log p LEFT JOIN user_points u ON u.user_id = p.user_id
-        WHERE p.ts > ? AND p.reason = 'report'
+        WHERE p.ts > ? AND p.reason = 'report' AND p.station_id IS NOT NULL
         GROUP BY p.user_id ORDER BY cnt DESC LIMIT ?
     """, (day_ago, limit)).fetchall()
     conn.close()
@@ -1765,23 +1771,26 @@ def get_daily_leaderboard(limit=3):
 
 
 def format_daily_leaderboard_text(rows):
-    medals = ["🥇", "🥈", "🥉"]
-    lines = ["📊 <b>Топ информаторов за сутки</b>", ""]
+    medals = ["\U0001F947", "\U0001F948", "\U0001F949"]
+    cta = "Хочешь быть здесь завтра? Отмечай наличие топлива:\nt.me/naidibenzin_bot?start=daily_top"
     if not rows:
-        lines.append("Пока никто не отметился. Будь первым!")
+        return (
+            "\U0001F6F0 <b>Топ разведчиков дня</b>\n\n"
+            "Пока никто не отметился. Будь первым!\n\n"
+            + cta
+        )
+    if len(rows) >= 3:
+        lines = ["\U0001F6F0 <b>Топ разведчиков дня</b>", ""]
     else:
-        for i, (uid, username, cnt) in enumerate(rows):
-            mark = medals[i] if i < 3 else (str(i + 1) + ".")
-            display = format_display(username, uid)
-            if cnt % 10 == 1 and cnt % 100 != 11:
-                word = "отчёт"
-            elif 2 <= cnt % 10 <= 4 and not (12 <= cnt % 100 <= 14):
-                word = "отчёта"
-            else:
-                word = "отчётов"
-            lines.append(mark + " " + display + " — " + str(cnt) + " " + word)
-        lines.append("")
-    lines.append("Спасибо вам! Присоединяйтесь: @naidibenzin_bot")
+        lines = ["\U0001F6F0 <b>Сегодня помогали</b>", ""]
+    for i, (uid, username, cnt) in enumerate(rows):
+        mark = medals[i] if i < 3 else (str(i + 1) + ".")
+        display = format_display(username, uid)
+        lines.append(mark + " " + display + " — " + str(cnt) + " АЗС")
+    lines.append("")
+    lines.append("Каждый отчёт — это чей-то заправленный бак.")
+    lines.append("")
+    lines.append(cta)
     return "\n".join(lines)
 
 

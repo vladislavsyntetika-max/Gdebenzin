@@ -1998,24 +1998,25 @@
     bg.querySelector('.capture-close').addEventListener('click', closeCapture);
 
     function applyZoom(z){
-      if (!videoTrack || !zoomCaps) return;
-      try {
-        videoTrack.applyConstraints({ advanced: [{ zoom: z }] });
-        currentZoom = z;
-        var btns = zoomPanel.querySelectorAll('button');
-        btns.forEach(function(b){ b.classList.toggle('on', parseFloat(b.getAttribute('data-z')) === z); });
-      } catch(e){}
+      currentZoom = z;
+      // Пытаемся нативный zoom
+      if (videoTrack && zoomCaps && zoomCaps.zoom){
+        try { videoTrack.applyConstraints({ advanced: [{ zoom: z }] }); } catch(e){}
+      }
+      // CSS-fallback: всегда применяем на видео (не мешает нативному)
+      try { video.style.transform = 'scale(' + z + ')'; video.style.transformOrigin = 'center center'; } catch(e){}
+      var btns = zoomPanel.querySelectorAll('button');
+      btns.forEach(function(b){ b.classList.toggle('on', parseFloat(b.getAttribute('data-z')) === z); });
     }
 
     function buildZoomPanel(){
-      if (!zoomCaps || !zoomCaps.zoom) return;
-      var minZ = zoomCaps.zoom.min || 1;
-      var maxZ = zoomCaps.zoom.max || 5;
-      var steps = zoomCaps.zoom.step || 0.1;
+      var minZ = 1, maxZ = 5;
+      if (zoomCaps && zoomCaps.zoom){
+        minZ = zoomCaps.zoom.min || 1;
+        maxZ = zoomCaps.zoom.max || 5;
+      }
       var presets = [];
-      var base = minZ;
       [1, 2, 3, 4, 5].forEach(function(v){ if (v >= minZ && v <= maxZ) presets.push(v); });
-      if (base < 1) presets.unshift(base);
       presets = presets.filter(function(v, i, a){ return a.indexOf(v) === i; });
       if (presets.length < 2) return;
       var html = '';
@@ -2039,18 +2040,18 @@
       return Math.sqrt(dx*dx + dy*dy);
     }
     video.addEventListener('touchstart', function(e){
-      if (e.touches.length === 2 && zoomCaps && zoomCaps.zoom){
+      if (e.touches.length === 2){
         pinchStartDist = getDist(e.touches);
         pinchStartZoom = currentZoom;
       }
     }, { passive: true });
     video.addEventListener('touchmove', function(e){
-      if (e.touches.length === 2 && zoomCaps && zoomCaps.zoom && pinchStartDist > 0){
+      if (e.touches.length === 2 && pinchStartDist > 0){
         e.preventDefault();
         var d = getDist(e.touches);
         var scale = d / pinchStartDist;
         var newZ = pinchStartZoom * scale;
-        newZ = Math.max(zoomCaps.zoom.min || 1, Math.min(zoomCaps.zoom.max || 5, newZ));
+        newZ = Math.max(1, Math.min(5, newZ));
         applyZoom(newZ);
       }
     }, { passive: false });
@@ -2068,7 +2069,7 @@
         try {
           zoomCaps = videoTrack.getCapabilities ? videoTrack.getCapabilities() : null;
         } catch(e){ zoomCaps = null; }
-        if (zoomCaps && zoomCaps.zoom) buildZoomPanel();
+        buildZoomPanel();
       }
     }).catch(function(){ closeCapture(); toast('Камера недоступна'); openFileInput(stationId); });
 

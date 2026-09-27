@@ -2086,6 +2086,80 @@ async def weekly_network_task(bot: Bot):
         await asyncio.sleep(POLL_INTERVAL)
 
 
+
+
+
+def _haversine_m(la1, lo1, la2, lo2):
+    import math
+    R = 6371000.0
+    p1, p2 = math.radians(la1), math.radians(la2)
+    dp = math.radians(la2 - la1); dl = math.radians(lo2 - lo1)
+    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return 2*R*math.asin(math.sqrt(a))
+
+
+def find_duplicate_pairs(radius_m=200):
+    """Возвращает список пар [((sid_a, net, name, addr, lat, lng, cnt_a), (sid_b, ...), dist_m)]."""
+    conn = db()
+    # Все станции: статичные + кастомные + overrides
+    rows = conn.execute("SELECT id, name, net, addr, lat, lng FROM custom_stations").fetchall()
+    # Считаем отчёты по каждой станции из feed
+    feed = conn.execute("SELECT station_id, COUNT(*) FROM feed GROUP BY station_id").fetchall()
+    conn.close()
+    counts = {sid: cnt for sid, cnt in feed}
+    items = []
+    for sid, name, net, addr, lat, lng in rows:
+        items.append((sid, net, name, addr or "", lat, lng, counts.get(sid, 0)))
+    pairs = []
+    n = len(items)
+    for i in range(n):
+        a = items[i]
+        for j in range(i+1, n):
+            b = items[j]
+            if a[1] != b[1]:
+                continue
+            d = _haversine_m(a[4], a[5], b[4], b[5])
+            if d <= radius_m:
+                pairs.append((a, b, d))
+    pairs.sort(key=lambda x: x[2])
+    return pairs
+
+
+@dp.message(Command("dups"))
+async def on_dups_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    await message.answer("Считаю дубли… может занять 5-10 секунд.")
+    try:
+        pairs = find_duplicate_pairs(200)
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    if not pairs:
+        await message.answer("Дублей не найдено.")
+        return
+    lines = ["\U0001F50D <b>Дубли одной сети (<=200м)</b>", ""]
+    zero_pairs = [p for p in pairs if p[2] < 1.0]
+    near_pairs = [p for p in pairs if 1.0 <= p[2] <= 200.0]
+    lines.append("Всего пар: <b>" + str(len(pairs)) + "</b>")
+    lines.append("Точных (0м): <b>" + str(len(zero_pairs)) + "</b>")
+    lines.append("Близких (1-200м): <b>" + str(len(near_pairs)) + "</b>")
+    lines.append("")
+    lines.append("<b>Точные 0м — кандидаты на авто-merge:</b>")
+    for a, b, d in zero_pairs[:20]:
+        lines.append("\u2022 <code>" + a[0] + "</code> (" + str(a[6]) + " отч.)  \u2194  <code>" + b[0] + "</code> (" + str(b[6]) + " отч.)")
+    if len(zero_pairs) > 20:
+        lines.append("... и ещё " + str(len(zero_pairs) - 20))
+    lines.append("")
+    lines.append("<b>Близкие 1-200м — проверить вручную:</b>")
+    for a, b, d in near_pairs[:15]:
+        lines.append("\u2022 <code>" + a[0] + "</code> (" + str(a[6]) + ") \u2194 <code>" + b[0] + "</code> (" + str(b[6]) + ") — " + str(int(d)) + " м")
+    if len(near_pairs) > 15:
+        lines.append("... и ещё " + str(len(near_pairs) - 15))
+    await message.answer("\n".join(lines))
+
+
 async def main():
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN.")

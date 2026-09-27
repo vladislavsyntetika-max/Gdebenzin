@@ -613,7 +613,7 @@
     padding: 7px 10px 8px;
     border-radius: 16px;
     overflow: hidden;
-    border-top: 8px solid var(--sheet-accent, #FFB000);
+    border-top: 4px solid var(--sheet-accent, #FFB000);
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
     opacity: 0;
@@ -634,7 +634,7 @@
   .sh-body { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 0; align-items: stretch; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .fuel-cell { padding: 5px 5px 6px; border-radius: 8px; gap: 3px; }
-  .fuel-name { font-size: 19px; }
+  .fuel-name { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; }
   .fuel-choices { gap: 3px; }
   .fuel-ok, .fuel-none { padding: 7px 3px; font-size: 14px; min-height: 34px; border-radius: 7px; }
 
@@ -2287,7 +2287,22 @@
             icon: L.divIcon({ className:'', html:'<div class="me-marker"></div>', iconSize:[18,18], iconAnchor:[9,9] }),
             interactive:false, zIndexOffset:1000
           }).addTo(map);
-        } else meMarker.setLatLng([lat, lng]);
+          meMarker._animPos = [lat, lng];
+        } else {
+          var from = meMarker._animPos || [lat, lng];
+          meMarker._animPos = [lat, lng];
+          (function(m, a, b){
+            var start = performance.now();
+            function step(now){
+              var t = Math.min(1, (now - start) / 900);
+              var la = a[0] + (b[0] - a[0]) * t;
+              var lo = a[1] + (b[1] - a[1]) * t;
+              m.setLatLng([la, lo]);
+              if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+          })(meMarker, from, [lat, lng]);
+        }
 
         if (followMode) map.setView([lat, lng], 16, { animate:false });
 

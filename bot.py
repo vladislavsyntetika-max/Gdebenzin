@@ -1952,20 +1952,25 @@ def format_network_report(stats, total_all):
     if not stats or total_all == 0:
         return None
 
-    # Топ по отчётам
+    medals = ["\U0001F947", "\U0001F948", "\U0001F949"]
     ranked = sorted(stats.items(), key=lambda kv: kv[1]["total"], reverse=True)
     top5 = ranked[:5]
 
-    lines = ["\U0001F4CA <b>Сети недели</b>", ""]
-    lines.append("<b>Доля рынка по отчётам</b>")
-    for net, st in top5:
+    lines = ["\U0001F4CA <b>\u0421\u0435\u0442\u0438 \u043d\u0435\u0434\u0435\u043b\u0438</b>", ""]
+
+    # Доля рынка
+    lines.append("<b>\u0414\u043e\u043b\u044f \u0440\u044b\u043d\u043a\u0430 \u043f\u043e \u043e\u0442\u0447\u0451\u0442\u0430\u043c</b>")
+    for idx, (net, st) in enumerate(top5):
         label = NETWORKS.get(net, {}).get("label", net)
         pct = round(st["total"] / total_all * 100)
-        bar = "\u2588" * max(1, round(pct / 5))
-        lines.append(label + " — " + str(pct) + "% " + bar)
+        mark = medals[idx] if idx < 3 else "  "
+        lines.append(mark + " " + label + " — <b>" + str(pct) + "%</b>")
+    if len(ranked) > 5:
+        rest_pct = sum(st["total"] for _, st in ranked[5:]) / total_all * 100
+        lines.append("   \u041e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0435 — " + str(round(rest_pct)) + "%")
     lines.append("")
 
-    # Свежесть (последний отчёт в сети)
+    # Свежесть
     now = int(time.time())
     ranked_fresh = sorted(
         [(n, s) for n, s in stats.items() if s["total"] >= 5],
@@ -1975,9 +1980,9 @@ def format_network_report(stats, total_all):
         freshest = ranked_fresh[0]
         hours_ago = max(1, round((now - freshest[1]["last_ts"]) / 3600))
         label = NETWORKS.get(freshest[0], {}).get("label", freshest[0])
-        lines.append("\U0001F7E2 <b>Свежее всех:</b> " + label + " (последний отчёт " + str(hours_ago) + " ч назад)")
+        lines.append("\U0001F7E2 <b>\u0421\u0432\u0435\u0436\u0435\u0435 \u0432\u0441\u0435\u0445:</b> " + label + " (\u043e\u0442\u0447\u0451\u0442 " + str(hours_ago) + " \u0447 \u043d\u0430\u0437\u0430\u0434)")
 
-    # Проблемные по топливу (только сети с >=8 отчётами)
+    # Проблемные
     problematics = []
     for net, st in stats.items():
         if st["total"] < 8:
@@ -1990,25 +1995,33 @@ def format_network_report(stats, total_all):
         top_none = problematics[0]
         if top_none[1] >= 25:
             label = NETWORKS.get(top_none[0], {}).get("label", top_none[0])
-            lines.append("\U0001F534 <b>Проблемнее всех:</b> " + label + " (" + str(round(top_none[1])) + "% отчётов — «нет»)")
+            lines.append("\U0001F534 <b>\u041f\u0440\u043e\u0431\u043b\u0435\u043c\u043d\u0435\u0435 \u0432\u0441\u0435\u0445:</b> " + label + " (" + str(round(top_none[1])) + "% \u00ab\u043d\u0435\u0442\u00bb)")
     lines.append("")
 
-    # Разбивка по 92/95/98/ДТ для топ-3
-    lines.append("<b>Что с топливом у топ-3</b>")
+    # Топливо по топ-3 — компактно, с эмодзи статуса
+    lines.append("<b>\u0422\u043e\u043f\u043b\u0438\u0432\u043e \u0443 \u0442\u043e\u043f-3</b>")
     for net, st in top5[:3]:
         label = NETWORKS.get(net, {}).get("label", net)
-        parts = []
+        lines.append("<b>" + label + "</b>")
         for fk, fname in FUELS:
             f = st["fuels"][fk]
             total_f = f["ok"] + f["low"] + f["none"]
             if total_f == 0:
                 continue
             pct_ok = round(f["ok"] / total_f * 100)
-            parts.append(FUEL_SHORT[fk] + ": " + str(pct_ok) + "% есть")
-        lines.append(label + " — " + ", ".join(parts))
+            if pct_ok >= 70:
+                emoji = "\U0001F7E2"
+            elif pct_ok >= 40:
+                emoji = "\U0001F7E1"
+            else:
+                emoji = "\U0001F534"
+            lines.append("  " + emoji + " " + FUEL_SHORT[fk] + " — " + str(pct_ok) + "% \u0435\u0441\u0442\u044c")
     lines.append("")
-    lines.append("Данные за 7 дней от водителей. Присоединяйся: @naidibenzin_bot")
+    lines.append("\u0414\u0430\u043d\u043d\u044b\u0435 \u0437\u0430 7 \u0434\u043d\u0435\u0439 \u043e\u0442 \u0432\u043e\u0434\u0438\u0442\u0435\u043b\u0435\u0439. @naidibenzin_bot")
     return "\n".join(lines)
+
+
+async def post_network_report
 
 
 async def post_network_report(bot: Bot):

@@ -932,7 +932,8 @@
 
   var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false }).setView([59.94, 30.31], 12);
 
-  var markerCluster = L.markerClusterGroup({
+  var _clusterAvailable = (typeof L.markerClusterGroup === 'function');
+  var markerCluster = _clusterAvailable ? L.markerClusterGroup({
     showCoverageOnHover: false,
     spiderfyOnMaxZoom: true,
     maxClusterRadius: 50,
@@ -953,8 +954,9 @@
         iconSize: L.point(40, 40)
       });
     }
-  });
-  markerCluster.addTo(map);
+  }) : null;
+  if (markerCluster) markerCluster.addTo(map);
+  try { console.log("[GDEBENZIN] markercluster available:", _clusterAvailable); } catch(e){}
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
@@ -2223,7 +2225,8 @@
   }
 
   function renderMarkers(){
-    markerCluster.clearLayers();
+    if (markerCluster) markerCluster.clearLayers();
+    else Object.keys(markers).forEach(function(k){ map.removeLayer(markers[k]); });
     markers = {};
     var q = searchQuery.trim().toLowerCase();
     var reported = 0;
@@ -2237,7 +2240,8 @@
 
       var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s) });
       m._st = st;
-      markerCluster.addLayer(m);
+      if (markerCluster) markerCluster.addLayer(m);
+      else m.addTo(map);
       markers[s.id] = m;
       bindMarkerClick(s);
     });

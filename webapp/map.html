@@ -13,6 +13,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/leaflet.css">
+<link rel="stylesheet" href="/MarkerCluster.css">
+<link rel="stylesheet" href="/MarkerCluster.Default.css">
 <style>
   html, body {
     position: fixed; inset: 0; width: 100%; height: 100%;
@@ -692,6 +694,18 @@
   #mk-legend .lg-ok   { background: #30D158; }
   #mk-legend .lg-none { background: #FF3B30; }
   #mk-legend .lg-unk  { background: #8A8F98; }
+  .mk-cluster-wrap { background: transparent !important; border: none !important; }
+  .mk-cluster {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #14171A; font-weight: 800; font-size: 13px;
+    border: 3px solid #14171A;
+    box-shadow: 0 2px 8px rgba(0,0,0,.6);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .mk-cluster-s { width: 32px; height: 32px; font-size: 11px; }
+  .mk-cluster-m { width: 44px; height: 44px; font-size: 13px; }
+  .mk-cluster-l { width: 56px; height: 56px; font-size: 15px; }
   .mk{width:16px;height:16px;border-radius:50%;border:2px solid #14171A;box-sizing:border-box;position:relative;}
   .mk-q { position: absolute; top: -8px; right: -8px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 3px rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.9)); pointer-events: none; }
   .mk-fresh::after{content:"";position:absolute;inset:-2px;border-radius:50%;box-shadow:0 0 0 0 var(--mk-c);animation:mkPulse 1.8s ease-out infinite;}
@@ -809,6 +823,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="/leaflet.js"></script>
+<script src="/leaflet.markercluster.js"></script>
 <script>
 (function(){
   'use strict';
@@ -916,6 +931,30 @@
   }
 
   var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false }).setView([59.94, 30.31], 12);
+
+  var markerCluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    maxClusterRadius: 50,
+    iconCreateFunction: function(cluster){
+      var children = cluster.getAllChildMarkers();
+      var hasOk = false, hasNone = false;
+      for (var i = 0; i < children.length; i++){
+        var st = children[i]._st;
+        if (st === 'ok') hasOk = true;
+        else if (st === 'none') hasNone = true;
+      }
+      var color = hasOk ? '#30D158' : (hasNone ? '#FF3B30' : '#8A8F98');
+      var count = cluster.getChildCount();
+      var size = count < 10 ? 's' : (count < 100 ? 'm' : 'l');
+      return L.divIcon({
+        html: '<div class="mk-cluster mk-cluster-'+size+'" style="background:'+color+'"><span>'+count+'</span></div>',
+        className: 'mk-cluster-wrap',
+        iconSize: L.point(40, 40)
+      });
+    }
+  });
+  markerCluster.addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
@@ -2178,12 +2217,13 @@
     var m = markers[stationId];
     if (!s || !m) return;
     var st = statusFor(s.fuels, activeFuel);
+    m._st = st;
     m.setIcon(makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s));
     applyMarkerOpacity();
   }
 
   function renderMarkers(){
-    Object.keys(markers).forEach(function(k){ map.removeLayer(markers[k]); });
+    markerCluster.clearLayers();
     markers = {};
     var q = searchQuery.trim().toLowerCase();
     var reported = 0;
@@ -2195,7 +2235,9 @@
       if (favOnly && !isFav(s.id)) return;
       if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
 
-      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s) }).addTo(map);
+      var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s) });
+      m._st = st;
+      markerCluster.addLayer(m);
       markers[s.id] = m;
       bindMarkerClick(s);
     });

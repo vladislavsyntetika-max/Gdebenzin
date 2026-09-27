@@ -74,6 +74,18 @@ async def handle_leaflet_css(request):
     return web.FileResponse("webapp/leaflet.css")
 
 
+async def handle_cluster_js(request):
+    return web.FileResponse("webapp/leaflet.markercluster.js")
+
+
+async def handle_cluster_css(request):
+    return web.FileResponse("webapp/MarkerCluster.css")
+
+
+async def handle_cluster_default_css(request):
+    return web.FileResponse("webapp/MarkerCluster.Default.css")
+
+
 async def handle_telegram_js(request):
     return web.FileResponse("webapp/telegram-web-app.js")
 
@@ -905,6 +917,9 @@ def build_app() -> web.Application:
     app.router.add_get("/map", handle_map)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
+    app.router.add_get("/leaflet.markercluster.js", handle_cluster_js)
+    app.router.add_get("/MarkerCluster.css", handle_cluster_css)
+    app.router.add_get("/MarkerCluster.Default.css", handle_cluster_default_css)
     app.router.add_get("/telegram-web-app.js", handle_telegram_js)
     app.router.add_get("/sounds/{name}", handle_sound)
     app.router.add_get("/manifest.json", handle_manifest)

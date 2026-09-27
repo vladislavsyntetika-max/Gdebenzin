@@ -78,6 +78,13 @@ async def handle_telegram_js(request):
     return web.FileResponse("webapp/telegram-web-app.js")
 
 
+async def handle_sound(request):
+    name = request.match_info.get("name", "")
+    if name not in ("yes.mp3", "no.mp3", "open.mp3", "close.mp3"):
+        return web.Response(status=404)
+    return web.FileResponse("webapp/sounds/" + name)
+
+
 async def handle_manifest(request):
     manifest = {
         "name": "ГДЕ БЕНЗИН!? — топливо в реале",
@@ -899,6 +906,7 @@ def build_app() -> web.Application:
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
     app.router.add_get("/telegram-web-app.js", handle_telegram_js)
+    app.router.add_get("/sounds/{name}", handle_sound)
     app.router.add_get("/manifest.json", handle_manifest)
     app.router.add_get("/sw.js", handle_sw)
     app.router.add_get("/rules", handle_rules)

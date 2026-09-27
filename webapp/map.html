@@ -1198,40 +1198,49 @@
     clearTimeout(el._t);
     el._t = setTimeout(function(){ el.classList.remove('show'); }, 2400);
   }
-  var _audioCtx = null;
-  function playTone(freqStart, freqEnd, durMs){
+  var _soundCache = {};
+  function playSound(name){
     try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
     try {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === 'suspended') _audioCtx.resume();
-      var osc = _audioCtx.createOscillator();
-      var gain = _audioCtx.createGain();
-      osc.type = 'triangle';
-      var now = _audioCtx.currentTime;
-      var dur = durMs / 1000;
-      osc.frequency.setValueAtTime(freqStart, now);
-      osc.frequency.exponentialRampToValueAtTime(freqEnd, now + dur);
-      var osc2 = _audioCtx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freqStart * 2, now);
-      osc2.frequency.exponentialRampToValueAtTime(freqEnd * 2, now + dur);
-      var gain2 = _audioCtx.createGain();
-      gain2.gain.setValueAtTime(0.0001, now);
-      gain2.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
-      gain2.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-      osc2.connect(gain2); gain2.connect(_audioCtx.destination);
-      osc2.start(now); osc2.stop(now + dur + 0.02);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.5, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-      osc.connect(gain); gain.connect(_audioCtx.destination);
-      osc.start(now); osc.stop(now + dur + 0.02);
+      var a = _soundCache[name];
+      if (!a){ a = new Audio('/sounds/' + name + '.mp3'); a.preload = 'auto'; _soundCache[name] = a; }
+      a.currentTime = 0;
+      var p = a.play();
+      if (p && p.catch) p.catch(function(){});
     } catch(e){}
   }
-  function soundFuelYes(){ playTone(660, 990, 90); }
-  function soundFuelNo(){ playTone(440, 330, 100); }
-  function soundOpen(){ playTone(880, 1320, 200); }
-  function soundClose(){ playTone(1320, 880, 160); }
+  function soundFuelYes(){ playSound('yes'); }
+  function soundFuelNo(){ playSound('no'); }
+  function soundOpen(){ playSound('open'); }
+  function soundClose(){ playSound('close'); }
+
+  // --- Голосовое озвучивание названия станции через speechSynthesis ---
+  var _voiceRu = null;
+  function _pickVoice(){
+    if (_voiceRu) return _voiceRu;
+    try {
+      var vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      for (var i = 0; i < vs.length; i++){ if (vs[i].lang && vs[i].lang.toLowerCase().indexOf('ru') === 0){ _voiceRu = vs[i]; return _voiceRu; } }
+    } catch(e){}
+    return null;
+  }
+  if (window.speechSynthesis){
+    try { window.speechSynthesis.onvoiceschanged = function(){ _pickVoice(); }; } catch(e){}
+  }
+  function speakName(text){
+    try { if (localStorage.getItem('azs_voice_on') === '0') return; } catch(e){}
+    if (!window.speechSynthesis || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text));
+      u.lang = 'ru-RU';
+      u.rate = 1.05;
+      u.pitch = 1.0;
+      var v = _pickVoice();
+      if (v) u.voice = v;
+      window.speechSynthesis.speak(u);
+    } catch(e){}
+  }
 
   function showSaving(on){
     var el = document.getElementById('saving-pill');
@@ -1613,6 +1622,7 @@
     sheetStation = station;
     sheetAutoOpened = !!auto;
     if (auto) soundOpen();
+    try { if (typeof speakName === 'function' && s && s.name) speakName(s.name); } catch(e){}
     sheetPending = {};
     sheetPendingFlags = {};
     renderSheet();
@@ -2739,7 +2749,23 @@
   var soundBtn = document.getElementById('sound-toggle');
   function syncSoundIcon(){ var on = true; try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){} soundBtn.textContent = on ? String.fromCodePoint(128266) : String.fromCodePoint(128263); soundBtn.style.opacity = on ? '1' : '0.45'; }
   syncSoundIcon();
-  soundBtn.addEventListener('click', function(){ var on = true; try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){} try { localStorage.setItem('azs_sound_on', on ? '0' : '1'); } catch(e){} syncSoundIcon(); });
+  var _soundTap = 0, _soundTapT = null;
+  soundBtn.addEventListener('click', function(){
+    _soundTap++;
+    if (_soundTapT) clearTimeout(_soundTapT);
+    _soundTapT = setTimeout(function(){
+      if (_soundTap === 1){
+        var on = true; try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){}
+        try { localStorage.setItem('azs_sound_on', on ? '0' : '1'); } catch(e){}
+        syncSoundIcon();
+      } else if (_soundTap >= 2){
+        var von = true; try { von = localStorage.getItem('azs_voice_on') !== '0'; } catch(e){}
+        try { localStorage.setItem('azs_voice_on', von ? '0' : '1'); } catch(e){}
+        if (typeof toast === 'function') toast(von ? 'Голос: выкл' : 'Голос: вкл');
+      }
+      _soundTap = 0;
+    }, 260);
+  });
   installBtn.addEventListener('click', function(){
     if (isIOS) { showIOSInstructions(); return; }
     if (deferredInstallPrompt){

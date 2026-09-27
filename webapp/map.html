@@ -25,7 +25,7 @@
   }
   #map { position: absolute; inset: 0; background: #14171A; }
   .leaflet-container { background: #14171A; touch-action: none; }
-  html.in-tg #top { padding-top: 78px; }
+  html.in-tg #top { padding-top: 50px; }
 
   #top {
     position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
@@ -805,29 +805,6 @@
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
 
-  // TEMP DIAG
-  (function(){
-    var el = document.createElement('div');
-    el.id = 'tg-diag';
-    el.style.cssText = 'position:fixed;right:4px;bottom:120px;z-index:9999;background:rgba(0,0,0,.85);color:#0f0;font:11px monospace;padding:4px 6px;border-radius:4px;white-space:pre;pointer-events:none;';
-    function upd(){
-      var t = window.Telegram && window.Telegram.WebApp;
-      var lines = [];
-      lines.push('version=' + (t && t.version || '?'));
-      lines.push('initData=' + (t && t.initData ? t.initData.length : 0));
-      lines.push('in-tg=' + document.documentElement.classList.contains('in-tg'));
-      lines.push('innerH=' + window.innerHeight);
-      lines.push('vvH=' + (window.visualViewport ? Math.round(window.visualViewport.height) : '?'));
-      lines.push('tg.viewportH=' + (t && t.viewportHeight || '?'));
-      lines.push('tg.viewportStableH=' + (t && t.viewportStableHeight || '?'));
-      lines.push('safeTop=' + (t && t.safeAreaInset && t.safeAreaInset.top != null ? t.safeAreaInset.top : '?'));
-      lines.push('contentSafeTop=' + (t && t.contentSafeAreaInset && t.contentSafeAreaInset.top != null ? t.contentSafeAreaInset.top : '?'));
-      el.textContent = lines.join(String.fromCharCode(10));
-    }
-    upd();
-    setInterval(upd, 800);
-    document.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); });
-  })();
 
   var isTelegramWebApp = !!(tg && tg.initData && tg.initData.length > 0);
   if (isTelegramWebApp) { try { document.documentElement.classList.add('in-tg'); } catch(e){} }

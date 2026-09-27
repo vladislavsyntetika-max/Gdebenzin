@@ -26,6 +26,10 @@
   #map { position: absolute; inset: 0; background: #14171A; }
   .leaflet-container { background: #14171A; touch-action: none; }
   html.in-tg #top { padding-top: 46px; }
+  html.in-tg .modal-bg { padding-top: 68px; }
+  @media (orientation: landscape) and (max-height: 700px) {
+    html.in-tg .modal-bg { padding-top: 56px; }
+  }
   @media (orientation: portrait) {
     html.in-tg #top { padding-top: 68px; }
   }

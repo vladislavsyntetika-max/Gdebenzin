@@ -932,8 +932,9 @@
 
   var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false }).setView([59.94, 30.31], 12);
 
-  var _clusterAvailable = (typeof L.markerClusterGroup === 'function');
-  var markerCluster = _clusterAvailable ? L.markerClusterGroup({
+  var markerCluster = null;
+  try {
+    markerCluster = L.markerClusterGroup({
     showCoverageOnHover: false,
     spiderfyOnMaxZoom: true,
     maxClusterRadius: 50,
@@ -954,9 +955,9 @@
         iconSize: L.point(40, 40)
       });
     }
-  }) : null;
+  });
+  } catch(e){ markerCluster = null; try { console.log("[GDEBENZIN] cluster init failed:", e.message); } catch(err){} }
   if (markerCluster) markerCluster.addTo(map);
-  try { console.log("[GDEBENZIN] markercluster available:", _clusterAvailable); } catch(e){}
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }

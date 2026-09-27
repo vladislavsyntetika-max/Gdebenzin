@@ -930,7 +930,7 @@
     try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
   }
 
-  var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false }).setView([59.94, 30.31], 12);
+  var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false, maxZoom:19 }).setView([59.94, 30.31], 12);
 
   var markerCluster = null;
   try {

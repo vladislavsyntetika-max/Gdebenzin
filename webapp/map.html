@@ -327,9 +327,10 @@
     .modal-coords { font-size: 10px; margin: 0 0 2px; }
     .brand-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
     .brand-btn { padding: 5px 2px; font-size: 11px; border-radius: 6px; }
-    .fuel-line { display: inline-flex; width: 48%; margin: 3px 2% 0 0; vertical-align: top; box-sizing: border-box; gap: 4px; }
-    .fuel-line label { font-size: 12px; width: 24px; }
-    .fuel-line button { padding: 5px 0; font-size: 12px; border-radius: 6px; }
+    .fuel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; margin-top: 4px; }
+    .fuel-grid .fuel-line { display: flex; width: auto; margin: 0; gap: 5px; }
+    .fuel-line label { font-size: 15px; width: 32px; font-weight: 800; }
+    .fuel-line button { padding: 7px 0; font-size: 14px; border-radius: 7px; }
     .modal-btns { margin-top: 8px; gap: 8px; }
     .modal-btns button { padding: 8px 0; font-size: 13px; border-radius: 8px; }
   }
@@ -574,7 +575,7 @@
   }
   @media (orientation: landscape) and (max-height: 700px) {
   body { font-size: 14px; }
-  #top { padding: calc(env(safe-area-inset-top, 0px) + 44px) 90px 0 150px; gap: 4px; }
+  #top { padding: calc(env(safe-area-inset-top, 0px) + 44px) 130px 0 150px; gap: 4px; }
   .ctrl, .search, .icon-btn { height: 34px; font-size: 13px; padding-top: 5px; padding-bottom: 5px; border-radius: 8px; }
   #fav-toggle, #install-btn { display: none !important; }
   .search { padding-left: 28px; max-width: 38vw; }
@@ -599,6 +600,7 @@
   .promo-line { display: block; font-size: 22px; padding: 4px 8px; color: #FFB000; font-weight: 800; text-align: left; letter-spacing: 0.2px; flex: 1 1 auto; min-width: 0; }
   .bottom-row:first-child { flex: 0 0 auto; justify-content: flex-end; padding-right: 8px; }
   .bottom-row:last-child { display: none; }
+  #mk-legend { bottom: 56px; }
 
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
@@ -657,7 +659,7 @@
   @keyframes mkPulse { 0% { box-shadow: 0 0 0 0 var(--mk-c); opacity: .9; } 70% { box-shadow: 0 0 0 var(--mk-w) transparent; opacity: 0; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 0; } }
   #mk-legend {
     position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: 56px; z-index: 900;
+    bottom: 104px; z-index: 900;
     display: flex; align-items: center; gap: 8px;
     background: rgba(20,23,26,.88); backdrop-filter: blur(6px);
     border: 1px solid #262B31; border-radius: 12px;
@@ -2473,6 +2475,7 @@
     });
     html += '</div>';
     html += '<p class="modal-section">2. Топливо (по желанию)</p>';
+    html += '<div class="fuel-grid">';
     fuelsData.forEach(function(p){
       var short = FUEL_SHORT[p[0]] || p[1];
       html += '<div class="fuel-line" data-fuel="'+p[0]+'">'+
@@ -2482,6 +2485,7 @@
           '<button type="button" class="none" data-status="none">Нет</button>'+
         '</div></div>';
     });
+    html += '</div>';
     html += '<div class="modal-btns">'+
       '<button type="button" class="modal-secondary" id="as-cancel">Отмена</button>'+
       '<button type="button" class="modal-primary" id="as-save">Сохранить</button>'+

@@ -2116,13 +2116,32 @@ def merge_duplicate_stations(pairs):
                 drop = str(dr).strip()
                 if not drop or drop == keep:
                     continue
+                # feed — простой UPDATE (PK AUTOINCREMENT, конфликтов нет)
                 cur1 = conn.execute("UPDATE feed SET station_id=? WHERE station_id=?", (keep, drop))
                 moved_feed += cur1.rowcount or 0
-                cur2 = conn.execute("UPDATE reports SET station_id=? WHERE station_id=?", (keep, drop))
-                moved_reports += cur2.rowcount or 0
+                # reports — PK (station_id, fuel): переносим по одному топливу,
+                # оставляем более свежий отчёт
+                rep_rows = conn.execute(
+                    "SELECT fuel, status, ts, user_id, username FROM reports WHERE station_id=?",
+                    (drop,)
+                ).fetchall()
+                for fuel, status, ts, uid, uname in rep_rows:
+                    existing = conn.execute(
+                        "SELECT ts FROM reports WHERE station_id=? AND fuel=?",
+                        (keep, fuel)
+                    ).fetchone()
+                    if existing and (existing[0] or 0) >= (ts or 0):
+                        # у keep свежее — drop-отчёт просто снимаем
+                        continue
+                    conn.execute(
+                        "INSERT OR REPLACE INTO reports (station_id, fuel, status, ts, user_id, username) VALUES (?,?,?,?,?,?)",
+                        (keep, fuel, status, ts, uid, uname)
+                    )
+                    moved_reports += 1
+                conn.execute("DELETE FROM reports WHERE station_id=?", (drop,))
+                # Удаляем станцию
                 cur3 = conn.execute("DELETE FROM custom_stations WHERE id=?", (drop,))
                 deleted_stations += cur3.rowcount or 0
-                # Чистим кэш
                 try:
                     STATION_BY_ID.pop(drop, None)
                 except Exception:

@@ -2098,6 +2098,41 @@ def _haversine_m(la1, lo1, la2, lo2):
     return 2*R*math.asin(math.sqrt(a))
 
 
+def merge_duplicate_stations(pairs):
+    """pairs: список {"keep": id, "drop": [id, ...]}.
+    Переносит feed/reports с drop на keep, удаляет drop из custom_stations.
+    Возвращает {"moved_feed": N, "moved_reports": M, "deleted_stations": K}."""
+    moved_feed = 0
+    moved_reports = 0
+    deleted_stations = 0
+    conn = db()
+    try:
+        for p in pairs:
+            keep = str(p.get("keep") or "").strip()
+            drops = p.get("drop") or []
+            if not keep:
+                continue
+            for dr in drops:
+                drop = str(dr).strip()
+                if not drop or drop == keep:
+                    continue
+                cur1 = conn.execute("UPDATE feed SET station_id=? WHERE station_id=?", (keep, drop))
+                moved_feed += cur1.rowcount or 0
+                cur2 = conn.execute("UPDATE reports SET station_id=? WHERE station_id=?", (keep, drop))
+                moved_reports += cur2.rowcount or 0
+                cur3 = conn.execute("DELETE FROM custom_stations WHERE id=?", (drop,))
+                deleted_stations += cur3.rowcount or 0
+                # Чистим кэш
+                try:
+                    STATION_BY_ID.pop(drop, None)
+                except Exception:
+                    pass
+        conn.commit()
+    finally:
+        conn.close()
+    return {"moved_feed": moved_feed, "moved_reports": moved_reports, "deleted_stations": deleted_stations}
+
+
 def find_duplicate_pairs(radius_m=200):
     """Возвращает список пар [((sid_a, net, name, addr, lat, lng, cnt_a), (sid_b, ...), dist_m)]."""
     conn = db()

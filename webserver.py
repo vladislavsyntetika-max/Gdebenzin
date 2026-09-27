@@ -715,6 +715,37 @@ async def handle_dps_report(request):
     return web.json_response({"ok": True, "id": rid})
 
 
+async def handle_dups_merge(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id") or 0)
+        pairs = data.get("pairs") or []
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    if not core.ADMIN_ID or admin_id != core.ADMIN_ID:
+        return web.json_response({"ok": False, "error": "forbidden"}, status=403)
+
+    if not isinstance(pairs, list) or not pairs:
+        return web.json_response({"ok": False, "error": "empty_plan"}, status=400)
+
+    try:
+        result = core.merge_duplicate_stations(pairs)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+    # Инвалидируем кэш /api/stations
+    try:
+        _STATIONS_CACHE["json"] = None
+        _STATIONS_CACHE["ts"] = 0
+    except Exception:
+        pass
+
+    return web.json_response({"ok": True, **result})
+
+
 async def handle_dps_delete(request):
     try:
         data = await request.json()
@@ -933,6 +964,7 @@ def build_app() -> web.Application:
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_post("/api/dps-report", handle_dps_report)
     app.router.add_post("/api/dps-delete", handle_dps_delete)
+    app.router.add_post("/api/dups-merge", handle_dups_merge)
     app.router.add_post("/api/track-click", handle_track_click)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)

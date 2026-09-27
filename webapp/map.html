@@ -323,6 +323,8 @@
   .modal-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
   .modal-section { font-weight: 700; margin: 12px 0 0; font-size: 14px; color: #FFFFFF; }
   .modal-coords { font-size: 11.5px; color: #8A8F98; margin: 0 0 6px; }
+  .issue-textarea { width: 100%; box-sizing: border-box; background: #232830; color: #E8E6E1; border: 1px solid #2B3036; border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 15px; line-height: 1.4; resize: vertical; outline: none; min-height: 90px; }
+  .issue-textarea:focus { border-color: #FFB000; }
 
   @media (orientation: landscape) and (max-height: 520px) {
     .modal { padding: 8px 12px 8px; max-width: 720px; max-height: 96vh; }
@@ -1972,6 +1974,32 @@
     window.open(url, '_blank');
   }
 
+  function showIssueDialog(opts, onSend){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML =
+      '<div class="modal">' +
+        '<h3>'+escapeHtml(opts.title || 'Опишите, что не так')+'</h3>' +
+        '<p style="color:#8A8F98;font-size:12px;margin:4px 0 10px;">'+escapeHtml(opts.hint || '')+'</p>' +
+        '<textarea id="issue-text" class="issue-textarea" rows="5" maxlength="2000" placeholder="'+escapeHtml(opts.placeholder || '')+'"></textarea>' +
+        '<div class="modal-btns">' +
+          '<button type="button" class="modal-secondary" id="issue-cancel">Отмена</button>' +
+          '<button type="button" class="modal-primary" id="issue-send">Отправить</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(bg);
+    var ta = bg.querySelector('#issue-text');
+    setTimeout(function(){ try { ta.focus(); } catch(e){} }, 150);
+    bg.querySelector('#issue-cancel').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#issue-send').addEventListener('click', function(){
+      var v = (ta.value || '').trim();
+      if (!v){ toast('Пустое сообщение'); return; }
+      bg.remove();
+      onSend(v.slice(0, 2000));
+    });
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+  }
+
   function reportStationIssue(id){
     if (isTelegramWebApp) {
       // В Telegram — ведём в бота, там удобный диалог
@@ -1979,23 +2007,26 @@
       setTimeout(function(){ openBotDeepLink('err_' + id.replace(/-/g,'_')); }, 150);
       return;
     }
-    // Веб-гость: спрашиваем текст прямо здесь и шлём на /api/report-issue
-    var text = prompt('Опишите, что не так со станцией (одним сообщением):');
-    if (!text || !text.trim()) return;
-    text = text.trim().slice(0, 2000);
-    toast('Отправляю…');
-    fetch('/api/report-issue', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        station_id: id,
-        text: text,
-        user_id: userId,
-        username: effectiveUsername || 'веб-гость'
-      })
-    }).then(function(r){ return r.json(); }).then(function(j){
-      if (j && j.ok) toast('Спасибо! Заявка ушла автору.');
-      else toast('Не удалось отправить');
-    }).catch(function(){ toast('Ошибка сети'); });
+    // Веб-гость: визуальный диалог
+    showIssueDialog({
+      title: 'Неточность на станции',
+      hint: 'Опишите, что не так — одну фразу. Например: «неверный адрес», «станция закрыта».',
+      placeholder: 'Что не так со станцией?'
+    }, function(text){
+      toast('Отправляю…');
+      fetch('/api/report-issue', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          station_id: id,
+          text: text,
+          user_id: userId,
+          username: effectiveUsername || 'веб-гость'
+        })
+      }).then(function(r){ return r.json(); }).then(function(j){
+        if (j && j.ok) toast('Спасибо! Заявка ушла автору.');
+        else toast('Не удалось отправить');
+      }).catch(function(){ toast('Ошибка сети'); });
+    });
   }
 
   function confirmDeleteStation(stationId){
@@ -2497,27 +2528,27 @@
       var lat0, lng0;
       if (lastPosition){ lat0 = lastPosition.lat; lng0 = lastPosition.lng; }
       else { var cc = map.getCenter(); lat0 = cc.lat; lng0 = cc.lng; }
-      var textAdd = prompt(
-        'Напишите адрес и сеть АЗС одним сообщением (координаты приложатся автоматически):',
-        ''
-      );
-      if (!textAdd || !textAdd.trim()) return;
-      var fullText = '[Нет на карте · координаты ' +
-        lat0.toFixed(6) + ',' + lng0.toFixed(6) + '] ' +
-        textAdd.trim().slice(0, 1500);
-      toast('Отправляю…');
-      fetch('/api/report-issue', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          station_id: null,
-          text: fullText,
-          user_id: 0,
-          username: effectiveUsername || 'веб-гость'
-        })
-      }).then(function(r){ return r.json(); }).then(function(j){
-        if (j && j.ok) toast('Заявка ушла автору — точка появится после проверки.');
-        else toast('Не удалось отправить');
-      }).catch(function(){ toast('Ошибка сети'); });
+      showIssueDialog({
+        title: 'Добавить АЗС на карту',
+        hint: 'Напишите адрес и сеть. Координаты приложатся автоматически.',
+        placeholder: 'Например: Лукойл, Невский пр., 100'
+      }, function(textAdd){
+        var fullText = '[Нет на карте · координаты ' +
+          lat0.toFixed(6) + ',' + lng0.toFixed(6) + '] ' + textAdd;
+        toast('Отправляю…');
+        fetch('/api/report-issue', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            station_id: null,
+            text: fullText,
+            user_id: 0,
+            username: effectiveUsername || 'веб-гость'
+          })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          if (j && j.ok) toast('Заявка ушла автору — точка появится после проверки.');
+          else toast('Не удалось отправить');
+        }).catch(function(){ toast('Ошибка сети'); });
+      });
     } else {
       // Обычный пользователь — кидаем координаты в бота через deep-link
       var lat2, lng2;

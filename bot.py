@@ -1747,9 +1747,18 @@ async def on_free_text(message: Message):
             f"⚠️ Новое сообщение о неточности #{issue_id}\n"
             f"От: {safe_username} (id {user_id}){station_line}\n\n{safe_text}"
         )
-        fix_kb = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="✅ Исправлено", callback_data=f"fix:{issue_id}")
-        ]])
+        _kb_rows = []
+        if station_id:
+            try:
+                _st = get_station(station_id)
+                if _st:
+                    _url = (MAP_URL or "https://azs-spb-bot-syntetika.amvera.io/map").rstrip("/")
+                    _link = f"{_url}?pin={_st[4]:.6f},{_st[5]:.6f}&brand={_st[2]}"
+                    _kb_rows.append([InlineKeyboardButton(text="📍 Открыть на карте", web_app=WebAppInfo(url=_link))])
+            except Exception:
+                pass
+        _kb_rows.append([InlineKeyboardButton(text="✅ Исправлено", callback_data=f"fix:{issue_id}")])
+        fix_kb = InlineKeyboardMarkup(inline_keyboard=_kb_rows)
         try:
             await message.bot.send_message(ADMIN_ID, admin_text, reply_markup=fix_kb)
         except TelegramBadRequest:

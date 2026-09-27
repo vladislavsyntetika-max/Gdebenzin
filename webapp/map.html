@@ -329,7 +329,7 @@
     .modal-section { font-size: 12px; margin: 6px 0 0; }
     .modal-coords { font-size: 10px; margin: 0 0 2px; }
     .brand-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
-    .brand-btn { padding: 9px 4px; font-size: 15px; border-radius: 8px; font-weight: 700; }
+    .brand-btn { padding: 9px 3px; font-size: 14px; border-radius: 8px; font-weight: 700; }
     .fuel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; margin-top: 4px; }
     .fuel-grid .fuel-line { display: flex; width: auto; margin: 0; gap: 5px; }
     .fuel-line label { font-size: 15px; width: 32px; font-weight: 800; }
@@ -355,7 +355,7 @@
   .big-choice { width: 100%; padding: 18px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; text-align: center; border: none; }
 
   .brand-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-  .brand-btn { padding: 13px 6px; border-radius: 9px; border: 1px solid #3A3A3C; background: #2C2C2E; color: #FFFFFF; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; line-height: 1.15; }
+  .brand-btn { padding: 13px 3px; border-radius: 9px; border: 1px solid #3A3A3C; background: #2C2C2E; color: #FFFFFF; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand-btn:active { background: #3A3A3C; }
   .brand-btn.selected { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .fuel-line { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
@@ -2374,9 +2374,9 @@
 
   function openEditStationDialog(st){
     var brands = [
-      { key:'gpn', label:'Газпромнефть' }, { key:'lukoil', label:'Лукойл' },
+      { key:'gpn', label:'Газпром' }, { key:'lukoil', label:'Лукойл' },
       { key:'rosneft', label:'Роснефть' }, { key:'tatneft', label:'Татнефть' },
-      { key:'ptk', label:'ПТК' }, { key:'kirishi', label:'Киришиавтосервис' },
+      { key:'ptk', label:'ПТК' }, { key:'kirishi', label:'Кириши' },
       { key:'teboil', label:'Teboil' }, { key:'faeton', label:'Фаэтон' },
       { key:'other', label:'Другое' }
     ];
@@ -2454,9 +2454,9 @@
 
   function openAddStationDialog(lat, lng){
     var brands = [
-      { key:'gpn', label:'Газпромнефть' }, { key:'lukoil', label:'Лукойл' },
+      { key:'gpn', label:'Газпром' }, { key:'lukoil', label:'Лукойл' },
       { key:'rosneft', label:'Роснефть' }, { key:'tatneft', label:'Татнефть' },
-      { key:'ptk', label:'ПТК' }, { key:'kirishi', label:'Киришиавтосервис' },
+      { key:'ptk', label:'ПТК' }, { key:'kirishi', label:'Кириши' },
       { key:'teboil', label:'Teboil' }, { key:'faeton', label:'Фаэтон' },
       { key:'other', label:'Другое' }
     ];
@@ -2738,7 +2738,7 @@
           '<tr style="border-bottom:1px solid #2B3036;"><td style="padding:6px 4px;color:#B7BBC1;">Голосовой ввод</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
           '<tr><td style="padding:6px 4px;color:#B7BBC1;">Молнии — узнай первым</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
         '</table>' +
-        '<div class="row" style="margin-top:10px;"><a id="help-open-tg" href="https://t.me/naidibenzin_bot" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;background:#FFB000;color:#14171A;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">Открыть в Telegram</a></div>' +
+        '<div class="row" style="margin-top:10px;"><button type="button" id="help-open-tg" style="display:block;width:100%;text-align:center;padding:12px;background:#FFB000;color:#14171A;border-radius:10px;border:none;text-decoration:none;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;">Открыть в Telegram</button></div>' +
       '</div></details>' +
 
       '<details class="help-sec"><summary>💬 Помощь и связь</summary><div class="help-body">' +
@@ -2755,15 +2755,18 @@
     var tgLink = bg.querySelector('#help-open-tg');
     if (tgLink) {
       var openBot = function(e){
-        e.preventDefault();
-        e.stopPropagation();
+        try { e.preventDefault(); e.stopPropagation(); } catch(err){}
+        var tgExists = !!(window.Telegram && window.Telegram.WebApp);
+        var hasMethod = !!(tg && tg.openTelegramLink);
+        try { if (typeof toast === 'function') toast('tg=' + tgExists + ' m=' + hasMethod); } catch(err){}
         if (tg && tg.openTelegramLink) {
-          try { tg.openTelegramLink('https://t.me/naidibenzin_bot'); return; } catch(err){}
+          try { tg.openTelegramLink('https://t.me/naidibenzin_bot'); return; } catch(err){
+            try { if (typeof toast === 'function') toast('ERR:' + err.message); } catch(e2){}
+          }
         }
         try { window.open('https://t.me/naidibenzin_bot', '_blank'); } catch(err){}
       };
       tgLink.addEventListener('click', openBot);
-      tgLink.addEventListener('touchend', openBot, {passive: false});
     }
 
     bg.addEventListener('click', function(e){

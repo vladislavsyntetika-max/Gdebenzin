@@ -986,11 +986,11 @@
       body: JSON.stringify({ lat: lat, lng: lng, user_id: userId, username: effectiveUsername || "", kind: kind })
     }).then(function(r){ return r.json(); }).then(function(j){
       if (j && j.ok){
-        toast(kind === "dps" ? "Shield placed" : "Camera placed");
-        dpsData.push({ lat: lat, lng: lng, ts: Math.floor(Date.now()/1000), kind: kind });
+        toast(kind === "dps" ? "🛡 ДПС отмечен" : "🎥 Камера отмечена");
+        dpsData.push({ id: j.id, lat: lat, lng: lng, ts: Math.floor(Date.now()/1000), kind: kind, user_id: userId || 0 });
         renderDpsMarkers();
-      } else { toast("Failed"); }
-    }).catch(function(){ toast("Network error"); });
+      } else { toast("Не удалось сохранить"); }
+    }).catch(function(){ toast("Ошибка сети"); });
   }
 
   function renderDpsMarkers(){
@@ -1004,9 +1004,64 @@
         iconSize: [36, 36],
         iconAnchor: [18, 18]
       });
-      var m = L.marker([d.lat, d.lng], { icon: icon, interactive: false, zIndexOffset: 500 }).addTo(map);
+      var m = L.marker([d.lat, d.lng], { icon: icon, interactive: true, zIndexOffset: 500 }).addTo(map);
+      m.on("click", function(e){
+        L.DomEvent.stopPropagation(e);
+        openDpsSheet(d);
+      });
       dpsMarkers.push(m);
     });
+  }
+
+  function dpsAgo(ts){
+    var diff = Math.max(0, Math.floor(Date.now()/1000) - ts);
+    if (diff < 60) return "только что";
+    var m = Math.floor(diff/60);
+    if (m < 60) return m + " мин назад";
+    var h = Math.floor(m/60);
+    return h + " ч назад";
+  }
+
+  function openDpsSheet(d){
+    var bg = document.createElement("div");
+    bg.className = "modal-bg";
+    var isCam = d.kind === "camera";
+    var title = isCam ? "🎥 Камера" : "🛡 ДПС";
+    var owner = (d.user_id && userId && d.user_id === userId);
+    var admin = (typeof ADMIN_USER_IDS !== "undefined" && ADMIN_USER_IDS.indexOf(userId) >= 0);
+    var canDelete = owner || admin || d.user_id === 0;
+    var ago = dpsAgo(d.ts || Math.floor(Date.now()/1000));
+
+    var html = '<div class="modal"><h3>' + title + '</h3>' +
+      '<p style="color:#8A8F98;font-size:13px;margin:6px 0 12px;">Отмечено ' + ago + '</p>' +
+      '<div class="modal-btns">' +
+        '<button type="button" class="modal-secondary" id="dps-close">Закрыть</button>' +
+        (canDelete ? '<button type="button" class="modal-primary" id="dps-del" style="background:#C62828;color:#fff;">Удалить</button>' : '') +
+      '</div></div>';
+    bg.innerHTML = html;
+    document.body.appendChild(bg);
+
+    bg.querySelector("#dps-close").addEventListener("click", function(){ bg.remove(); });
+    var delBtn = bg.querySelector("#dps-del");
+    if (delBtn){
+      delBtn.addEventListener("click", function(){
+        fetch("/api/dps-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: d.id, user_id: userId || 0 })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          bg.remove();
+          if (j && j.ok){
+            dpsData = dpsData.filter(function(x){ return x.id !== d.id; });
+            renderDpsMarkers();
+            toast("Удалено");
+          } else {
+            toast(j && j.error === "not_owner" ? "Можно удалять только свои метки" : "Не удалось удалить");
+          }
+        }).catch(function(){ bg.remove(); toast("Ошибка сети"); });
+      });
+    }
+    bg.addEventListener("click", function(e){ if (e.target === bg) bg.remove(); });
   }
 
   function statusFor(fuels, fuelKey){

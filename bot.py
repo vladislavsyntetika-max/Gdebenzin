@@ -2021,9 +2021,6 @@ def format_network_report(stats, total_all):
     return "\n".join(lines)
 
 
-async def post_network_report
-
-
 async def post_network_report(bot: Bot):
     if not CHANNEL_ID:
         return False

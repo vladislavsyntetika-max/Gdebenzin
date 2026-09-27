@@ -2230,14 +2230,16 @@ def build_dup_merge_plan(radius_m=10):
 
 @dp.message(Command("dupmerge"))
 async def on_dupmerge_cmd(message: Message):
+    import traceback
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:
         await message.answer("Команда только для админа.")
         return
-    await message.answer("Считаю план слияния (<=10м, custom↔custom)…")
+    await message.answer("Считаю план…")
     try:
         plan = build_dup_merge_plan(10)
-    except Exception as e:
-        await message.answer("Ошибка: " + str(e))
+    except Exception:
+        tb = traceback.format_exc()
+        await message.answer("Ошибка:\n<pre>" + html.escape(tb[-1500:]) + "</pre>")
         return
     if not plan:
         await message.answer("Нечего сливать.")

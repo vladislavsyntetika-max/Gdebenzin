@@ -1229,7 +1229,11 @@
   }
   function speakName(text){
     try { if (localStorage.getItem('azs_voice_on') === '0') return; } catch(e){}
-    if (!window.speechSynthesis || !text) return;
+    if (!text) return;
+    if (!window.speechSynthesis){
+      if (!window._spoke_diag){ window._spoke_diag = 1; try { toast('TTS не поддерживается в этом клиенте'); } catch(e){} }
+      return;
+    }
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(String(text));
@@ -1239,7 +1243,9 @@
       var v = _pickVoice();
       if (v) u.voice = v;
       window.speechSynthesis.speak(u);
-    } catch(e){}
+    } catch(e){
+      if (!window._spoke_diag){ window._spoke_diag = 1; try { toast('TTS err: ' + e.message); } catch(err){} }
+    }
   }
 
   function showSaving(on){

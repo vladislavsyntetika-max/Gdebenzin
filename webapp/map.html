@@ -831,12 +831,6 @@
     if (tg.setHeaderColor) { try { tg.setHeaderColor('#14171A'); } catch(e){} }
     if (tg.setBackgroundColor) { try { tg.setBackgroundColor('#14171A'); } catch(e){} }
   }
-  window.__openTgHelp = function(e){
-    try {
-      if (tg && tg.openTelegramLink) { tg.openTelegramLink('https://t.me/naidibenzin_bot'); if (e) e.preventDefault(); return false; }
-    } catch(err){}
-    return true;
-  };
 
   var user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
 
@@ -2741,7 +2735,7 @@
           '<tr style="border-bottom:1px solid #2B3036;"><td style="padding:6px 4px;color:#B7BBC1;">Голосовой ввод</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
           '<tr><td style="padding:6px 4px;color:#B7BBC1;">Молнии — узнай первым</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
         '</table>' +
-        '<div class="row" style="margin-top:10px;"><a href="https://t.me/naidibenzin_bot" onclick="return window.__openTgHelp && window.__openTgHelp(event)" target="_blank" style="display:block;text-align:center;padding:12px;background:#FFB000;color:#14171A;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">Открыть в Telegram</a></div>' +
+        '<div class="row" style="margin-top:10px;"><a id="help-open-tg" href="https://t.me/naidibenzin_bot" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;background:#FFB000;color:#14171A;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">Открыть в Telegram</a></div>' +
       '</div></details>' +
 
       '<details class="help-sec"><summary>💬 Помощь и связь</summary><div class="help-body">' +
@@ -2753,6 +2747,18 @@
       '<div class="help-footer">Проект сообщества водителей · <a href="https://t.me/naidibenzin_bot" target="_blank">@naidibenzin_bot</a></div>' +
     '</div>';
     document.body.appendChild(bg);
+
+    // Открытие ссылки на бота через Telegram API (inline onclick блокируется CSP)
+    var tgLink = bg.querySelector('#help-open-tg');
+    if (tgLink) {
+      tgLink.addEventListener('click', function(e){
+        if (tg && tg.openTelegramLink) {
+          e.preventDefault();
+          try { tg.openTelegramLink('https://t.me/naidibenzin_bot'); } catch(err){}
+        }
+      });
+    }
+
     bg.addEventListener('click', function(e){
       if (e.target === bg || e.target.classList.contains('help-close')) bg.remove();
     });

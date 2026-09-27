@@ -1388,6 +1388,66 @@ async def on_daily_now_cmd(message: Message):
         await message.answer("Не опубликовано (нет CHANNEL_ID или ошибка).")
 
 
+@dp.message(Command("сети", "networks"))
+async def on_networks_cmd(message: Message):
+    try:
+        stats, total_all = get_network_weekly_stats()
+    except Exception:
+        await message.answer("Не удалось получить статистику.")
+        return
+    text = format_network_report(stats, total_all)
+    if not text:
+        await message.answer("Пока нет отчётов за неделю.", reply_markup=kb_main())
+        return
+    await message.answer(text, reply_markup=kb_main())
+
+
+@dp.message(Command("netreport_now"))
+async def on_netreport_now_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    try:
+        ok = await post_network_report(message.bot)
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    if ok:
+        await message.answer("Отчёт по сетям опубликован в канал.")
+    else:
+        await message.answer("Не опубликовано (нет данных или CHANNEL_ID).")
+
+
+@dp.message(Command("сети", "networks"))
+async def on_networks_cmd(message: Message):
+    try:
+        stats, total_all = get_network_weekly_stats()
+    except Exception:
+        await message.answer("Не удалось получить статистику.")
+        return
+    text = format_network_report(stats, total_all)
+    if not text:
+        await message.answer("Пока нет отчётов за неделю.", reply_markup=kb_main())
+        return
+    await message.answer(text, reply_markup=kb_main())
+
+
+@dp.message(Command("netreport_now"))
+async def on_netreport_now_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    try:
+        ok = await post_network_report(message.bot)
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    if ok:
+        await message.answer("Отчёт по сетям опубликован в канал.")
+    else:
+        await message.answer("Не опубликовано (нет данных или CHANNEL_ID).")
+
+
 @dp.message(Command("проблема", "проблемы", "баг"))
 async def on_problem_cmd(message: Message):
     pending_issue[message.from_user.id] = "__bot__"
@@ -1855,6 +1915,142 @@ async def daily_leaderboard_task(bot: Bot):
         await asyncio.sleep(POLL_INTERVAL)
 
 
+
+
+
+def get_network_weekly_stats():
+    """Аналитика по сетям за 7 дней на основе feed."""
+    week_ago = int(time.time()) - 7 * 86400
+    conn = db()
+    rows = conn.execute("""
+        SELECT station_id, fuel, status, ts FROM feed
+        WHERE ts > ?
+    """, (week_ago,)).fetchall()
+    conn.close()
+
+    stats = {}  # net_key -> {"total": N, "fuels": {fk: {"ok":N,"low":N,"none":N}}, "last_ts": max}
+    total_all = 0
+    for station_id, fuel, status, ts in rows:
+        st = STATION_BY_ID.get(station_id)
+        if not st:
+            continue
+        net = st[2]
+        if net not in NETWORKS:
+            net = "other"
+        if net not in stats:
+            stats[net] = {"total": 0, "last_ts": 0, "fuels": {fk: {"ok":0,"low":0,"none":0} for fk,_ in FUELS}}
+        stats[net]["total"] += 1
+        if ts > stats[net]["last_ts"]:
+            stats[net]["last_ts"] = ts
+        if fuel in stats[net]["fuels"] and status in ("ok","low","none"):
+            stats[net]["fuels"][fuel][status] += 1
+        total_all += 1
+    return stats, total_all
+
+
+def format_network_report(stats, total_all):
+    if not stats or total_all == 0:
+        return None
+
+    # Топ по отчётам
+    ranked = sorted(stats.items(), key=lambda kv: kv[1]["total"], reverse=True)
+    top5 = ranked[:5]
+
+    lines = ["\U0001F4CA <b>Сети недели</b>", ""]
+    lines.append("<b>Доля рынка по отчётам</b>")
+    for net, st in top5:
+        label = NETWORKS.get(net, {}).get("label", net)
+        pct = round(st["total"] / total_all * 100)
+        bar = "\u2588" * max(1, round(pct / 5))
+        lines.append(label + " — " + str(pct) + "% " + bar)
+    lines.append("")
+
+    # Свежесть (последний отчёт в сети)
+    now = int(time.time())
+    ranked_fresh = sorted(
+        [(n, s) for n, s in stats.items() if s["total"] >= 5],
+        key=lambda kv: kv[1]["last_ts"], reverse=True
+    )
+    if ranked_fresh:
+        freshest = ranked_fresh[0]
+        hours_ago = max(1, round((now - freshest[1]["last_ts"]) / 3600))
+        label = NETWORKS.get(freshest[0], {}).get("label", freshest[0])
+        lines.append("\U0001F7E2 <b>Свежее всех:</b> " + label + " (последний отчёт " + str(hours_ago) + " ч назад)")
+
+    # Проблемные по топливу (только сети с >=8 отчётами)
+    problematics = []
+    for net, st in stats.items():
+        if st["total"] < 8:
+            continue
+        total_none = sum(st["fuels"][fk]["none"] for fk,_ in FUELS)
+        pct_none = total_none / st["total"] * 100
+        problematics.append((net, pct_none, total_none))
+    if problematics:
+        problematics.sort(key=lambda x: x[1], reverse=True)
+        top_none = problematics[0]
+        if top_none[1] >= 25:
+            label = NETWORKS.get(top_none[0], {}).get("label", top_none[0])
+            lines.append("\U0001F534 <b>Проблемнее всех:</b> " + label + " (" + str(round(top_none[1])) + "% отчётов — «нет»)")
+    lines.append("")
+
+    # Разбивка по 92/95/98/ДТ для топ-3
+    lines.append("<b>Что с топливом у топ-3</b>")
+    for net, st in top5[:3]:
+        label = NETWORKS.get(net, {}).get("label", net)
+        parts = []
+        for fk, fname in FUELS:
+            f = st["fuels"][fk]
+            total_f = f["ok"] + f["low"] + f["none"]
+            if total_f == 0:
+                continue
+            pct_ok = round(f["ok"] / total_f * 100)
+            parts.append(FUEL_SHORT[fk] + ": " + str(pct_ok) + "% есть")
+        lines.append(label + " — " + ", ".join(parts))
+    lines.append("")
+    lines.append("Данные за 7 дней от водителей. Присоединяйся: @naidibenzin_bot")
+    return "\n".join(lines)
+
+
+async def post_network_report(bot: Bot):
+    if not CHANNEL_ID:
+        return False
+    try:
+        stats, total_all = get_network_weekly_stats()
+    except Exception:
+        log.exception("get_network_weekly_stats failed")
+        return False
+    text = format_network_report(stats, total_all)
+    if not text:
+        log.info("Отчёт по сетям пропущен: нет данных.")
+        return False
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="\U0001F5FA \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0440\u0442\u0443", url="https://t.me/naidibenzin_bot/azs")
+    ]])
+    await bot.send_message(CHANNEL_ID, text, parse_mode="HTML", reply_markup=kb)
+    log.info("Отчёт по сетям опубликован")
+    return True
+
+
+async def weekly_network_task(bot: Bot):
+    if not CHANNEL_ID:
+        return
+    POST_HOUR_UTC = 6  # 9:00 МСК, вторник
+    POLL_INTERVAL = 600
+    while True:
+        now = datetime.utcnow()
+        if now.weekday() == 1 and now.hour >= POST_HOUR_UTC:
+            today_str = now.strftime("%Y-%m-%d")
+            if get_state("last_network_post_date") != today_str:
+                sent = False
+                try:
+                    sent = await post_network_report(bot)
+                except Exception:
+                    log.exception("Ошибка публикации отчёта по сетям")
+                if sent:
+                    set_state("last_network_post_date", today_str)
+        await asyncio.sleep(POLL_INTERVAL)
+
+
 async def main():
     if not BOT_TOKEN:
         raise RuntimeError("Не задан BOT_TOKEN.")
@@ -1881,6 +2077,7 @@ async def main():
 
     asyncio.create_task(weekly_leaderboard_task(bot))
     asyncio.create_task(daily_leaderboard_task(bot))
+    asyncio.create_task(weekly_network_task(bot))
 
     await dp.start_polling(bot, request_timeout=15)
 

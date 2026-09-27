@@ -967,7 +967,7 @@ def kb_main():
         rows.append([InlineKeyboardButton(text="🗺 ОТКРЫТЬ КАРТУ — свежие данные", web_app=WebAppInfo(url=MAP_URL), style="primary")])
     rows.append([InlineKeyboardButton(text="🕓 Последние отчёты", callback_data="feed")])
     rows.append([
-        InlineKeyboardButton(text="📢 Канал Telegram", url="https://t.me/naidibenzin"),
+        InlineKeyboardButton(text="📢 Канал — топ дня и алерты", url="https://t.me/naidibenzin"),
         InlineKeyboardButton(text="📢 Канал MAX", url="https://max.ru/channel_naidibenzin"),
     ])
     rows.append([InlineKeyboardButton(text="⚠️ Сообщить об ошибке в боте", callback_data="err:")])
@@ -1137,7 +1137,16 @@ async def on_start(message, command: CommandObject):
         "• Фото стелл с ценами\n"
         "• ДПС и камеры в реальном времени\n"
         "• Голосовой ввод в движении\n"
-        "• Баллы, звания, топ недели"
+        "• Баллы, звания, топ недели\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "📌 <b>Ещё есть канал @naidibenzin</b>\n\n"
+        "Там мы публикуем:\n"
+        "• Топ дня в 20:00 — кто больше всех помог\n"
+        "• Топ недели по понедельникам\n"
+        "• Волны бензовозов («топливо едет в Приморский»)\n"
+        "• Массовые «нет топлива» («объезжай этот район»)\n\n"
+        "Открыть карту можно и без подписки, всё работает.\n"
+        "Но если хочешь узнавать первым — жми и подписывайся:"
     )
     await message.answer(text, reply_markup=kb_main())
 

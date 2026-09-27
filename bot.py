@@ -2160,6 +2160,155 @@ def find_duplicate_pairs(radius_m=200):
     return pairs
 
 
+def _dup_score(sid, name, net, addr, cnt):
+    sc = 0
+    a = (addr or "").strip().lower()
+    if a and a not in ("добавлено с карты", "добавлено пользователем"):
+        sc += 1000
+    sc += int(cnt or 0) * 10
+    if not str(sid).startswith("custom-"):
+        sc += 5000
+    return sc
+
+
+def build_dup_merge_plan(radius_m=10):
+    """Возвращает список {keep: {...}, drop: [{...}, ...]} для групп дублей."""
+    conn = db()
+    rows = conn.execute("SELECT id, name, net, addr, lat, lng FROM custom_stations").fetchall()
+    feed = conn.execute("SELECT station_id, COUNT(*) FROM feed GROUP BY station_id").fetchall()
+    conn.close()
+    counts = {sid: cnt for sid, cnt in feed}
+
+    # Только custom_stations + один проход. STATIC-станции не трогаем
+    # (они не в custom_stations). Дубли custom↔custom или custom↔static
+    # мы не обнаружим по этой выборке — берём только custom↔custom.
+    items = []
+    for sid, name, net, addr, lat, lng in rows:
+        items.append({
+            "id": sid, "name": name, "net": net, "addr": addr or "",
+            "lat": lat, "lng": lng, "cnt": counts.get(sid, 0)
+        })
+
+    # Ищем пары <=radius_m, одна сеть
+    n = len(items)
+    pairs = []
+    for i in range(n):
+        a = items[i]
+        for j in range(i+1, n):
+            b = items[j]
+            if a["net"] != b["net"]:
+                continue
+            d = _haversine_m(a["lat"], a["lng"], b["lat"], b["lng"])
+            if d <= radius_m:
+                pairs.append((i, j, d))
+
+    # Union-find по индексам
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb: parent[rb] = ra
+    for i, j, d in pairs:
+        union(i, j)
+
+    groups = {}
+    for i, it in enumerate(items):
+        r = find(i)
+        groups.setdefault(r, []).append(it)
+
+    plan = []
+    for root, members in groups.items():
+        if len(members) < 2:
+            continue
+        ranked = sorted(members, key=lambda x: _dup_score(x["id"], x["name"], x["net"], x["addr"], x["cnt"]), reverse=True)
+        plan.append({"keep": ranked[0], "drop": ranked[1:]})
+    return plan
+
+
+@dp.message(Command("dupmerge"))
+async def on_dupmerge_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    await message.answer("Считаю план слияния (<=10м, custom↔custom)…")
+    try:
+        plan = build_dup_merge_plan(10)
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    if not plan:
+        await message.answer("Нечего сливать.")
+        return
+    total_drop = sum(len(g["drop"]) for g in plan)
+    lines = ["🧹 <b>План слияния дублей</b>", ""]
+    lines.append("Групп: <b>" + str(len(plan)) + "</b> · удалить: <b>" + str(total_drop) + "</b>")
+    lines.append("")
+    for g in plan[:15]:
+        keep = g["keep"]
+        lines.append("<b>✔ " + str(keep["id"]) + "</b> | " + (keep["addr"] or "—"))
+        for d in g["drop"]:
+            lines.append("  ✖ " + str(d["id"]) + " | " + (d["addr"] or "—"))
+    if len(plan) > 15:
+        lines.append("… и ещё " + str(len(plan) - 15) + " групп")
+    # Собираем pairs для API
+    pairs = [{"keep": g["keep"]["id"], "drop": [d["id"] for d in g["drop"]]} for g in plan]
+    payload = json.dumps(pairs)
+    # Inline-кнопка «Применить»
+    # Из-за лимита callback_data 64 байта — сохраним план в bot_state и передадим id
+    token = str(int(time.time()))
+    set_state("dupmerge_plan_" + token, payload)
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✅ Применить", callback_data="dupmerge:apply:" + token),
+        InlineKeyboardButton(text="❌ Отмена", callback_data="dupmerge:cancel")
+    ]])
+    await message.answer("\n".join(lines), reply_markup=kb)
+
+
+@dp.callback_query(F.data.startswith("dupmerge:"))
+async def cb_dupmerge(cq: CallbackQuery):
+    if not ADMIN_ID or cq.from_user.id != ADMIN_ID:
+        await cq.answer("Только админ.", show_alert=True)
+        return
+    parts = cq.data.split(":")
+    action = parts[1] if len(parts) > 1 else ""
+    if action == "cancel":
+        await cq.message.edit_reply_markup(reply_markup=None)
+        await cq.answer("Отменено.")
+        return
+    if action == "apply" and len(parts) == 3:
+        token = parts[2]
+        raw = get_state("dupmerge_plan_" + token)
+        if not raw:
+            await cq.answer("План истёк.", show_alert=True)
+            return
+        try:
+            pairs = json.loads(raw)
+        except Exception:
+            await cq.answer("План повреждён.", show_alert=True)
+            return
+        try:
+            result = merge_duplicate_stations(pairs)
+        except Exception as e:
+            await cq.answer("Ошибка: " + str(e), show_alert=True)
+            return
+        set_state("dupmerge_plan_" + token, "")
+        try:
+            await cq.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        text = ("✅ <b>Слияние выполнено</b>\n\n"
+                "• Перенесено feed-записей: <b>" + str(result["moved_feed"]) + "</b>\n"
+                "• Перенесено reports: <b>" + str(result["moved_reports"]) + "</b>\n"
+                "• Удалено станций: <b>" + str(result["deleted_stations"]) + "</b>")
+        await cq.message.answer(text)
+        await cq.answer("Готово")
+        return
+    await cq.answer("")
+
+
 @dp.message(Command("dups"))
 async def on_dups_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:

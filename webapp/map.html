@@ -2738,7 +2738,7 @@
           '<tr style="border-bottom:1px solid #2B3036;"><td style="padding:6px 4px;color:#B7BBC1;">Голосовой ввод</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
           '<tr><td style="padding:6px 4px;color:#B7BBC1;">Молнии — узнай первым</td><td style="text-align:center;color:#636366;padding:6px 4px;">❌</td><td style="text-align:center;color:#30D158;padding:6px 4px;font-weight:700;">✅</td></tr>' +
         '</table>' +
-        '<div class="row" style="margin-top:10px;"><button type="button" id="help-open-tg" style="display:block;width:100%;text-align:center;padding:12px;background:#FFB000;color:#14171A;border-radius:10px;border:none;text-decoration:none;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;">Открыть в Telegram</button></div>' +
+
       '</div></details>' +
 
       '<details class="help-sec"><summary>💬 Помощь и связь</summary><div class="help-body">' +
@@ -2747,27 +2747,13 @@
         '<div class="row">Бот: <b>@naidibenzin_bot</b></div>' +
       '</div></details>' +
 
+      '<button type="button" id="help-open-tg" style="display:block;width:100%;text-align:center;padding:14px;margin-top:14px;background:#FFB000;color:#14171A;border-radius:10px;border:none;font-weight:800;font-size:16px;font-family:inherit;cursor:pointer;">\U0001F5FA \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043A\u0430\u0440\u0442\u0443 \u0432 Telegram</button>' +
       '<div class="help-footer">Проект сообщества водителей · <a href="https://t.me/naidibenzin_bot" target="_blank">@naidibenzin_bot</a></div>' +
     '</div>';
     document.body.appendChild(bg);
 
     // Открытие ссылки на бота через Telegram API (inline onclick блокируется CSP)
-    var tgLink = bg.querySelector('#help-open-tg');
-    if (tgLink) {
-      var openBot = function(e){
-        try { e.preventDefault(); e.stopPropagation(); } catch(err){}
-        var tgExists = !!(window.Telegram && window.Telegram.WebApp);
-        var hasMethod = !!(tg && tg.openTelegramLink);
-        try { if (typeof toast === 'function') toast('tg=' + tgExists + ' m=' + hasMethod); } catch(err){}
-        if (tg && tg.openTelegramLink) {
-          try { tg.openTelegramLink('https://t.me/naidibenzin_bot'); return; } catch(err){
-            try { if (typeof toast === 'function') toast('ERR:' + err.message); } catch(e2){}
-          }
-        }
-        try { window.open('https://t.me/naidibenzin_bot', '_blank'); } catch(err){}
-      };
-      tgLink.addEventListener('click', openBot);
-    }
+
 
     bg.addEventListener('click', function(e){
       if (e.target === bg || e.target.classList.contains('help-close')) bg.remove();
@@ -2775,6 +2761,16 @@
   }
 
   document.getElementById('help-toggle').addEventListener('click', openHelpModal);
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('#help-open-tg');
+    if (!t) return;
+    try { e.preventDefault(); e.stopPropagation(); } catch(err){}
+    var url = 'https://t.me/naidibenzin_bot';
+    if (tg && tg.openTelegramLink) {
+      try { tg.openTelegramLink(url); return; } catch(err){}
+    }
+    try { window.open(url, '_blank'); } catch(err){}
+  }, true);
 
   try {
     var _lc = parseInt(localStorage.getItem('azs_load_count') || '0', 10) || 0;

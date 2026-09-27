@@ -536,29 +536,48 @@ def save_dps_report(lat, lng, user_id, username=None, kind="dps"):
         kind = "dps"
     now = int(time.time())
     conn = db()
-    conn.execute(
+    cur = conn.execute(
         "INSERT INTO dps_reports (lat, lng, user_id, username, ts, kind) VALUES (?,?,?,?,?,?)",
         (float(lat), float(lng), user_id or 0, username, now, kind),
     )
     conn.commit()
+    rid = cur.lastrowid
     conn.close()
-    return now
+    return rid
 
 
 def get_active_dps_reports(dps_ttl=3600, camera_ttl=10800):
-    """ДПС — 1 час, камеры — 3 часа."""
+    """ДПС — 1 час, камеры — 3 часа. Возвращает id, lat, lng, ts, kind, user_id."""
     now = int(time.time())
     dps_cutoff = now - dps_ttl
     cam_cutoff = now - camera_ttl
     conn = db()
     rows = conn.execute(
-        "SELECT lat, lng, ts, kind FROM dps_reports "
+        "SELECT id, lat, lng, ts, kind, COALESCE(user_id, 0) FROM dps_reports "
         "WHERE ts > (CASE WHEN kind='camera' THEN ? ELSE ? END) "
         "ORDER BY ts DESC LIMIT 200",
         (cam_cutoff, dps_cutoff),
     ).fetchall()
     conn.close()
     return rows
+
+
+def delete_dps_report(report_id, user_id, is_admin=False):
+    """Удаляет метку. Автор — всегда, чужой — только админ.
+    Возвращает True если удалено."""
+    conn = db()
+    row = conn.execute("SELECT user_id FROM dps_reports WHERE id=?", (int(report_id),)).fetchone()
+    if not row:
+        conn.close()
+        return False
+    owner = row[0] or 0
+    if not is_admin and owner != int(user_id):
+        conn.close()
+        return False
+    conn.execute("DELETE FROM dps_reports WHERE id=?", (int(report_id),))
+    conn.commit()
+    conn.close()
+    return True
 
 
 def save_issue(station_id, user_id, username, text):

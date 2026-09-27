@@ -300,7 +300,7 @@ def _build_stations_payload():
         dps_rows = core.get_active_dps_reports()
     except AttributeError:
         dps_rows = []
-    dps_list = [{"lat": r[0], "lng": r[1], "ts": r[2], "kind": (r[3] if len(r) > 3 else "dps")} for r in dps_rows]
+    dps_list = [{"id": r[0], "lat": r[1], "lng": r[2], "ts": r[3], "kind": (r[4] if len(r) > 4 else "dps"), "user_id": (r[5] if len(r) > 5 else 0)} for r in dps_rows]
 
     payload = {
         "stations": result,
@@ -689,11 +689,30 @@ async def handle_dps_report(request):
         return web.json_response({"ok": False, "error": "bad_coords"}, status=400)
 
     try:
-        core.save_dps_report(lat, lng, user_id, username, kind=kind)
+        rid = core.save_dps_report(lat, lng, user_id, username, kind=kind)
     except AttributeError:
         return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
 
-    return web.json_response({"ok": True})
+    return web.json_response({"ok": True, "id": rid})
+
+
+async def handle_dps_delete(request):
+    try:
+        data = await request.json()
+        report_id = int(data["id"])
+        user_id = int(data.get("user_id") or 0)
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    is_admin = bool(core.ADMIN_ID) and user_id == core.ADMIN_ID
+    try:
+        ok = core.delete_dps_report(report_id, user_id, is_admin=is_admin)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    if ok:
+        return web.json_response({"ok": True})
+    return web.json_response({"ok": False, "error": "not_owner"}, status=403)
 
 
 async def handle_delete_station(request):
@@ -890,6 +909,7 @@ def build_app() -> web.Application:
     app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/stations", handle_stations)
     app.router.add_post("/api/dps-report", handle_dps_report)
+    app.router.add_post("/api/dps-delete", handle_dps_delete)
     app.router.add_post("/api/track-click", handle_track_click)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_post("/api/report", handle_report)

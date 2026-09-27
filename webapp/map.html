@@ -940,13 +940,20 @@
     maxClusterRadius: 50,
     iconCreateFunction: function(cluster){
       var children = cluster.getAllChildMarkers();
-      var hasOk = false, hasNone = false;
-      for (var i = 0; i < children.length; i++){
+      var total = children.length;
+      var nOk = 0, nNone = 0, nUnk = 0;
+      for (var i = 0; i < total; i++){
         var st = children[i]._st;
-        if (st === 'ok') hasOk = true;
-        else if (st === 'none') hasNone = true;
+        if (st === 'ok') nOk++;
+        else if (st === 'none') nNone++;
+        else nUnk++;
       }
-      var color = hasOk ? '#30D158' : (hasNone ? '#FF3B30' : '#8A8F98');
+      var okPct = nOk / total;
+      var nonePct = nNone / total;
+      var color;
+      if (okPct > 0.5) color = '#30D158';
+      else if (nonePct > 0.5) color = '#FF3B30';
+      else color = '#FFB000';
       var count = cluster.getChildCount();
       var size = count < 10 ? 's' : (count < 100 ? 'm' : 'l');
       return L.divIcon({

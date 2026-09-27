@@ -297,7 +297,7 @@ def _build_stations_payload():
             result.append(build_station_obj(r2[0], r2[1], r2[2], r2[3], r2[4], r2[5]))
 
     try:
-        dps_rows = core.get_active_dps_reports(ttl_sec=1800)
+        dps_rows = core.get_active_dps_reports()
     except AttributeError:
         dps_rows = []
     dps_list = [{"lat": r[0], "lng": r[1], "ts": r[2], "kind": (r[3] if len(r) > 3 else "dps")} for r in dps_rows]

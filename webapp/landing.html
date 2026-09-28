@@ -245,7 +245,7 @@
       <div class="dash-stat"><div class="num">{{COUNT}}</div><div class="lbl">АЗС на карте</div></div>
       <div class="dash-stat"><div class="num" id="dash-r7d">—</div><div class="lbl">отчётов за 7 дней</div></div>
       <div class="dash-stat"><div class="num" id="dash-grw">—</div><div class="lbl">к прошлой неделе</div></div>
-      <div class="dash-stat"><div class="num" id="dash-u7d">—</div><div class="lbl">активных водителей</div></div>
+      <div class="dash-stat"><div class="num" id="dash-r24h">—</div><div class="lbl">отчётов за сутки</div></div>
     </div>
     <div class="dash-charts">
       <img id="chart-days" loading="lazy" alt="Отчёты по дням">
@@ -277,14 +277,14 @@
     fetch('/api/public-stats').then(function(r){ return r.json(); }).then(function(d){
       if (!d || !d.total_stations) return;
       document.getElementById('dash-r7d').textContent = d.reports_7d || 0;
-      document.getElementById('dash-u7d').textContent = d.unique_users_7d || 0;
+      document.getElementById('dash-r24h').textContent = d.reports_24h || 0;
       var g = d.growth_7d_pct;
       var grw = (g === null || g === undefined) ? '—' : ((g >= 0 ? '+' : '') + g + '%');
       var el = document.getElementById('dash-grw');
       el.textContent = grw;
       if (g !== null && g !== undefined) el.style.color = (g >= 0 ? '#30D158' : '#FF3B30');
 
-      var palette = ['#FFB000', '#30D158', '#1E88E5', '#FF3B30', '#8A8F98', '#B975FF'];
+      var palette = ['#FFB000', '#30D158', '#1E88E5', '#26C6DA', '#8A8F98', '#B975FF'];
 
       var lineCfg = {
         type: 'line',

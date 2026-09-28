@@ -57,6 +57,113 @@ async def handle_landing(request):
     return resp
 
 
+def _build_public_stats():
+    """Публичная статистика без приватных данных (без id и ников)."""
+    import time as _t
+    now = int(_t.time())
+    d1 = now - 86400
+    d7 = now - 7 * 86400
+    d14 = now - 14 * 86400
+
+    conn = core.db()
+    try:
+        rows = conn.execute(
+            "SELECT date(ts, 'unixepoch') as d, COUNT(*) FROM feed "
+            "WHERE ts > ? GROUP BY d ORDER BY d", (d14,)
+        ).fetchall()
+        by_day = {d: cnt for d, cnt in rows}
+
+        reports_24h = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ?", (d1,)).fetchone()[0]
+        reports_7d = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ?", (d7,)).fetchone()[0]
+        reports_prev7d = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ? AND ts <= ?", (d14, d7)).fetchone()[0]
+        unique_7d = conn.execute("SELECT COUNT(DISTINCT user_id) FROM feed WHERE ts > ? AND user_id > 0", (d7,)).fetchone()[0]
+
+        fuel_rows = conn.execute(
+            "SELECT fuel, "
+            "SUM(CASE WHEN status IN ('ok','low') THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN status='none' THEN 1 ELSE 0 END) "
+            "FROM reports WHERE ts > ? GROUP BY fuel", (d1,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    total = len(core.STATIONS)
+    try:
+        total += len(core.get_custom_stations())
+    except Exception:
+        pass
+    try:
+        deleted = sum(1 for r in core.get_station_overrides() if r[6])
+        total = max(0, total - deleted)
+    except Exception:
+        pass
+
+    net_list = []
+    try:
+        stats, total_all = core.get_network_weekly_stats()
+        top = sorted(stats.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
+        for net, st in top:
+            label = core.NETWORKS.get(net, {}).get("label", net)
+            net_list.append({"label": label, "count": st["total"]})
+    except Exception:
+        pass
+
+    labels = []
+    values = []
+    for i in range(13, -1, -1):
+        day = _t.strftime("%Y-%m-%d", _t.gmtime(now - i * 86400))
+        labels.append(day[5:])
+        values.append(by_day.get(day, 0))
+
+    fuel_data = []
+    for fk, ok_cnt, none_cnt in fuel_rows:
+        ok_cnt = ok_cnt or 0
+        none_cnt = none_cnt or 0
+        total_f = ok_cnt + none_cnt
+        if total_f == 0:
+            continue
+        fuel_data.append({
+            "fuel": core.FUEL_SHORT.get(fk, fk),
+            "ok": ok_cnt,
+            "total": total_f,
+            "pct": round(ok_cnt / total_f * 100),
+        })
+
+    growth = None
+    if reports_prev7d > 0:
+        growth = round((reports_7d - reports_prev7d) / reports_prev7d * 100)
+
+    return {
+        "total_stations": total,
+        "reports_24h": reports_24h,
+        "reports_7d": reports_7d,
+        "reports_prev7d": reports_prev7d,
+        "growth_7d_pct": growth,
+        "unique_users_7d": unique_7d,
+        "by_day": {"labels": labels, "values": values},
+        "by_network": net_list,
+        "by_fuel_24h": fuel_data,
+    }
+
+
+async def handle_public_stats(request):
+    now = time.time()
+    if _PUBLIC_STATS_CACHE["json"] is not None and (now - _PUBLIC_STATS_CACHE["ts"]) < _PUBLIC_STATS_TTL:
+        resp = web.json_response(_PUBLIC_STATS_CACHE["json"])
+        resp.headers["Cache-Control"] = "public, max-age=1800"
+        return resp
+    try:
+        data = _build_public_stats()
+    except Exception:
+        core.log.exception("public stats failed")
+        return web.json_response({"ok": False}, status=500)
+    _PUBLIC_STATS_CACHE["json"] = data
+    _PUBLIC_STATS_CACHE["ts"] = now
+    resp = web.json_response(data)
+    resp.headers["Cache-Control"] = "public, max-age=1800"
+    return resp
+
+
 async def handle_map(request):
     _record_ref(request, "map")
     resp = web.FileResponse("webapp/map.html")
@@ -160,6 +267,8 @@ a{color:#FFB000}</style>
 
 _STATIONS_CACHE = {"ts": 0.0, "json": None, "content_type": "application/json; charset=utf-8"}
 _STATIONS_CACHE_TTL = 600.0  # 10 минут — данные меняются медленно
+_PUBLIC_STATS_CACHE = {"json": None, "ts": 0}
+_PUBLIC_STATS_TTL = 3600.0  # 1 час — публичная статистика на лендинге
 _STATIONS_CACHE_LOCK = asyncio.Lock()
 
 
@@ -962,6 +1071,7 @@ def build_app() -> web.Application:
     app.router.add_get("/apple-touch-icon-precomposed.png", handle_apple_icon)
     app.router.add_get("/favicon.ico", handle_favicon)
     app.router.add_get("/api/stations", handle_stations)
+    app.router.add_get("/api/public-stats", handle_public_stats)
     app.router.add_post("/api/dps-report", handle_dps_report)
     app.router.add_post("/api/dps-delete", handle_dps_delete)
     app.router.add_post("/api/dups-merge", handle_dups_merge)

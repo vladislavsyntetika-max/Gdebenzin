@@ -107,6 +107,17 @@
     font-size: 12px; color: #6B6F76;
   }
   footer a { color: #B7BBC1; text-decoration: none; }
+  .dash { margin-top: 36px; }
+  .dash h3 { text-align: center; margin-bottom: 4px; }
+  .dash-sub { text-align: center; color: #8A8F98; font-size: 13px; margin: 0 0 16px; }
+  .dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 16px 0; }
+  .dash-stat { background: #1A1D21; border: 1px solid #262B31; border-radius: 12px; padding: 14px 10px; text-align: center; }
+  .dash-stat .num { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 26px; color: #FFB000; }
+  .dash-stat .lbl { font-size: 12px; color: #8A8F98; margin-top: 4px; line-height: 1.3; }
+  .dash-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .dash-charts img { width: 100%; border-radius: 12px; display: block; background: #1A1D21; }
+  .dash-charts img:first-child { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .dash-charts { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -227,6 +238,22 @@
     </div>
   </div>
 
+  <div class="dash">
+    <h3>Картина в цифрах</h3>
+    <p class="dash-sub">Обновляется в реальном времени</p>
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="num">{{COUNT}}</div><div class="lbl">АЗС на карте</div></div>
+      <div class="dash-stat"><div class="num" id="dash-r7d">—</div><div class="lbl">отчётов за 7 дней</div></div>
+      <div class="dash-stat"><div class="num" id="dash-grw">—</div><div class="lbl">к прошлой неделе</div></div>
+      <div class="dash-stat"><div class="num" id="dash-u7d">—</div><div class="lbl">активных водителей</div></div>
+    </div>
+    <div class="dash-charts">
+      <img id="chart-days" loading="lazy" alt="Отчёты по дням">
+      <img id="chart-net" loading="lazy" alt="Сети за неделю">
+      <img id="chart-fuel" loading="lazy" alt="Топливо за сутки">
+    </div>
+  </div>
+
   <div class="channels">
     <a class="channel" href="https://t.me/naidibenzin" target="_blank" rel="noopener">
       <span class="ico">📢</span> Канал Telegram
@@ -244,6 +271,73 @@
 <script>
 (function(){
   'use strict';
+
+  // ---- Публичная статистика ----
+  (function loadStats(){
+    fetch('/api/public-stats').then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.total_stations) return;
+      document.getElementById('dash-r7d').textContent = d.reports_7d || 0;
+      document.getElementById('dash-u7d').textContent = d.unique_users_7d || 0;
+      var g = d.growth_7d_pct;
+      var grw = (g === null || g === undefined) ? '—' : ((g >= 0 ? '+' : '') + g + '%');
+      var el = document.getElementById('dash-grw');
+      el.textContent = grw;
+      if (g !== null && g !== undefined) el.style.color = (g >= 0 ? '#30D158' : '#FF3B30');
+
+      var palette = ['#FFB000', '#30D158', '#1E88E5', '#FF3B30', '#8A8F98', '#B975FF'];
+
+      var lineCfg = {
+        type: 'line',
+        data: {
+          labels: (d.by_day && d.by_day.labels) || [],
+          datasets: [{label:'Отчёты', data: (d.by_day && d.by_day.values) || [],
+            borderColor:'#FFB000', backgroundColor:'rgba(255,176,0,0.20)',
+            fill:true, tension:0.3, borderWidth:3, pointRadius:2}]
+        },
+        options: {
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{ticks:{color:'#8A8F98', font:{size:11}, maxRotation:0, autoSkip:true, maxTicksLimit:7}, grid:{color:'rgba(43,48,54,0.6)'}},
+            y:{ticks:{color:'#8A8F98'}, grid:{color:'rgba(43,48,54,0.6)'}, beginAtZero:true}
+          }
+        }
+      };
+
+      var donutCfg = {
+        type: 'doughnut',
+        data: {
+          labels: (d.by_network || []).map(function(x){return x.label;}),
+          datasets: [{data: (d.by_network || []).map(function(x){return x.count;}),
+            backgroundColor: palette, borderColor:'#14171A', borderWidth:2}]
+        },
+        options: {plugins:{legend:{position:'bottom', labels:{color:'#E8E6E1', font:{size:11}}}}}
+      };
+
+      var barCfg = {
+        type: 'bar',
+        data: {
+          labels: (d.by_fuel_24h || []).map(function(x){return x.fuel;}),
+          datasets: [{label:'% есть', data: (d.by_fuel_24h || []).map(function(x){return x.pct;}),
+            backgroundColor:'#30D158', borderRadius:6}]
+        },
+        options: {
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{ticks:{color:'#E8E6E1', font:{size:13}}, grid:{display:false}},
+            y:{ticks:{color:'#8A8F98'}, grid:{color:'rgba(43,48,54,0.6)'}, beginAtZero:true, max:100}
+          }
+        }
+      };
+
+      function qcUrl(cfg, w, h){
+        return 'https://quickchart.io/chart?w=' + w + '&h=' + h +
+          '&bkg=%231A1D21&c=' + encodeURIComponent(JSON.stringify(cfg));
+      }
+      document.getElementById('chart-days').src = qcUrl(lineCfg, 800, 300);
+      document.getElementById('chart-net').src = qcUrl(donutCfg, 500, 400);
+      document.getElementById('chart-fuel').src = qcUrl(barCfg, 500, 400);
+    }).catch(function(){});
+  })();
 
   var ref = new URLSearchParams(location.search).get('ref') || '';
   var isTG = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);

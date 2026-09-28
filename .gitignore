@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Локальные черновики (наши _*.js и _*.py скрипты-патчи)
+_*.js
+_*.py
+_*.json
+_*.txt
+
+# Логи и архивы
+session-archive.txt
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

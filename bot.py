@@ -1992,7 +1992,7 @@ def format_network_report(stats, total_all):
         lines.append(mark + " " + label + " — <b>" + str(pct) + "%</b>")
     if len(ranked) > 5:
         rest_pct = sum(st["total"] for _, st in ranked[5:]) / total_all * 100
-        lines.append("   \u041e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0435 — " + str(round(rest_pct)) + "%")
+        lines.append("  \u041e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0435 — " + str(round(rest_pct)) + "%")
     lines.append("")
 
     # Свежесть

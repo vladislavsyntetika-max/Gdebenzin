@@ -16,6 +16,7 @@ _*.js
 _*.py
 _*.json
 _*.txt
+_*.css
 
 # Логи и архивы
 session-archive.txt

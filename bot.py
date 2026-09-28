@@ -1473,6 +1473,125 @@ async def on_problem_cmd(message: Message):
     )
 
 
+@dp.message(Command("дашборд", "dashboard"))
+async def on_dashboard_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    now = int(time.time())
+    d1 = now - 86400
+    d7 = now - 7 * 86400
+    conn = db()
+    try:
+        total_feed = conn.execute("SELECT COUNT(*) FROM feed").fetchone()[0]
+        feed_24h = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ?", (d1,)).fetchone()[0]
+        feed_7d = conn.execute("SELECT COUNT(*) FROM feed WHERE ts > ?", (d7,)).fetchone()[0]
+        users_24h = conn.execute("SELECT COUNT(DISTINCT user_id) FROM feed WHERE ts > ? AND user_id > 0", (d1,)).fetchone()[0]
+        users_7d = conn.execute("SELECT COUNT(DISTINCT user_id) FROM feed WHERE ts > ? AND user_id > 0", (d7,)).fetchone()[0]
+        stations_24h = conn.execute("SELECT COUNT(DISTINCT station_id) FROM feed WHERE ts > ?", (d1,)).fetchone()[0]
+        stations_7d = conn.execute("SELECT COUNT(DISTINCT station_id) FROM feed WHERE ts > ?", (d7,)).fetchone()[0]
+
+        # ДПС/камеры
+        dps_cutoff = now - 3600
+        cam_cutoff = now - 10800
+        dps_now = conn.execute("SELECT COUNT(*) FROM dps_reports WHERE kind='dps' AND ts > ?", (dps_cutoff,)).fetchone()[0]
+        cam_now = conn.execute("SELECT COUNT(*) FROM dps_reports WHERE kind='camera' AND ts > ?", (cam_cutoff,)).fetchone()[0]
+        dps_7d = conn.execute("SELECT COUNT(*) FROM dps_reports WHERE kind='dps' AND ts > ?", (d7,)).fetchone()[0]
+        cam_7d = conn.execute("SELECT COUNT(*) FROM dps_reports WHERE kind='camera' AND ts > ?", (d7,)).fetchone()[0]
+
+        # Заявки
+        issues_open = conn.execute("SELECT COUNT(*) FROM issue_reports WHERE status='open'").fetchone()[0]
+        issues_7d = conn.execute("SELECT COUNT(*) FROM issue_reports WHERE ts > ?", (d7,)).fetchone()[0]
+
+        # Кастомные АЗС
+        custom_total = conn.execute("SELECT COUNT(*) FROM custom_stations").fetchone()[0]
+        custom_7d = conn.execute("SELECT COUNT(*) FROM custom_stations WHERE created_ts > ?", (d7,)).fetchone()[0]
+
+        # Топ активных за 7д
+        top_users = conn.execute(
+            "SELECT user_id, COALESCE(username,'id'||user_id), COUNT(*) FROM feed "
+            "WHERE ts > ? AND user_id > 0 GROUP BY user_id ORDER BY COUNT(*) DESC LIMIT 5",
+            (d7,)
+        ).fetchall()
+
+        # Топливо по всей карте (свежие, не старше 24ч)
+        fuel_agg = conn.execute(
+            "SELECT fuel, "
+            "SUM(CASE WHEN status IN ('ok','low') THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN status='none' THEN 1 ELSE 0 END) "
+            "FROM reports WHERE ts > ? GROUP BY fuel", (d1,)
+        ).fetchall()
+
+        # Размер БД (приблиз.)
+        db_size = 0
+        try:
+            import os as _os
+            db_size = _os.path.getsize(DB_PATH)
+        except Exception:
+            pass
+    finally:
+        conn.close()
+
+    # Пользователи по сети за 7д
+    net_agg = []
+    try:
+        stats, total_all = get_network_weekly_stats()
+        top_nets = sorted(stats.items(), key=lambda kv: kv[1]["total"], reverse=True)[:5]
+        for net, st in top_nets:
+            label = NETWORKS.get(net, {}).get("label", net)
+            pct = round(st["total"] / total_all * 100) if total_all else 0
+            net_agg.append((label, st["total"], pct))
+    except Exception:
+        pass
+
+    lines = ["\U0001F4CA <b>\u0414\u0430\u0448\u0431\u043e\u0440\u0434</b> \u00b7 \u043f\u0440\u043e\u0435\u043a\u0442 \u00ab\u0413\u0414\u0415 \u0411\u0415\u041d\u0417\u0418\u041d!?\u00bb", ""]
+    lines.append("<b>\u041e\u0442\u0447\u0451\u0442\u044b</b>")
+    lines.append("\u2022 \u0412\u0441\u0435\u0433\u043e: <b>" + str(total_feed) + "</b>")
+    lines.append("\u2022 \u0417\u0430 24\u0447: <b>" + str(feed_24h) + "</b>")
+    lines.append("\u2022 \u0417\u0430 7\u0434: <b>" + str(feed_7d) + "</b>")
+    lines.append("")
+    lines.append("<b>\u0410\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c</b>")
+    lines.append("\u2022 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0437\u0430 24\u0447: <b>" + str(users_24h) + "</b>")
+    lines.append("\u2022 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0437\u0430 7\u0434: <b>" + str(users_7d) + "</b>")
+    lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0439 \u0437\u0430 24\u0447: <b>" + str(stations_24h) + "</b>")
+    lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0439 \u0437\u0430 7\u0434: <b>" + str(stations_7d) + "</b>")
+    lines.append("")
+    lines.append("<b>\u0422\u043e\u043f-5 \u0437\u0430 7\u0434</b>")
+    medals = ["\U0001F947", "\U0001F948", "\U0001F949", "4.", "5."]
+    for i, (uid, uname, cnt) in enumerate(top_users):
+        mark = medals[i] if i < 3 else str(i+1) + "."
+        name = uname if uname and not uname.startswith("id") else ("id" + str(uid))
+        lines.append(mark + " " + str(name) + " \u2014 " + str(cnt))
+    lines.append("")
+    lines.append("<b>\u0421\u0435\u0442\u0438 \u0437\u0430 7\u0434</b>")
+    for label, total, pct in net_agg:
+        lines.append("\u2022 " + label + ": <b>" + str(pct) + "%</b> (" + str(total) + ")")
+    lines.append("")
+    lines.append("<b>\u0414\u041f\u0421 \u0438 \u043a\u0430\u043c\u0435\u0440\u044b</b>")
+    lines.append("\u2022 \u0421\u0435\u0439\u0447\u0430\u0441 \u0414\u041f\u0421: <b>" + str(dps_now) + "</b> \u00b7 \u043a\u0430\u043c\u0435\u0440\u044b: <b>" + str(cam_now) + "</b>")
+    lines.append("\u2022 \u0417\u0430 7\u0434 \u0414\u041f\u0421: <b>" + str(dps_7d) + "</b> \u00b7 \u043a\u0430\u043c\u0435\u0440\u044b: <b>" + str(cam_7d) + "</b>")
+    lines.append("")
+    lines.append("<b>\u0417\u0430\u044f\u0432\u043a\u0438</b>")
+    lines.append("\u2022 \u041e\u0442\u043a\u0440\u044b\u0442\u044b\u0445: <b>" + str(issues_open) + "</b> \u00b7 \u0437\u0430 7\u0434: <b>" + str(issues_7d) + "</b>")
+    lines.append("")
+    lines.append("<b>\u041d\u043e\u0432\u044b\u0435 \u0410\u0417\u0421</b>")
+    lines.append("\u2022 \u0412\u0441\u0435\u0433\u043e: <b>" + str(custom_total) + "</b> \u00b7 \u0437\u0430 7\u0434: <b>" + str(custom_7d) + "</b>")
+    lines.append("")
+    if fuel_agg:
+        lines.append("<b>\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u0437\u0430 24\u0447)</b>")
+        for fk, ok_cnt, none_cnt in fuel_agg:
+            fname = FUEL_SHORT.get(fk, fk)
+            total_f = (ok_cnt or 0) + (none_cnt or 0)
+            if total_f == 0:
+                continue
+            pct_ok = round((ok_cnt or 0) / total_f * 100)
+            lines.append("\u2022 " + fname + ": <b>" + str(pct_ok) + "%</b> \u0435\u0441\u0442\u044c (" + str(ok_cnt) + "/" + str(total_f) + ")")
+    if db_size:
+        lines.append("")
+        lines.append("\u2022 \u0411\u0414: " + str(round(db_size / 1024 / 1024, 1)) + " MB")
+    await message.answer("\n".join(lines))
+
+
 @dp.message(Command("статистика", "stats"))
 async def on_stats_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:

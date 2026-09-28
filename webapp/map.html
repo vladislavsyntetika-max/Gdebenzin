@@ -761,7 +761,7 @@
       <tr><td class="tgb-feat">Молнии — узнай первым</td><td class="tgb-web">❌</td><td class="tgb-tg">✅</td></tr>
     </tbody>
   </table>
-  <button class="tgb-go" id="tg-banner-go">Открыть в Telegram</button>
+  <a class="tgb-go" id="tg-banner-go" href="https://t.me/naidibenzin_bot" target="_blank" rel="noopener" style="display:inline-block;text-align:center;text-decoration:none;box-sizing:border-box;">Открыть в Telegram</a>
 </div>
 <div id="mk-legend"><span class="lg-dot lg-ok"></span>есть<span class="lg-dot lg-none"></span>нет<span class="lg-dot lg-unk"></span>нет данных</div>
 <div id="side-tools-left">
@@ -1886,8 +1886,8 @@
       setTimeout(function(){ banner.classList.add('show'); }, 2500);
     }
 
-    if (goBtn) goBtn.addEventListener('click', function(){
-      location.href = 'https://t.me/' + BOT_USERNAME;
+    if (goBtn) goBtn.addEventListener('click', function(e){
+      try { window.open('https://t.me/' + BOT_USERNAME, '_blank'); } catch(err){}
     });
     if (closeBtn) closeBtn.addEventListener('click', function(){
       try { localStorage.setItem(key, String(Date.now())); } catch(e){}

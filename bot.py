@@ -1609,6 +1609,138 @@ async def on_dashboard_cmd(message: Message):
     await message.answer("\n".join(lines))
 
 
+def _quickchart_url(cfg, w=900, h=400, bkg="1A1D21"):
+    import json as _json
+    from urllib.parse import quote
+    c = _json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
+    return "https://quickchart.io/chart?w=" + str(w) + "&h=" + str(h) + "&bkg=%23" + bkg + "&c=" + quote(c)
+
+
+@dp.message(Command("графики", "charts"))
+async def on_charts_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+
+    now = int(time.time())
+    d14 = now - 14 * 86400
+
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT date(ts, 'unixepoch') as d, COUNT(*) FROM feed "
+            "WHERE ts > ? GROUP BY d ORDER BY d", (d14,)
+        ).fetchall()
+    finally:
+        conn.close()
+    by_day = {d: cnt for d, cnt in rows}
+    labels = []
+    values = []
+    for i in range(13, -1, -1):
+        day = time.strftime("%Y-%m-%d", time.gmtime(now - i * 86400))
+        labels.append(day[5:])
+        values.append(by_day.get(day, 0))
+
+    line_cfg = {
+        "type": "line",
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "label": "Отчёты",
+                "data": values,
+                "borderColor": "#FFB000",
+                "backgroundColor": "rgba(255,176,0,0.2)",
+                "fill": True,
+                "tension": 0.3,
+                "pointRadius": 3,
+                "pointBackgroundColor": "#FFB000",
+                "borderWidth": 3
+            }]
+        },
+        "options": {
+            "plugins": {"legend": {"labels": {"color": "#E8E6E1"}}},
+            "scales": {
+                "x": {"ticks": {"color": "#8A8F98"}, "grid": {"color": "rgba(43,48,54,0.6)"}},
+                "y": {"ticks": {"color": "#8A8F98"}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True}
+            }
+        }
+    }
+
+    d7 = now - 7 * 86400
+    conn = db()
+    try:
+        top = conn.execute(
+            "SELECT COALESCE(username,'id'||user_id) as n, COUNT(*) as c FROM feed "
+            "WHERE ts > ? AND user_id > 0 GROUP BY user_id ORDER BY c DESC LIMIT 5",
+            (d7,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    bar_cfg = {
+        "type": "bar",
+        "data": {
+            "labels": [n for n, _ in top] or ["—"],
+            "datasets": [{
+                "label": "Отчётов",
+                "data": [c for _, c in top] or [0],
+                "backgroundColor": "#FFB000",
+                "borderRadius": 6
+            }]
+        },
+        "options": {
+            "plugins": {"legend": {"display": False}},
+            "scales": {
+                "x": {"ticks": {"color": "#E8E6E1"}, "grid": {"display": False}},
+                "y": {"ticks": {"color": "#8A8F98"}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True}
+            }
+        }
+    }
+
+    net_labels = []
+    net_values = []
+    try:
+        stats, total_all = get_network_weekly_stats()
+        top_nets = sorted(stats.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
+        for net, st in top_nets:
+            net_labels.append(NETWORKS.get(net, {}).get("label", net))
+            net_values.append(st["total"])
+    except Exception:
+        pass
+
+    palette = ["#FFB000", "#30D158", "#1E88E5", "#FF3B30", "#8A8F98", "#B975FF"]
+    dough_cfg = {
+        "type": "doughnut",
+        "data": {
+            "labels": net_labels or ["—"],
+            "datasets": [{
+                "data": net_values or [1],
+                "backgroundColor": palette[:max(1, len(net_labels))],
+                "borderColor": "#14171A",
+                "borderWidth": 2
+            }]
+        },
+        "options": {"plugins": {"legend": {"position": "right", "labels": {"color": "#E8E6E1"}}}}
+    }
+
+    await message.answer("📈 Графики")
+
+    items = [
+        ("📈 Отчёты по дням (14 дней)", line_cfg, 900, 400),
+        ("🏆 Топ-5 за 7 дней", bar_cfg, 900, 400),
+        ("📊 Сети за 7 дней", dough_cfg, 800, 500),
+    ]
+    for title, cfg, w, h in items:
+        try:
+            url = _quickchart_url(cfg, w=w, h=h)
+            await message.answer_photo(photo=url, caption=title)
+        except Exception as e:
+            try:
+                await message.answer(title + "\nНе удалось: " + str(e)[:200])
+            except Exception:
+                pass
+
+
 @dp.message(Command("статистика", "stats"))
 async def on_stats_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:

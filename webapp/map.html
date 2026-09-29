@@ -2422,7 +2422,47 @@
           })(meMarker, from, [lat, lng]);
         }
 
-        if (followMode) map.setView([lat, lng], 16, { animate:false });
+        if (followMode) {
+          var _z = 16;
+          try {
+            var sp = (pos.coords && typeof pos.coords.speed === 'number') ? pos.coords.speed : null;
+            // Если speed нет — считаем по дельте между точками
+            if (sp === null && lastGoodPosition && lastGoodTimestamp){
+              var dtSec = (pos.timestamp - lastGoodTimestamp) / 1000;
+              if (dtSec > 0.5 && dtSec < 30){
+                var distM = haversine(lastGoodPosition.lat, lastGoodPosition.lng, lat, lng);
+                sp = distM / dtSec; // м/с
+              }
+            }
+            if (sp !== null && sp >= 0){
+              var kmh = sp * 3.6;
+              if (kmh < 3)        _z = 17;
+              else if (kmh < 20)  _z = 16;
+              else if (kmh < 60)  _z = 15;
+              else if (kmh < 90)  _z = 14;
+              else                _z = 13;
+            }
+          } catch(e){}
+          // Сглаживание: меняем зум только если новое значение стабильно
+          if (typeof window._lastAutoZoom === 'undefined') window._lastAutoZoom = _z;
+          if (typeof window._pendingZoom === 'undefined') window._pendingZoom = _z;
+          if (typeof window._pendingZoomCount === 'undefined') window._pendingZoomCount = 0;
+          if (_z !== window._lastAutoZoom){
+            if (_z === window._pendingZoom){
+              window._pendingZoomCount++;
+              if (window._pendingZoomCount >= 3){
+                window._lastAutoZoom = _z;
+                window._pendingZoomCount = 0;
+              }
+            } else {
+              window._pendingZoom = _z;
+              window._pendingZoomCount = 1;
+            }
+          } else {
+            window._pendingZoomCount = 0;
+          }
+          map.setView([lat, lng], window._lastAutoZoom, { animate:false });
+        }
 
         var near = findNearestStation(lat, lng);
         if (near.station && near.distance <= PROXIMITY_OPEN_M){

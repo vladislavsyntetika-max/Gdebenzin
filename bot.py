@@ -1677,13 +1677,22 @@ async def on_charts_cmd(message: Message):
     finally:
         conn.close()
 
+    show_top = list(top)
+    excluded_top = None
+    if len(show_top) >= 2:
+        first_c = show_top[0][1]
+        second_c = show_top[1][1]
+        if second_c > 0 and first_c / second_c >= 10:
+            excluded_top = show_top[0]
+            show_top = show_top[1:]
+
     bar_cfg = {
-        "type": "bar",
+        "type": "horizontalBar",
         "data": {
-            "labels": [n for n, _ in top] or ["—"],
+            "labels": [n for n, _ in show_top] or ["—"],
             "datasets": [{
                 "label": "Отчётов",
-                "data": [c for _, c in top] or [0],
+                "data": [c for _, c in show_top] or [0],
                 "backgroundColor": "#FFB000",
                 "borderRadius": 6
             }]
@@ -1691,8 +1700,8 @@ async def on_charts_cmd(message: Message):
         "options": {
             "plugins": {"legend": {"display": False}},
             "scales": {
-                "x": {"ticks": {"color": "#E8E6E1"}, "grid": {"display": False}},
-                "y": {"ticks": {"color": "#8A8F98"}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True}
+                "x": {"ticks": {"color": "#E8E6E1"}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True},
+                "y": {"ticks": {"color": "#E8E6E1", "font": {"size": 13}}, "grid": {"display": False}}
             }
         }
     }
@@ -1708,7 +1717,7 @@ async def on_charts_cmd(message: Message):
     except Exception:
         pass
 
-    palette = ["#FFB000", "#30D158", "#1E88E5", "#FF3B30", "#8A8F98", "#B975FF"]
+    palette = ["#FFB000", "#30D158", "#1E88E5", "#26C6DA", "#8A8F98", "#B975FF"]
     dough_cfg = {
         "type": "doughnut",
         "data": {
@@ -1727,7 +1736,7 @@ async def on_charts_cmd(message: Message):
 
     items = [
         ("📈 Отчёты по дням (14 дней)", line_cfg, 900, 400),
-        ("🏆 Топ-5 за 7 дней", bar_cfg, 900, 400),
+        ("🏆 Топ-5 за 7 дней" + (" (без №1: " + excluded_top[0] + " — " + str(excluded_top[1]) + ")" if excluded_top else ""), bar_cfg, 900, 400),
         ("📊 Сети за 7 дней", dough_cfg, 800, 500),
     ]
     for title, cfg, w, h in items:

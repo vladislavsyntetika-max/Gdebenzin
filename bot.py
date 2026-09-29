@@ -1699,8 +1699,8 @@ async def on_charts_cmd(message: Message):
         "options": {
             "plugins": {"legend": {"display": False}},
             "scales": {
-                "x": {"ticks": {"color": "#E8E6E1"}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True},
-                "y": {"ticks": {"color": "#E8E6E1", "font": {"size": 13}}, "grid": {"display": False}}
+                "x": {"ticks": {"color": "#E8E6E1", "font": {"size": 13}}, "grid": {"color": "rgba(43,48,54,0.6)"}, "beginAtZero": True},
+                "y": {"ticks": {"color": "#E8E6E1", "font": {"size": 15, "weight": "bold"}}, "grid": {"display": False}}
             }
         }
     }

@@ -1550,11 +1550,10 @@ async def on_dashboard_cmd(message: Message):
 
     def _delta(cur, prev):
         if prev <= 0:
-            return ("\u2014" if cur <= 0 else "\U0001F195")
+            return ("0%" if cur <= 0 else "\U0001F195")
         d = (cur - prev) / prev * 100
         sign = "+" if d >= 0 else ""
-        arrow = "\U0001F4C8" if d >= 5 else ("\U0001F4C9" if d <= -5 else "\u2796")
-        return sign + str(round(d)) + "% " + arrow
+        return sign + str(round(d)) + "%"
 
     lines = ["\U0001F4CA <b>\u0414\u0430\u0448\u0431\u043e\u0440\u0434</b> \u00b7 \u043f\u0440\u043e\u0435\u043a\u0442 \u00ab\u0413\u0414\u0415 \u0411\u0415\u041d\u0417\u0418\u041d!?\u00bb", ""]
     lines.append("<b>\u041e\u0442\u0447\u0451\u0442\u044b</b>")
@@ -1569,9 +1568,9 @@ async def on_dashboard_cmd(message: Message):
     lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0439 \u0437\u0430 7\u0434: <b>" + str(stations_7d) + "</b>")
     lines.append("")
     lines.append("<b>\u041f\u0440\u043e\u0442\u0438\u0432 \u043f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0435\u0439 \u043d\u0435\u0434\u0435\u043b\u0438</b>")
-    lines.append("\u2022 \u041e\u0442\u0447\u0451\u0442\u044b: " + str(feed_7d) + " vs " + str(feed_prev7d) + " \u2192 <b>" + _delta(feed_7d, feed_prev7d) + "</b>")
-    lines.append("\u2022 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0435: " + str(users_7d) + " vs " + str(users_prev7d) + " \u2192 <b>" + _delta(users_7d, users_prev7d) + "</b>")
-    lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0438: " + str(stations_7d) + " vs " + str(stations_prev7d) + " \u2192 <b>" + _delta(stations_7d, stations_prev7d) + "</b>")
+    lines.append("\u2022 \u041e\u0442\u0447\u0451\u0442\u044b: <b>" + _delta(feed_7d, feed_prev7d) + "</b>")
+    lines.append("\u2022 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0435: <b>" + _delta(users_7d, users_prev7d) + "</b>")
+    lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0438: <b>" + _delta(stations_7d, stations_prev7d) + "</b>")
     lines.append("")
     lines.append("<b>\u0422\u043e\u043f-5 \u0437\u0430 7\u0434</b>")
     medals = ["\U0001F947", "\U0001F948", "\U0001F949", "4.", "5."]

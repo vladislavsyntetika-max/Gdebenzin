@@ -967,7 +967,34 @@
   });
   } catch(e){ markerCluster = null; try { console.log("[GDEBENZIN] cluster init failed:", e.message); } catch(err){} }
   if (markerCluster) markerCluster.addTo(map);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains:'abc', maxZoom:19 }).addTo(map);
+  var TILE_SERVERS = [
+    'https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    'https://a.tile.openstreetmap.de/{z}/{x}/{y}.png',
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+  ];
+  var _tileIdx = 0;
+  var _tileErrors = 0;
+  function makeTileLayer(idx){
+    return L.tileLayer(TILE_SERVERS[idx], {
+      subdomains: 'abc',
+      maxZoom: 19,
+      keepBuffer: 6,
+      updateWhenIdle: false,
+      crossOrigin: true,
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    });
+  }
+  var tileLayer = makeTileLayer(0).addTo(map);
+  tileLayer.on('tileerror', function(){
+    _tileErrors++;
+    if (_tileErrors >= 5 && _tileIdx < TILE_SERVERS.length - 1){
+      _tileIdx++;
+      _tileErrors = 0;
+      map.removeLayer(tileLayer);
+      tileLayer = makeTileLayer(_tileIdx).addTo(map);
+      try { console.log('[GDEBENZIN] tile server switched to idx', _tileIdx); } catch(e){}
+    }
+  });
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
   map.on('dragstart', dropFollow);

@@ -854,7 +854,7 @@
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
   var PROXIMITY_CLOSE_M = 250;
-  var SHEET_CLOSE_DELAY_MS = 3000;
+  var SHEET_CLOSE_DELAY_MS = 8000;
   var SHEET_REOPEN_BLOCK_MS = 5 * 60 * 1000;
   var BATCH_SAVE_DELAY_MS = 2000;
   var NEARBY_MAX_KM = 30;
@@ -1731,6 +1731,11 @@
   }
 
   function scheduleCloseTimer(){
+    // Ручное открытие — не закрываем автоматически
+    if (!sheetAutoOpened) {
+      if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
+      return;
+    }
     if (sheetCloseTimer) clearTimeout(sheetCloseTimer);
     sheetCloseTimer = setTimeout(function(){ closeSheet(); }, SHEET_CLOSE_DELAY_MS);
   }

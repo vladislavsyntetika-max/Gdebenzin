@@ -14,7 +14,12 @@ from aiohttp import web
 import bot as core
 
 PHOTOS_DIR = os.getenv("PHOTOS_DIR", "/data/photos" if os.path.isdir("/data") else "data/photos")
+TILE_DIR = os.getenv("TILE_DIR", "/data/tiles" if os.path.isdir("/data") else "data/tiles")
 MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
+try:
+    os.makedirs(TILE_DIR, exist_ok=True)
+except Exception:
+    pass
 
 # ---------- Прокси тайлов (OSM блокируется у некоторых РФ-операторов) ----------
 _TILE_CACHE = {}
@@ -35,6 +40,13 @@ async def _get_tile_session():
     return _TILE_SESSION
 
 
+_CACHE_HEADERS = {"Cache-Control": "public, max-age=2592000", "Expires": "Thu, 01 Jan 2099 00:00:00 GMT"}
+
+
+def _tile_disk_path(z, x, y):
+    return os.path.join(TILE_DIR, str(z), str(x), str(y) + ".png")
+
+
 async def handle_tile(request):
     try:
         z = int(request.match_info["z"])
@@ -45,14 +57,24 @@ async def handle_tile(request):
     if z < 0 or z > 19 or x < 0 or y < 0 or x > 10_000_000 or y > 10_000_000:
         return web.Response(status=400)
 
+    # 1. Диск
+    disk = _tile_disk_path(z, x, y)
+    if os.path.isfile(disk):
+        try:
+            with open(disk, "rb") as f:
+                body = f.read()
+            if body and len(body) > 100:
+                return web.FileResponse(disk, headers=_CACHE_HEADERS)
+        except Exception:
+            pass
+
+    # 2. Память
     key = (z, x, y)
     cached = _TILE_CACHE.get(key)
     if cached:
-        return web.Response(
-            body=cached, content_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
+        return web.Response(body=cached, content_type="image/png", headers=_CACHE_HEADERS)
 
+    # 3. Сеть (OSM)
     try:
         session = await _get_tile_session()
     except Exception:
@@ -74,15 +96,21 @@ async def handle_tile(request):
     if not body:
         return web.Response(status=502)
 
+    # Память
     if len(_TILE_CACHE) >= _TILE_CACHE_MAX:
         for k in list(_TILE_CACHE.keys())[:300]:
             _TILE_CACHE.pop(k, None)
     _TILE_CACHE[key] = body
 
-    return web.Response(
-        body=body, content_type="image/png",
-        headers={"Cache-Control": "public, max-age=86400"},
-    )
+    # Диск (best effort)
+    try:
+        os.makedirs(os.path.dirname(disk), exist_ok=True)
+        with open(disk, "wb") as f:
+            f.write(body)
+    except Exception:
+        pass
+
+    return web.Response(body=body, content_type="image/png", headers=_CACHE_HEADERS)
 
 
 

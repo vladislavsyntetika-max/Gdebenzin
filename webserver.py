@@ -9,11 +9,81 @@ import html
 import json
 import os
 import time
+import aiohttp
 from aiohttp import web
 import bot as core
 
 PHOTOS_DIR = os.getenv("PHOTOS_DIR", "/data/photos" if os.path.isdir("/data") else "data/photos")
 MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 МБ
+
+# ---------- Прокси тайлов (OSM блокируется у некоторых РФ-операторов) ----------
+_TILE_CACHE = {}
+_TILE_CACHE_MAX = 1500
+_TILE_UPSTREAMS = [
+    "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+    "https://a.tile.openstreetmap.de/{z}/{x}/{y}.png",
+    "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+]
+_TILE_SESSION = None
+_TILE_HEADERS = {"User-Agent": "GDEBENZIN/1.0 (+https://azs-spb-bot-syntetika.amvera.io/)"}
+
+
+async def _get_tile_session():
+    global _TILE_SESSION
+    if _TILE_SESSION is None or _TILE_SESSION.closed:
+        _TILE_SESSION = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8))
+    return _TILE_SESSION
+
+
+async def handle_tile(request):
+    try:
+        z = int(request.match_info["z"])
+        x = int(request.match_info["x"])
+        y = int(request.match_info["y"])
+    except (KeyError, ValueError):
+        return web.Response(status=400)
+    if z < 0 or z > 19 or x < 0 or y < 0 or x > 10_000_000 or y > 10_000_000:
+        return web.Response(status=400)
+
+    key = (z, x, y)
+    cached = _TILE_CACHE.get(key)
+    if cached:
+        return web.Response(
+            body=cached, content_type="image/png",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    try:
+        session = await _get_tile_session()
+    except Exception:
+        return web.Response(status=500)
+
+    body = None
+    for tpl in _TILE_UPSTREAMS:
+        url = tpl.format(z=z, x=x, y=y)
+        try:
+            async with session.get(url, headers=_TILE_HEADERS) as resp:
+                if resp.status == 200:
+                    b = await resp.read()
+                    if b and len(b) > 100:
+                        body = b
+                        break
+        except Exception:
+            continue
+
+    if not body:
+        return web.Response(status=502)
+
+    if len(_TILE_CACHE) >= _TILE_CACHE_MAX:
+        for k in list(_TILE_CACHE.keys())[:300]:
+            _TILE_CACHE.pop(k, None)
+    _TILE_CACHE[key] = body
+
+    return web.Response(
+        body=body, content_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
 
 
 # ---------- Статика ----------
@@ -1055,6 +1125,7 @@ def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware, gzip_middleware])
     app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
+    app.router.add_get("/tiles/{z}/{x}/{y}.png", handle_tile)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
     app.router.add_get("/leaflet.markercluster.js", handle_cluster_js)

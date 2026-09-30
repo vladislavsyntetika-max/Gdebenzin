@@ -1292,30 +1292,62 @@
     clearTimeout(el._t);
     el._t = setTimeout(function(){ el.classList.remove('show'); }, 2400);
   }
-  var _soundCache = {};
-  function _preloadSounds(){
+  // WebAudio: mp3 декодируются в AudioBuffer в память => мгновенное воспроизведение
+  var _audioCtx = null;
+  var _audioBuffers = {};
+  var _audioLoaded = false;
+  function _initAudioCtx(){
+    if (_audioCtx) return _audioCtx;
+    try {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e){ _audioCtx = null; }
+    return _audioCtx;
+  }
+  function _loadSounds(){
+    if (_audioLoaded) return;
+    var ctx = _initAudioCtx();
+    if (!ctx) return;
+    _audioLoaded = true;
     ['yes','no','open','close'].forEach(function(n){
-      try {
-        var a = new Audio('/sounds/' + n + '.mp3');
-        a.preload = 'auto';
-        a.load();
-        _soundCache[n] = a;
-      } catch(e){}
+      fetch('/sounds/' + n + '.mp3')
+        .then(function(r){ return r.arrayBuffer(); })
+        .then(function(ab){ return ctx.decodeAudioData(ab); })
+        .then(function(buf){ _audioBuffers[n] = buf; })
+        .catch(function(){});
     });
   }
-  // Прелоад сразу + по первому тапу в любом месте
-  setTimeout(_preloadSounds, 500);
-  document.addEventListener('touchstart', function once(){ _preloadSounds(); document.removeEventListener('touchstart', once); }, { passive: true, once: true });
-  document.addEventListener('click', function once(){ _preloadSounds(); document.removeEventListener('click', once); }, { passive: true, once: true });
+  // Прелоад после первого касания (браузер разрешит разблокировать ctx)
+  function _unlockAudio(){
+    var ctx = _initAudioCtx();
+    if (ctx && ctx.state === 'suspended') { try { ctx.resume(); } catch(e){} }
+    _loadSounds();
+  }
+  document.addEventListener('touchstart', _unlockAudio, { passive: true, once: true });
+  document.addEventListener('click', _unlockAudio, { passive: true, once: true });
+  setTimeout(_unlockAudio, 800);
 
   function playSound(name){
     try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
+    var ctx = _initAudioCtx();
+    if (!ctx){ return; }
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch(e){} }
+    var buf = _audioBuffers[name];
+    if (buf){
+      try {
+        var src = ctx.createBufferSource();
+        src.buffer = buf;
+        var gain = ctx.createGain();
+        gain.gain.value = 1.0;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(0);
+        return;
+      } catch(e){}
+    }
+    // Fallback: HTMLAudio если буфер ещё не готов
     try {
-      var a = _soundCache[name];
-      if (!a){ a = new Audio('/sounds/' + name + '.mp3'); a.preload = 'auto'; _soundCache[name] = a; }
-      a.currentTime = 0;
-      var p = a.play();
-      if (p && p.catch) p.catch(function(){});
+      var a = new Audio('/sounds/' + name + '.mp3');
+      a.play().catch(function(){});
     } catch(e){}
   }
   function soundFuelYes(){ playSound('yes'); }

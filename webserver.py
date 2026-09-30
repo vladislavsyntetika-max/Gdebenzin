@@ -1125,7 +1125,7 @@ def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware, gzip_middleware])
     app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
-    app.router.add_get("/tiles/{z}/{x}/{y}.png", handle_tile)
+    app.router.add_get(r"/tiles/{z:\d+}/{x:\d+}/{y:\d+}.png", handle_tile)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)
     app.router.add_get("/leaflet.markercluster.js", handle_cluster_js)

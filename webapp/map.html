@@ -968,7 +968,6 @@
   } catch(e){ markerCluster = null; try { console.log("[GDEBENZIN] cluster init failed:", e.message); } catch(err){} }
   if (markerCluster) markerCluster.addTo(map);
   var TILE_SERVERS = [
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
     'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'

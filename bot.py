@@ -1749,6 +1749,171 @@ async def on_charts_cmd(message: Message):
                 pass
 
 
+def get_trends_report():
+    """Аналитика за 7 дней: дефицит по сетям и топливу, волны бензовозов, свежесть."""
+    now = int(time.time())
+    d1 = now - 86400
+    d7 = now - 7 * 86400
+    conn = db()
+    try:
+        # 1) Все отчёты по топливу за 7 дней (исключаем флаги)
+        rows = conn.execute(
+            "SELECT station_id, fuel, status FROM feed "
+            "WHERE ts > ? AND fuel IN ('f92','f95','f98','dt')",
+            (d7,)
+        ).fetchall()
+        # 2) Бензовозы за 24ч
+        benz = conn.execute(
+            "SELECT station_id FROM feed WHERE ts > ? AND fuel='flag_delivery' AND status IN ('on','true','1')",
+            (d1,)
+        ).fetchall()
+        # 3) Свежесть: последний отчёт по каждой станции
+        fresh = conn.execute(
+            "SELECT station_id, MAX(ts) FROM reports WHERE fuel IN ('f92','f95','f98','dt') GROUP BY station_id"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    # Сети
+    net_total = {}
+    net_none = {}
+    for sid, fuel, status in rows:
+        st = STATION_BY_ID.get(sid)
+        if not st:
+            continue
+        net = st[2] if st[2] in NETWORKS else "other"
+        net_total[net] = net_total.get(net, 0) + 1
+        if status == "none":
+            net_none[net] = net_none.get(net, 0) + 1
+
+    net_deficit = []
+    for net, total in net_total.items():
+        if total < 5:
+            continue
+        pct = net_none.get(net, 0) / total * 100
+        net_deficit.append((net, pct, total))
+    net_deficit.sort(key=lambda x: x[1], reverse=True)
+
+    # Топливо
+    fuel_total = {}
+    fuel_ok = {}
+    for sid, fuel, status in rows:
+        fuel_total[fuel] = fuel_total.get(fuel, 0) + 1
+        if status in ("ok", "low"):
+            fuel_ok[fuel] = fuel_ok.get(fuel, 0) + 1
+
+    fuel_stats = []
+    for fk in ("f92", "f95", "f98", "dt"):
+        total = fuel_total.get(fk, 0)
+        if total < 5:
+            continue
+        pct = fuel_ok.get(fk, 0) / total * 100
+        fuel_stats.append((fk, pct, total))
+    fuel_stats.sort(key=lambda x: x[1])
+
+    # Бензовозы по сетям
+    benz_by_net = {}
+    for sid, in benz:
+        st = STATION_BY_ID.get(sid)
+        if not st:
+            continue
+        net = st[2] if st[2] in NETWORKS else "other"
+        benz_by_net[net] = benz_by_net.get(net, 0) + 1
+    benz_top = sorted(benz_by_net.items(), key=lambda kv: kv[1], reverse=True)[:3]
+
+    # Свежесть сетей: медиана давности последнего отчёта
+    import statistics as _st
+    net_delta = {}
+    for sid, last_ts in fresh:
+        st = STATION_BY_ID.get(sid)
+        if not st:
+            continue
+        net = st[2] if st[2] in NETWORKS else "other"
+        delta_h = (now - last_ts) / 3600
+        net_delta.setdefault(net, []).append(delta_h)
+    net_fresh = []
+    for net, ds in net_delta.items():
+        if len(ds) < 3:
+            continue
+        net_fresh.append((net, _st.median(ds), len(ds)))
+    net_fresh.sort(key=lambda x: x[1])
+
+    return {
+        "net_deficit": net_deficit[:5],
+        "fuel_stats": fuel_stats,
+        "benz_total": len(benz),
+        "benz_top": benz_top,
+        "net_fresh": net_fresh[:5],
+    }
+
+
+def format_trends_report():
+    d = get_trends_report()
+    lines = ["U0001F4C8 <b>Тренды за 7 дней</b>", ""]
+
+    # Топливо
+    if d["fuel_stats"]:
+        lines.append("<b>Дефицит по топливу</b>")
+        for fk, pct, total in d["fuel_stats"]:
+            name = FUEL_SHORT.get(fk, fk)
+            if pct < 30:
+                emoji = "U0001F534"
+            elif pct < 60:
+                emoji = "U0001F7E1"
+            else:
+                emoji = "U0001F7E2"
+            lines.append(emoji + " " + name + " — <b>" + str(round(pct)) + "%</b> есть")
+        lines.append("")
+
+    # Сети — дефицит
+    if d["net_deficit"]:
+        lines.append("<b>Проблемные сети</b>")
+        for net, pct, total in d["net_deficit"]:
+            label = NETWORKS.get(net, {}).get("label", net)
+            lines.append("• " + label + " — <b>" + str(round(pct)) + "%</b> «нет» (" + str(total) + ")")
+        lines.append("")
+
+    # Свежесть сетей
+    if d["net_fresh"]:
+        lines.append("<b>Свежесть данных</b>")
+        for net, med_h, cnt in d["net_fresh"]:
+            label = NETWORKS.get(net, {}).get("label", net)
+            if med_h < 6:
+                emoji = "U0001F7E2"
+            elif med_h < 24:
+                emoji = "U0001F7E1"
+            else:
+                emoji = "U0001F534"
+            lines.append(emoji + " " + label + " — обновляли " + str(round(med_h)) + " ч назад")
+        lines.append("")
+
+    # Бензовозы
+    if d["benz_total"] > 0:
+        lines.append("<b>U0001F69B Бензовозы за 24ч: " + str(d["benz_total"]) + "</b>")
+        for net, cnt in d["benz_top"]:
+            label = NETWORKS.get(net, {}).get("label", net)
+            lines.append("• " + label + " — " + str(cnt))
+    else:
+        lines.append("<b>U0001F69B Бензовозы за 24ч: 0</b>")
+
+    lines.append("")
+    lines.append("Данные от водителей. @naidibenzin_bot")
+    return "\n".join(lines)
+
+
+@dp.message(Command("тренды", "trends"))
+async def on_trends_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    try:
+        text = format_trends_report()
+    except Exception as e:
+        await message.answer("Ошибка: " + str(e))
+        return
+    await message.answer(text)
+
+
 @dp.message(Command("статистика", "stats"))
 async def on_stats_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:

@@ -566,10 +566,10 @@
     cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
     min-height: 54px;
   }
-  .fuel-ok { color: #1B8A4A; border-color: #1B8A4A55; }
-  .fuel-none { color: #C62828; border-color: #C6282855; }
-  .fuel-ok.current { background: #1B8A4A; color: #fff; border-color: #1B8A4A; }
-  .fuel-none.current { background: #C62828; color: #fff; border-color: #C62828; }
+  .fuel-ok { color: #FFFFFF; background: #1B8A4A; border-color: #0F5C30; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .fuel-none { color: #FFFFFF; background: #C62828; border-color: #7F1414; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .fuel-ok.current { background: #00E05E; color: #14171A; border-color: #FFFFFF; text-shadow: none; }
+  .fuel-none.current { background: #FF3838; color: #FFFFFF; border-color: #FFFFFF; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
   .action-btn .ai { font-size: 22px; line-height: 1; }
   .action-btn .al { font-size: 13px; line-height: 1.1; }
   .action-btn.danger.full { grid-column: 1 / -1; }
@@ -1277,6 +1277,21 @@
     el._t = setTimeout(function(){ el.classList.remove('show'); }, 2400);
   }
   var _soundCache = {};
+  function _preloadSounds(){
+    ['yes','no','open','close'].forEach(function(n){
+      try {
+        var a = new Audio('/sounds/' + n + '.mp3');
+        a.preload = 'auto';
+        a.load();
+        _soundCache[n] = a;
+      } catch(e){}
+    });
+  }
+  // Прелоад сразу + по первому тапу в любом месте
+  setTimeout(_preloadSounds, 500);
+  document.addEventListener('touchstart', function once(){ _preloadSounds(); document.removeEventListener('touchstart', once); }, { passive: true, once: true });
+  document.addEventListener('click', function once(){ _preloadSounds(); document.removeEventListener('click', once); }, { passive: true, once: true });
+
   function playSound(name){
     try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
     try {
@@ -2465,11 +2480,11 @@
             }
             if (sp !== null && sp >= 0){
               var kmh = sp * 3.6;
-              if (kmh < 3)        _z = 17;
-              else if (kmh < 20)  _z = 16;
-              else if (kmh < 60)  _z = 15;
-              else if (kmh < 90)  _z = 14;
-              else                _z = 13;
+              if (kmh < 3)        _z = 18;
+              else if (kmh < 20)  _z = 17;
+              else if (kmh < 60)  _z = 16;
+              else if (kmh < 90)  _z = 15;
+              else                _z = 14;
             }
           } catch(e){}
           // Сглаживание: меняем зум только если новое значение стабильно

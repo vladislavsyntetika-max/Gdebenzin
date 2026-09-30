@@ -1849,7 +1849,7 @@ def get_trends_report():
 
 def format_trends_report():
     d = get_trends_report()
-    lines = ["U0001F4C8 <b>Тренды за 7 дней</b>", ""]
+    lines = ["📈 <b>Тренды за 7 дней</b>", ""]
 
     # Топливо
     if d["fuel_stats"]:
@@ -1857,11 +1857,11 @@ def format_trends_report():
         for fk, pct, total in d["fuel_stats"]:
             name = FUEL_SHORT.get(fk, fk)
             if pct < 30:
-                emoji = "U0001F534"
+                emoji = "🔴"
             elif pct < 60:
-                emoji = "U0001F7E1"
+                emoji = "🟡"
             else:
-                emoji = "U0001F7E2"
+                emoji = "🟢"
             lines.append(emoji + " " + name + " — <b>" + str(round(pct)) + "%</b> есть")
         lines.append("")
 
@@ -1879,22 +1879,22 @@ def format_trends_report():
         for net, med_h, cnt in d["net_fresh"]:
             label = NETWORKS.get(net, {}).get("label", net)
             if med_h < 6:
-                emoji = "U0001F7E2"
+                emoji = "🟢"
             elif med_h < 24:
-                emoji = "U0001F7E1"
+                emoji = "🟡"
             else:
-                emoji = "U0001F534"
+                emoji = "🔴"
             lines.append(emoji + " " + label + " — обновляли " + str(round(med_h)) + " ч назад")
         lines.append("")
 
     # Бензовозы
     if d["benz_total"] > 0:
-        lines.append("<b>U0001F69B Бензовозы за 24ч: " + str(d["benz_total"]) + "</b>")
+        lines.append("<b>🚛 Бензовозы за 24ч: " + str(d["benz_total"]) + "</b>")
         for net, cnt in d["benz_top"]:
             label = NETWORKS.get(net, {}).get("label", net)
             lines.append("• " + label + " — " + str(cnt))
     else:
-        lines.append("<b>U0001F69B Бензовозы за 24ч: 0</b>")
+        lines.append("<b>🚛 Бензовозы за 24ч: 0</b>")
 
     lines.append("")
     lines.append("Данные от водителей. @naidibenzin_bot")

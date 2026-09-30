@@ -356,6 +356,41 @@
   .help-sec .help-body .row { margin-bottom: 6px; display: block; text-align: left; }
   .help-footer { margin-top: 18px; padding-top: 14px; border-top: 1px dashed #2B3036; font-size: 13px; color: #8A8F98; text-align: center; }
   .help-footer a { color: #FFB000; text-decoration: none; font-weight: 700; }
+
+  /* Пульс вокруг "?" для новых пользователей */
+  @keyframes helpPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,176,0,0.7), 0 0 0 0 rgba(255,176,0,0.4); }
+    70% { box-shadow: 0 0 0 12px rgba(255,176,0,0), 0 0 0 20px rgba(255,176,0,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,176,0,0), 0 0 0 0 rgba(255,176,0,0); }
+  }
+  .icon-btn.help-attention {
+    animation: helpPulse 1.8s ease-out infinite;
+    background: #FFB000 !important;
+    color: #14171A !important;
+    border-color: #FFB000 !important;
+    position: relative;
+  }
+  .icon-btn.help-attention::after {
+    content: '?'; position: absolute; top: 100%; right: 0;
+    margin-top: 4px; font-size: 22px; font-weight: 900;
+    color: #FFB000; text-shadow: 0 2px 6px rgba(0,0,0,.8);
+    animation: helpPulse 1.8s ease-out infinite;
+  }
+
+  /* Баннер "потерялся" в help-модалке */
+  .help-lost {
+    background: linear-gradient(135deg, #FFB000 0%, #FF9500 100%);
+    color: #14171A; border-radius: 12px;
+    padding: 14px 16px; margin: 12px 0 16px;
+    box-shadow: 0 4px 16px rgba(255,176,0,.25);
+  }
+  .help-lost h4 { margin: 0 0 6px; font-size: 15px; font-weight: 800; }
+  .help-lost p { margin: 0 0 10px; font-size: 13px; line-height: 1.35; }
+  .help-lost a {
+    display: inline-block; background: #14171A; color: #FFB000;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800;
+    text-decoration: none;
+  }
   .big-choice { width: 100%; padding: 18px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; text-align: center; border: none; }
 
   .brand-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
@@ -2940,6 +2975,11 @@
       '<button class="help-close" aria-label="Close">×</button>' +
       '<h3>❓ Как пользоваться</h3>' +
       '<p class="help-sub">ГДЕ БЕНЗИН!? — карта наличия топлива от водителей</p>' +
+      '<div class="help-lost">' +
+        '<h4>💡 Не разобрался за 30 секунд?</h4>' +
+        '<p>Есть полный гайд с картинками: как это работает в дороге, все кнопки, баллы.</p>' +
+        '<a href="/manual" target="_blank">📖 Открыть гайд</a>' +
+      '</div>' +
 
       '<details class="help-sec" open><summary>🚗 Как это работает в дороге</summary><div class="help-body">' +
         '<div class="row">Включи GPS — кнопка со спутником в левой колонке, подсветится жёлтым.</div>' +
@@ -3029,6 +3069,36 @@
   }
 
   document.getElementById('help-toggle').addEventListener('click', openHelpModal);
+
+  // Пульс вокруг "?" — если пользователь ещё не открывал help
+  (function(){
+    var HELP_SEEN_KEY = 'azs_help_seen_v1';
+    var seen = false;
+    try { seen = localStorage.getItem(HELP_SEEN_KEY) === '1'; } catch(e){}
+    if (seen) return;
+
+    var helpBtn = document.getElementById('help-toggle');
+    if (!helpBtn) return;
+
+    // Показываем пульс через 4 сек после загрузки (когда онбординг закрылся)
+    setTimeout(function(){
+      helpBtn.classList.add('help-attention');
+    }, 4000);
+
+    // Убираем при первом тапе на help
+    helpBtn.addEventListener('click', function once(){
+      helpBtn.classList.remove('help-attention');
+      try { localStorage.setItem(HELP_SEEN_KEY, '1'); } catch(e){}
+      helpBtn.removeEventListener('click', once);
+    });
+
+    // Авто-снятие через 30 сек, если не тапнул
+    setTimeout(function(){
+      if (helpBtn.classList.contains('help-attention')) {
+        helpBtn.classList.remove('help-attention');
+      }
+    }, 34000);
+  })();
 
   try {
     var _lc = parseInt(localStorage.getItem('azs_load_count') || '0', 10) || 0;

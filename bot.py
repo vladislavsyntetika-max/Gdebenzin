@@ -994,6 +994,7 @@ def kb_main():
         InlineKeyboardButton(text="📢 Канал — топ дня и алерты", url="https://t.me/naidibenzin"),
         InlineKeyboardButton(text="📢 Канал MAX", url="https://max.ru/channel_naidibenzin"),
     ])
+    rows.append([InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate:")])
     rows.append([InlineKeyboardButton(text="⚠️ Сообщить об ошибке в боте", callback_data="err:")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -2144,6 +2145,36 @@ async def safe_edit(cq, text, markup):
         await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
     except TelegramBadRequest:
         pass
+
+
+SUPPORT_URL = "https://yoomoney.ru/to/4100119644232499"
+
+
+@dp.callback_query(F.data == "donate:")
+async def cb_donate(cq: CallbackQuery):
+    await cq.answer()
+    text = (
+        "\u2615 <b>\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u0430\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442</b>\n\n"
+        "\u041f\u0440\u043e\u0435\u043a\u0442 \u0436\u0438\u0432\u0451\u0442 \u043d\u0430 \u044d\u043d\u0442\u0443\u0437\u0438\u0430\u0437\u043c\u0435 \u043e\u0434\u043d\u043e\u0433\u043e \u0447\u0435\u043b\u043e\u0432\u0435\u043a\u0430. "
+        "\u0421\u0435\u0440\u0432\u0435\u0440\u044b, \u043a\u0430\u0440\u0442\u044b, \u0434\u043e\u043c\u0435\u043d\u044b, \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0430 \u2014 "
+        "\u0438\u0437 \u0441\u0432\u043e\u0435\u0433\u043e \u043a\u0430\u0440\u043c\u0430\u043d\u0430.\n\n"
+        "<b>\u041e\u0440\u0438\u0435\u043d\u0442\u0438\u0440\u044b:</b>\n"
+        "\u2022 100 \u20bd \u2014 \u043c\u0435\u0441\u044f\u0446 \u0445\u043e\u0441\u0442\u0438\u043d\u0433\u0430\n"
+        "\u2022 500 \u20bd \u2014 \u043c\u0435\u0441\u044f\u0446 \u043a\u0430\u0440\u0442\n"
+        "\u2022 1000 \u20bd \u2014 \u043d\u0435\u0434\u0435\u043b\u044f \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438\n\n"
+        "\u0421\u043f\u0430\u0441\u0438\u0431\u043e, \u0447\u0442\u043e \u0442\u044b \u0441 \u043d\u0430\u043c\u0438 \U0001F64F"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="\U0001F4B3 100 \u20bd", url=SUPPORT_URL + "?sum=100"),
+         InlineKeyboardButton(text="\U0001F4B3 300 \u20bd", url=SUPPORT_URL + "?sum=300")],
+        [InlineKeyboardButton(text="\U0001F4B3 500 \u20bd", url=SUPPORT_URL + "?sum=500"),
+         InlineKeyboardButton(text="\U0001F4B3 1000 \u20bd", url=SUPPORT_URL + "?sum=1000")],
+        [InlineKeyboardButton(text="\u0414\u0440\u0443\u0433\u0430\u044f \u0441\u0443\u043c\u043c\u0430", url=SUPPORT_URL)],
+    ])
+    try:
+        await cq.message.answer(text, reply_markup=kb)
+    except Exception:
+        await cq.message.answer(text)
 
 
 @dp.callback_query(F.data.startswith("err:"))

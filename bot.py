@@ -1821,22 +1821,25 @@ def get_trends_report():
         benz_by_net[net] = benz_by_net.get(net, 0) + 1
     benz_top = sorted(benz_by_net.items(), key=lambda kv: kv[1], reverse=True)[:3]
 
-    # Свежесть сетей: медиана давности последнего отчёта
-    import statistics as _st
-    net_delta = {}
+    # Свежесть сетей: % станций, обновлённых за 24ч
+    day_ago = now - 86400
+    net_all = {}
+    net_fresh_cnt = {}
     for sid, last_ts in fresh:
         st = STATION_BY_ID.get(sid)
         if not st:
             continue
         net = st[2] if st[2] in NETWORKS else "other"
-        delta_h = (now - last_ts) / 3600
-        net_delta.setdefault(net, []).append(delta_h)
+        net_all[net] = net_all.get(net, 0) + 1
+        if last_ts >= day_ago:
+            net_fresh_cnt[net] = net_fresh_cnt.get(net, 0) + 1
     net_fresh = []
-    for net, ds in net_delta.items():
-        if len(ds) < 3:
+    for net, total in net_all.items():
+        if total < 10:
             continue
-        net_fresh.append((net, _st.median(ds), len(ds)))
-    net_fresh.sort(key=lambda x: x[1])
+        pct = net_fresh_cnt.get(net, 0) / total * 100
+        net_fresh.append((net, pct, total))
+    net_fresh.sort(key=lambda x: x[1], reverse=True)
 
     return {
         "net_deficit": net_deficit[:5],
@@ -1875,16 +1878,16 @@ def format_trends_report():
 
     # Свежесть сетей
     if d["net_fresh"]:
-        lines.append("<b>Свежесть данных</b>")
-        for net, med_h, cnt in d["net_fresh"]:
+        lines.append("<b>Свежесть данных (за 24ч)</b>")
+        for net, pct, cnt in d["net_fresh"]:
             label = NETWORKS.get(net, {}).get("label", net)
-            if med_h < 6:
+            if pct >= 30:
                 emoji = "🟢"
-            elif med_h < 24:
+            elif pct >= 10:
                 emoji = "🟡"
             else:
                 emoji = "🔴"
-            lines.append(emoji + " " + label + " — обновляли " + str(round(med_h)) + " ч назад")
+            lines.append(emoji + " " + label + " — " + str(round(pct)) + "% обновлено (" + str(cnt) + ")")
         lines.append("")
 
     # Бензовозы

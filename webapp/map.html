@@ -868,7 +868,7 @@
   var FUEL_SHORT = { f92: '92', f95: '95', f98: '98', dt: 'ДТ' };
   var STATUS_COLOR = { ok:'#1B8A4A', low:'#C97C00', none:'#C62828', unknown:'#8A8F98' };
   var SEVERITY = { ok:0, low:1, none:2 };
-  var FLAG_SHORT = { flag_queue:'🚗 Очередь', flag_limit:'⛔ Лимит' };
+  var FLAG_SHORT = { flag_queue:'🚗 Очередь' };
 
   // Корпоративные цвета сетей (для полосы сверху попапа и подсветки)
   var NETWORK_COLORS = {
@@ -1557,7 +1557,6 @@
       }
     }
     if (sheetPendingFlags.flag_queue) summary.push('очередь');
-    if (sheetPendingFlags.flag_limit) summary.push('лимит');
     showVoiceBanner(summary.join(', '), 'Применяю…');
     setTimeout(function(){
       flushBatch(false).then(function(){
@@ -2879,8 +2878,7 @@
     var st = statusFor(s.fuels, 'all');
     var fuelOk = st === 'ok' ? 1.0 : (st === 'low' ? 0.5 : 0);
     var hasQueue = s.flags && s.flags.flag_queue && s.flags.flag_queue.on ? 1 : 0;
-    var hasLimit = s.flags && s.flags.flag_limit && s.flags.flag_limit.on ? 1 : 0;
-    return 3.0 * freshness + 2.0 * proximity + 2.5 * fuelOk - 1.0 * hasQueue - 0.5 * hasLimit;
+    return 3.0 * freshness + 2.0 * proximity + 2.5 * fuelOk - 1.0 * hasQueue;
   }
 
   function openNearbySheet(){
@@ -2913,7 +2911,6 @@
         if (s.flags && s.flags.flag_queue_2 && s.flags.flag_queue_2.on) flags.push('🚗🚗');
         if (s.flags && s.flags.flag_queue_3 && s.flags.flag_queue_3.on) flags.push('🚗🚗🚗');
         if (s.flags && s.flags.flag_delivery && s.flags.flag_delivery.on) flags.push('🚛');
-        if (s.flags && s.flags.flag_limit && s.flags.flag_limit.on) flags.push('⛔');
         var flagStr = flags.length ? ' ' + flags.join(' ') : '';
         var item = document.createElement('div');
         item.className = 'nearby-item';
@@ -3189,7 +3186,7 @@
       { art: '🛰', title: 'Запусти GPS', text: 'Кнопка со спутником в левой колонке. Подсветится жёлтым — карта ведёт тебя по маршруту.' },
       { art: '🚗', title: 'Просто едешь', text: 'Тапать ничего не надо. Карта сама следит за твоим положением. Периодически поглядывай — работает ли.' },
       { art: '⛽', title: 'Подъезжаешь к АЗС', text: 'Попап всплывает САМ, когда ты рядом. Смотри на стеллу — что есть: 92, 95, 98, ДТ.' },
-      { art: '👀', title: 'Снимаешь глазами', text: 'Заметил попутно: 🚛 бензовоз · 🚗 очередь · ⛔ лимит. Всё это — быстрые кнопки в карточке.' },
+      { art: '👀', title: 'Снимаешь глазами', text: 'Заметил попутно: 🚛 бензовоз · 🚗 очередь. Всё это — быстрые кнопки в карточке.' },
       { art: '⚡', title: 'Вносишь потоком', text: 'Быстро, не задумываясь: 92 — есть, 95 — есть, 98 — нет, ДТ — есть. Через 3 сек после последнего тапа карточка закроется — ты уже помог следующему.' },
       { art: '👆', title: 'Альтернатива: тап вручную', text: 'Если стоишь, дома или проехал — просто тапни АЗС на карте. Откроется та же карточка. Тот же 3-секундный таймер.' },
       { art: '🏆', title: 'Баллы и топ', text: 'За отчёты — баллы. Звания и топ недели — в @naidibenzin_bot. Новые АЗС +50, правки +20.' }

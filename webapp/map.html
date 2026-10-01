@@ -480,6 +480,7 @@
   }
   .toast.show { opacity: 1; }
 
+  .tile-smooth { transition: opacity 0.35s ease-in !important; }
   .me-marker {
     position: relative;
     width: 18px; height: 18px; border-radius: 50%;
@@ -899,7 +900,13 @@
 
   var BOT_USERNAME = 'naidibenzin_bot';
   var SUPPORT_TEXT = 'Проект живёт на энтузиазме одного человека. Серверы, карты, домены, разработка — всё оплачивается из своего кармана. Каждый рубль идёт на то, чтобы карта была точнее и быстрее.';
-  var SUPPORT_URL = 'https://yoomoney.ru/to/4100119644232499';
+  var _SUP_RECEIVER = '4100119644232499';
+  function _supportUrl(amount){
+    var u = 'https://yoomoney.ru/quickpay/confirm.xml?receiver=' + _SUP_RECEIVER + '&quickpay-form=button&targets=' + encodeURIComponent('\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430');
+    if (amount) u += '&sum=' + amount;
+    return u;
+  }
+  var SUPPORT_URL = _supportUrl();
   var SUPPORT_REQ = '';
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
@@ -1020,10 +1027,11 @@
   // Тайлы через наш прокси на Amvera (обход блокировки OSM у РФ-операторов)
   var tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    keepBuffer: 12,
-    updateWhenIdle: false,
+    keepBuffer: 16,
+    updateWhenIdle: true,
     updateWhenZooming: false,
     crossOrigin: true,
+    className: 'tile-smooth',
     errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
   }).addTo(map);
 
@@ -1324,10 +1332,15 @@
     if (!ctx) return;
     _audioLoaded = true;
     ['yes','no','open','close'].forEach(function(n){
-      fetch('/sounds/' + n + '.mp3')
+      fetch('/sounds/' + n + '.mp3', { cache: 'force-cache' })
         .then(function(r){ return r.arrayBuffer(); })
-        .then(function(ab){ return ctx.decodeAudioData(ab); })
-        .then(function(buf){ _audioBuffers[n] = buf; })
+        .then(function(ab){
+          var done = function(buf){ _audioBuffers[n] = buf; };
+          try {
+            var p = ctx.decodeAudioData(ab, done, function(){});
+            if (p && p.then) p.then(done).catch(function(){});
+          } catch(e){}
+        })
         .catch(function(){});
     });
   }
@@ -1337,9 +1350,11 @@
     if (ctx && ctx.state === 'suspended') { try { ctx.resume(); } catch(e){} }
     _loadSounds();
   }
+  // Прелоад аудио сразу (fetch+decode на suspended context работает)
+  setTimeout(_loadSounds, 300);
   document.addEventListener('touchstart', _unlockAudio, { passive: true, once: true });
   document.addEventListener('click', _unlockAudio, { passive: true, once: true });
-  setTimeout(_unlockAudio, 800);
+  setTimeout(_unlockAudio, 600);
 
   function playSound(name){
     try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
@@ -2960,12 +2975,12 @@
         '<div class="sup-row"><b>1000 ₽</b> — неделя разработки</div>'+
       '</div>'+
       '<div class="sup-btns">'+
-        '<a href="'+SUPPORT_URL+'?sum=100" target="_blank" rel="noopener" class="sup-btn">100 ₽</a>'+
-        '<a href="'+SUPPORT_URL+'?sum=300" target="_blank" rel="noopener" class="sup-btn">300 ₽</a>'+
-        '<a href="'+SUPPORT_URL+'?sum=500" target="_blank" rel="noopener" class="sup-btn">500 ₽</a>'+
-        '<a href="'+SUPPORT_URL+'?sum=1000" target="_blank" rel="noopener" class="sup-btn">1000 ₽</a>'+
+        '<a href="'+_supportUrl(100)+'" target="_blank" rel="noopener" class="sup-btn">100 ₽</a>'+
+        '<a href="'+_supportUrl(300)+'" target="_blank" rel="noopener" class="sup-btn">300 ₽</a>'+
+        '<a href="'+_supportUrl(500)+'" target="_blank" rel="noopener" class="sup-btn">500 ₽</a>'+
+        '<a href="'+_supportUrl(1000)+'" target="_blank" rel="noopener" class="sup-btn">1000 ₽</a>'+
       '</div>'+
-      '<a href="'+SUPPORT_URL+'" target="_blank" rel="noopener" class="sup-btn sup-btn-wide">Другая сумма</a>'+
+      '<a href="'+_supportUrl()+'" target="_blank" rel="noopener" class="sup-btn sup-btn-wide">Другая сумма</a>'+
       '<div class="modal-btns"><button class="modal-secondary" id="m-close">Закрыть</button></div></div>';
     document.body.appendChild(bg);
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });

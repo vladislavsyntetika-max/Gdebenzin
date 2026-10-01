@@ -2147,7 +2147,14 @@ async def safe_edit(cq, text, markup):
         pass
 
 
-SUPPORT_URL = "https://yoomoney.ru/to/4100119644232499"
+_SUPPORT_RECEIVER = "4100119644232499"
+def _support_url(amount=None):
+    from urllib.parse import quote
+    base = "https://yoomoney.ru/quickpay/confirm.xml?receiver=" + _SUPPORT_RECEIVER + "&quickpay-form=button&targets=" + quote("Поддержка проекта ГДЕ БЕНЗИН!?")
+    if amount:
+        base += "&sum=" + str(amount)
+    return base
+SUPPORT_URL = _support_url()
 
 
 @dp.callback_query(F.data == "donate:")
@@ -2165,11 +2172,11 @@ async def cb_donate(cq: CallbackQuery):
         "\u0421\u043f\u0430\u0441\u0438\u0431\u043e, \u0447\u0442\u043e \u0442\u044b \u0441 \u043d\u0430\u043c\u0438 \U0001F64F"
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="\U0001F4B3 100 \u20bd", url=SUPPORT_URL + "?sum=100"),
-         InlineKeyboardButton(text="\U0001F4B3 300 \u20bd", url=SUPPORT_URL + "?sum=300")],
-        [InlineKeyboardButton(text="\U0001F4B3 500 \u20bd", url=SUPPORT_URL + "?sum=500"),
-         InlineKeyboardButton(text="\U0001F4B3 1000 \u20bd", url=SUPPORT_URL + "?sum=1000")],
-        [InlineKeyboardButton(text="\u0414\u0440\u0443\u0433\u0430\u044f \u0441\u0443\u043c\u043c\u0430", url=SUPPORT_URL)],
+        [InlineKeyboardButton(text="\U0001F4B3 100 \u20bd", url=_support_url(100)),
+         InlineKeyboardButton(text="\U0001F4B3 300 \u20bd", url=_support_url(300))],
+        [InlineKeyboardButton(text="\U0001F4B3 500 \u20bd", url=_support_url(500)),
+         InlineKeyboardButton(text="\U0001F4B3 1000 \u20bd", url=_support_url(1000))],
+        [InlineKeyboardButton(text="\u0414\u0440\u0443\u0433\u0430\u044f \u0441\u0443\u043c\u043c\u0430", url=_support_url())],
     ])
     try:
         await cq.message.answer(text, reply_markup=kb)

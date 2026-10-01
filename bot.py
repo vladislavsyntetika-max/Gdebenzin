@@ -2176,7 +2176,6 @@ async def cb_donate(cq: CallbackQuery):
          InlineKeyboardButton(text="\U0001F4B3 300 \u20bd", url=_support_url(300))],
         [InlineKeyboardButton(text="\U0001F4B3 500 \u20bd", url=_support_url(500)),
          InlineKeyboardButton(text="\U0001F4B3 1000 \u20bd", url=_support_url(1000))],
-        [InlineKeyboardButton(text="\u0414\u0440\u0443\u0433\u0430\u044f \u0441\u0443\u043c\u043c\u0430", url=_support_url())],
     ])
     try:
         await cq.message.answer(text, reply_markup=kb)

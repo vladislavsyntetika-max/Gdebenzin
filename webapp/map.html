@@ -743,7 +743,7 @@
   .mk-cluster-s { width: 32px; height: 32px; font-size: 11px; }
   .mk-cluster-m { width: 44px; height: 44px; font-size: 13px; }
   .mk-cluster-l { width: 56px; height: 56px; font-size: 15px; }
-  .mk{width:16px;height:16px;border-radius:50%;border:2px solid #14171A;box-sizing:border-box;position:relative;}
+  .mk{width:16px;height:16px;border-radius:50%;border:3px solid #000000;box-sizing:border-box;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,0.15);}
   .mk-q { position: absolute; top: -8px; right: -8px; font-size: 12px; line-height: 1; filter: drop-shadow(0 0 3px rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.9)); pointer-events: none; }
   .mk-fresh::after{content:"";position:absolute;inset:-2px;border-radius:50%;box-shadow:0 0 0 0 var(--mk-c);animation:mkPulse 1.8s ease-out infinite;}
   .mk-fresh-s::after{--mk-w:14px;}
@@ -2322,9 +2322,9 @@
       if (!maxTs){ m.setOpacity(0.25); return; }
       var diffHr = (now - maxTs) / 3600;
       var op = 1;
-      if (diffHr >= 24) op = 0.2;
-      else if (diffHr >= 8) op = 0.45;
-      else if (diffHr >= 2) op = 0.75;
+      if (diffHr >= 24) op = 0.55;
+      else if (diffHr >= 8) op = 0.72;
+      else if (diffHr >= 2) op = 0.88;
       m.setOpacity(op);
     });
   }

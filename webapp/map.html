@@ -398,6 +398,13 @@
     padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 800;
     border: none; font-family: inherit; cursor: pointer;
   }
+  .sup-list { background: #14171A; border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 13px; color: #B7BBC1; }
+  .sup-row { padding: 3px 0; }
+  .sup-row b { color: #FFB000; font-weight: 800; }
+  .sup-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+  .sup-btn { display: block; text-align: center; background: #FFB000; color: #14171A; padding: 10px 6px; border-radius: 8px; font-size: 14px; font-weight: 800; text-decoration: none; font-family: inherit; }
+  .sup-btn:active { background: #E09600; }
+  .sup-btn-wide { margin-top: 8px; background: #2C2C2E; color: #FFB000; border: 1px solid #FFB00055; }
   .big-choice { width: 100%; padding: 18px 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; text-align: center; border: none; }
 
   .brand-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
@@ -892,7 +899,8 @@
 
   var BOT_USERNAME = 'naidibenzin_bot';
   var SUPPORT_TEXT = 'Проект живёт на энтузиазме одного человека. Серверы, карты, домены, разработка — всё оплачивается из своего кармана. Каждый рубль идёт на то, чтобы карта была точнее и быстрее.';
-  var SUPPORT_REQ = 'Ориентир: 100 руб — месяц хостинга, 500 руб — месяц карт, 1000 руб — неделя разработки.' + String.fromCharCode(10) + 'Возможность донатить появится в ближайшее время. Спасибо, что ты с нами.';
+  var SUPPORT_URL = 'https://yoomoney.ru/to/4100119644232499';
+  var SUPPORT_REQ = '';
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
   var PROXIMITY_CLOSE_M = 250;
@@ -2945,7 +2953,19 @@
     bg.className = 'modal-bg';
     bg.innerHTML = '<div class="modal"><h3>☕ Поддержать</h3>'+
       '<p>'+SUPPORT_TEXT+'</p>'+
-      '<p style="color:#E8E6E1;white-space:pre-line;font-size:14px;background:#14171A;padding:12px;border-radius:8px;margin-top:12px">'+escapeHtml(SUPPORT_REQ)+'</p>'+
+      '<p style="font-size:13px;color:#8A8F98;margin-top:10px">Ориентиры:</p>'+
+      '<div class="sup-list">'+
+        '<div class="sup-row"><b>100 ₽</b> — месяц хостинга</div>'+
+        '<div class="sup-row"><b>500 ₽</b> — месяц карт</div>'+
+        '<div class="sup-row"><b>1000 ₽</b> — неделя разработки</div>'+
+      '</div>'+
+      '<div class="sup-btns">'+
+        '<a href="'+SUPPORT_URL+'?sum=100" target="_blank" rel="noopener" class="sup-btn">100 ₽</a>'+
+        '<a href="'+SUPPORT_URL+'?sum=300" target="_blank" rel="noopener" class="sup-btn">300 ₽</a>'+
+        '<a href="'+SUPPORT_URL+'?sum=500" target="_blank" rel="noopener" class="sup-btn">500 ₽</a>'+
+        '<a href="'+SUPPORT_URL+'?sum=1000" target="_blank" rel="noopener" class="sup-btn">1000 ₽</a>'+
+      '</div>'+
+      '<a href="'+SUPPORT_URL+'" target="_blank" rel="noopener" class="sup-btn sup-btn-wide">Другая сумма</a>'+
       '<div class="modal-btns"><button class="modal-secondary" id="m-close">Закрыть</button></div></div>';
     document.body.appendChild(bg);
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });

@@ -914,7 +914,7 @@
   var SHEET_CLOSE_DELAY_MS = 3000;
   var SHEET_REOPEN_BLOCK_MS = 5 * 60 * 1000;
   var BATCH_SAVE_DELAY_MS = 2000;
-  var NEARBY_MAX_KM = 30;
+  var NEARBY_MAX_KM = 15;
 
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) {
@@ -2916,14 +2916,22 @@
     if (!from){ toast('Включите геолокацию'); return; }
     var list = document.getElementById('nearby-list');
     list.innerHTML = '';
+    // Группируем: 1) с топливом, 2) без данных. Внутри группы — по расстоянию.
+    var order = { ok: 0, low: 0, unknown: 1, none: 9 };
     var scored = stationsData.map(function(s){
       var d = haversine(from.lat, from.lng, s.lat, s.lng);
-      return { s: s, dist: d, score: computeScore(s, from) };
+      var st = statusFor(s.fuels, 'all');
+      return { s: s, dist: d, status: st };
     }).filter(function(x){
       if (x.dist > NEARBY_MAX_KM * 1000) return false;
-      if (statusFor(x.s.fuels, 'all') === 'none') return false;
+      if (x.status === 'none') return false;
       return true;
-    }).sort(function(a, b){ return b.score - a.score; }).slice(0, isTelegramWebApp ? 12 : 3);
+    }).sort(function(a, b){
+      var oa = order[a.status] !== undefined ? order[a.status] : 5;
+      var ob = order[b.status] !== undefined ? order[b.status] : 5;
+      if (oa !== ob) return oa - ob;
+      return a.dist - b.dist;
+    }).slice(0, isTelegramWebApp ? 12 : 3);
 
     if (!scored.length){
       list.innerHTML = '<div class="nearby-empty">Нет станций в радиусе ' + NEARBY_MAX_KM + ' км.</div>';

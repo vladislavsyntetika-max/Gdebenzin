@@ -1074,7 +1074,7 @@
     try { localStorage.setItem(favKey(), JSON.stringify(f)); } catch(e){}
   }
 
-  var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false, maxZoom:19 }).setView([59.94, 30.31], 12);
+  var map = L.map('map', { zoomControl:false, tap:true, attributionControl:false, maxZoom:19 }).setView([59.94, 30.31], 10);
 
   var markerCluster = null;
   try {
@@ -1109,16 +1109,78 @@
   });
   } catch(e){ markerCluster = null; try { console.log("[GDEBENZIN] cluster init failed:", e.message); } catch(err){} }
   if (markerCluster) markerCluster.addTo(map);
-  // Тайлы через наш прокси на Amvera (обход блокировки OSM у РФ-операторов)
-  var tileLayer = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    keepBuffer: 16,
-    updateWhenIdle: true,
-    updateWhenZooming: false,
-    crossOrigin: true,
-    className: 'tile-smooth',
-    errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-  }).addTo(map);
+  // === Умный выбор tile-сервера: OSM напрямую или наш прокси ===
+  var _PROXY_TILES = '/tiles/{z}/{x}/{y}.png';
+  var _DIRECT_TILES = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
+  var _useProxy = true;
+
+  function _tileOpts(){
+    return {
+      subdomains: 'abc',
+      maxZoom: 19,
+      keepBuffer: 20,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      crossOrigin: true,
+      className: 'tile-smooth',
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    };
+  }
+
+  var tileLayer = L.tileLayer(_PROXY_TILES, _tileOpts()).addTo(map);
+
+  // Проверка OSM напрямую (1.2 сек). Если доступен — сразу переключаемся на прямой сервер.
+  (function probeOsm(){
+    var probe = new Image();
+    var done = false;
+    var timer = setTimeout(function(){ if (done) return; done = true; }, 1200);
+    probe.onload = function(){
+      if (done) return; done = true; clearTimeout(timer);
+      _useProxy = false;
+      try {
+        map.removeLayer(tileLayer);
+        tileLayer = L.tileLayer(_DIRECT_TILES, _tileOpts()).addTo(map);
+        console.log('[GDEBENZIN] tiles: direct OSM (fast)');
+      } catch(e){}
+    };
+    probe.onerror = function(){
+      if (done) return; done = true; clearTimeout(timer);
+      console.log('[GDEBENZIN] tiles: proxy (OSM unreachable)');
+    };
+    probe.src = 'https://a.tile.openstreetmap.fr/hot/10/616/327.png?' + Date.now();
+  })();
+
+  // === Предзагрузка тайлов вокруг GPS ===
+  var _preloaded = {};
+  function preloadAround(lat, lng){
+    var z = Math.round(map.getZoom());
+    var zooms = [z, Math.min(19, z + 1), Math.min(19, z + 2)];
+    var R = 1;
+    zooms.forEach(function(zz){
+      var n = Math.pow(2, zz);
+      function lng2x(l, z){ return Math.floor((l + 180) / 360 * Math.pow(2, z)); }
+      function lat2y(la, z){
+        var rad = la * Math.PI / 180;
+        return Math.floor((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * Math.pow(2, z));
+      }
+      var cx = lng2x(lng, zz);
+      var cy = lat2y(lat, zz);
+      for (var dx = -R; dx <= R; dx++){
+        for (var dy = -R; dy <= R; dy++){
+          var x = cx + dx, y = cy + dy;
+          if (x < 0 || y < 0 || x >= n || y >= n) continue;
+          var key = zz + '/' + x + '/' + y;
+          if (_preloaded[key]) continue;
+          _preloaded[key] = 1;
+          var img = new Image();
+          var tpl = _useProxy ? _PROXY_TILES : _DIRECT_TILES;
+          img.src = tpl
+            .replace('{s}', ['a','b','c'][(x + y) % 3])
+            .replace('{z}', zz).replace('{x}', x).replace('{y}', y);
+        }
+      }
+    });
+  }
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
   map.on('dragstart', dropFollow);
@@ -2678,6 +2740,7 @@
           })(meMarker, from, [lat, lng]);
         }
 
+        try { preloadAround(lat, lng); } catch(e){}
         if (followMode) {
           var _z = 16;
           try {

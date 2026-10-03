@@ -630,6 +630,31 @@ async def handle_user_stats(request):
     return web.json_response(stats)
 
 
+async def handle_delivery_history(request):
+    """GET /api/delivery/{station_id} — история завоза топлива."""
+    try:
+        station_id = str(request.match_info["station_id"])
+    except KeyError:
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    try:
+        exists = core.station_exists(station_id)
+    except AttributeError:
+        exists = station_id in core.STATION_BY_ID
+    if not exists:
+        return web.json_response({"ok": False, "error": "unknown_station"}, status=404)
+
+    try:
+        data = core.get_delivery_history(station_id, days=14)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+    except Exception:
+        core.log.exception("delivery_history failed")
+        return web.json_response({"ok": False, "error": "internal"}, status=500)
+
+    return web.json_response({"ok": True, **data}, headers={"Cache-Control": "no-store"})
+
+
 async def handle_report(request):
     try:
         data = await request.json()
@@ -1247,6 +1272,7 @@ def build_app() -> web.Application:
     app.router.add_post("/api/dups-merge", handle_dups_merge)
     app.router.add_post("/api/track-click", handle_track_click)
     app.router.add_get("/api/user-stats", handle_user_stats)
+    app.router.add_get("/api/delivery/{station_id}", handle_delivery_history)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
     app.router.add_post("/api/report-issue", handle_report_issue)

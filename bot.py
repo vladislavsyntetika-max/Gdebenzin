@@ -653,6 +653,64 @@ def get_station_reports(station_id):
     return {fuel: (status, ts) for fuel, status, ts in rows}
 
 
+def get_delivery_history(station_id, days=14):
+    """Возвращает историю завоза топлива: список {ts, fuel} и агрегат.
+    Завоз = переход 'none' → 'ok' или 'low' в feed для топлива."""
+    if not station_id:
+        return {"events": [], "typical_hour": None, "avg_interval_days": None}
+    since = int(time.time()) - days * 86400
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT ts, fuel, status FROM feed "
+            "WHERE station_id = ? AND ts > ? AND fuel IN ('f92','f95','f98','dt') "
+            "ORDER BY fuel, ts ASC",
+            (station_id, since)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    # Идём по каждому топливу отдельно: prev_status → current
+    prev = {}  # fuel -> status
+    events = []
+    for ts, fuel, status in rows:
+        p_status = prev.get(fuel)
+        if p_status == 'none' and status in ('ok', 'low'):
+            events.append({"ts": int(ts), "fuel": fuel})
+        prev[fuel] = status
+
+    events.sort(key=lambda e: e["ts"])
+    # Отфильтровываем близкие (в пределах 30 минут) — одно событие
+    filtered = []
+    for e in events:
+        if filtered and e["ts"] - filtered[-1]["ts"] < 1800:
+            continue
+        filtered.append(e)
+
+    # Средний час завоза (в МСК = UTC+3)
+    typical_hour = None
+    if filtered:
+        hours = []
+        for e in filtered:
+            from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+            h = (_dt.fromtimestamp(e["ts"], _tz.utc) + _td(hours=3)).hour
+            hours.append(h)
+        typical_hour = round(sum(hours) / len(hours))
+
+    # Средний интервал (в днях)
+    avg_interval = None
+    if len(filtered) >= 2:
+        deltas = [(filtered[i+1]["ts"] - filtered[i]["ts"]) for i in range(len(filtered)-1)]
+        avg_days = (sum(deltas) / len(deltas)) / 86400
+        avg_interval = round(avg_days, 1)
+
+    return {
+        "events": filtered[-10:],  # последние 10 для фронта
+        "typical_hour": typical_hour,
+        "avg_interval_days": avg_interval,
+    }
+
+
 def get_recent_feed(limit=12):
     conn = db()
     rows = conn.execute(

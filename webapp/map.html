@@ -235,12 +235,15 @@
   .fuel-fresh .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
 
   .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+  .action-btn.issue { grid-column: span 1; }
+  .action-btn.danger { grid-column: span 1; }
+  .action-btn.danger.full { grid-column: 1 / -1; }
   .action-btn {
-    padding: 14px 8px; border-radius: 10px;
+    padding: 10px 6px; border-radius: 10px;
     border: 1px solid #2B3036; background: #1E2227; color: #E8E6E1;
-    font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    min-height: 52px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    min-height: 42px;
   }
   .action-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .action-btn.fav-on { color: #FF5E5E; border-color: #FF5E5E55; }
@@ -609,19 +612,19 @@
   .sh-body { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .fuel-cell {
-    background: #1E2227; border: 1px solid #2B3036; border-radius: 12px;
-    padding: 8px 8px 8px; display: flex; flex-direction: column; gap: 5px;
+    background: #1E2227; border: 1px solid #2B3036; border-radius: 10px;
+    padding: 6px 6px 6px; display: flex; flex-direction: column; gap: 4px;
   }
   .fuel-name {
-    font-size: 22px; font-weight: 800; text-align: center;
+    font-size: 19px; font-weight: 800; text-align: center;
     color: #E8E6E1; line-height: 1; letter-spacing: 0.5px;
   }
   .fuel-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .fuel-ok, .fuel-none {
-    padding: 9px 4px; font-size: 16px; font-weight: 800;
-    border-radius: 10px; border: 2px solid; background: transparent;
+    padding: 7px 4px; font-size: 15px; font-weight: 800;
+    border-radius: 9px; border: 2px solid; background: transparent;
     cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
-    min-height: 54px;
+    min-height: 42px;
   }
   /* Невыбранные — приглушённые, серые */
   .fuel-ok { color: #8A8F98; background: #232830; border-color: #3A3F45; text-shadow: none; font-weight: 600; }
@@ -716,14 +719,14 @@
   .sh-flags { gap: 5px; margin-bottom: 4px; }
   .flag-btn { padding: 6px 5px; font-size: 12px; font-weight: 700; min-height: 32px; border-radius: 8px; }
 
-  .sh-body { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 0; align-items: stretch; }
+  .sh-body { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; align-items: stretch; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .fuel-cell { padding: 5px 5px 6px; border-radius: 8px; gap: 3px; }
   .fuel-name { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; }
   .fuel-choices { gap: 3px; }
   .fuel-ok, .fuel-none { padding: 7px 3px; font-size: 14px; min-height: 34px; border-radius: 7px; }
 
-  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 5px; align-content: stretch; margin-bottom: 0; height: 100%; }
+  .sh-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .action-btn {
     padding: 5px 3px; font-size: 10.5px; min-height: 0;
     flex-direction: column; gap: 2px; border-radius: 10px;
@@ -1833,9 +1836,9 @@
       '<div class="voice-banner" id="voice-banner"></div>' +
       '<div class="sh-body">' +
         fuelsHtml +
+        flagsHtml +
+        '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
       '</div>' +
-      flagsHtml +
-      '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
       '<div class="sh-actions">' +
         '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
         '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +

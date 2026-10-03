@@ -740,7 +740,12 @@
     margin-bottom: 0 !important;
     align-items: stretch;
   }
-  .sh-col-left, .sh-col-right { gap: 3px !important; display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
+  .sh-col-left, .sh-col-right { gap: 4px !important; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; }
+  .sh-col-left > * { flex: 0 0 auto; }
+  .sh-col-left > .sh-flags:last-of-type { flex: 1 1 auto; display: flex; }
+  .sh-col-left > .sh-flags:last-of-type > .flag-btn { flex: 1 1 auto; min-height: 100% !important; }
+  .sh-col-right > * { flex: 0 0 auto; }
+  .sh-col-right > .sh-actions { flex: 1 1 auto; align-content: stretch; }
   .sh-col-photo { display: flex; align-items: center; justify-content: center; max-height: 60vh; overflow: hidden; }
 
   .sh-fuels { grid-template-columns: 1fr 1fr !important; gap: 3px !important; margin-bottom: 0 !important; }

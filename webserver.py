@@ -638,6 +638,11 @@ async def handle_report(request):
         status = str(data["status"])
         user_id = int(data.get("user_id") or 0)
         username = data.get("username")
+        try:
+            client_lat = float(data.get("lat")) if data.get("lat") is not None else None
+            client_lng = float(data.get("lng")) if data.get("lng") is not None else None
+        except (ValueError, TypeError):
+            client_lat = client_lng = None
         if username:
             username = str(username).strip()[:40]
             if not core.is_real_username(username):
@@ -669,9 +674,25 @@ async def handle_report(request):
     try:
         allowed, reason = core.check_user_rate(user_id)
     except Exception:
-        allowed = True  # при ошибке не блокируем
+        allowed = True
 
-    core.save_report(station_id, fuel, status, user_id, username, shadow=(not allowed))
+    # Анти-фрод: проверка расстояния (только для топливных отчётов)
+    far_away = False
+    if allowed and not is_flag and client_lat is not None and client_lng is not None:
+        try:
+            st = core.STATION_BY_ID.get(station_id)
+            if st:
+                d = core._haversine_m(client_lat, client_lng, st[4], st[5])
+                if d > 500:
+                    far_away = True
+                    try:
+                        core.log.info("far report: user=%s station=%s dist=%.0fm", user_id, station_id, d)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    core.save_report(station_id, fuel, status, user_id, username, shadow=(not allowed or far_away))
     points_earned = 0
     scouting = False
     if not is_flag and allowed:
@@ -697,6 +718,11 @@ async def handle_report_batch(request):
         station_id = str(data["station_id"])
         user_id = int(data.get("user_id") or 0)
         username = data.get("username")
+        try:
+            client_lat = float(data.get("lat")) if data.get("lat") is not None else None
+            client_lng = float(data.get("lng")) if data.get("lng") is not None else None
+        except (ValueError, TypeError):
+            client_lat = client_lng = None
         if username:
             username = str(username).strip()[:40]
             if not core.is_real_username(username):
@@ -721,17 +747,35 @@ async def handle_report_batch(request):
     status_keys = dict(core.STATUSES)
     flag_keys = dict(core.STATION_FLAGS)
 
-    # Анти-фрод: rate-limit (1 проверка на батч, а не на каждую пару топливо-статус)
+    # Анти-фрод: rate-limit (1 проверка на батч)
     allowed, reason = True, None
     try:
         allowed, reason = core.check_user_rate(user_id)
     except Exception:
         allowed = True
 
+    # Анти-фрод: расстояние до станции (только если есть топливные отчёты)
+    far_away = False
+    if allowed and fuels and client_lat is not None and client_lng is not None:
+        try:
+            st = core.STATION_BY_ID.get(station_id)
+            if st:
+                d = core._haversine_m(client_lat, client_lng, st[4], st[5])
+                if d > 500:
+                    far_away = True
+                    try:
+                        core.log.info("far report: user=%s station=%s dist=%.0fm", user_id, station_id, d)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    shadow_mode = (not allowed) or far_away
+
     saved_fuel = False
     for fuel_key, status_val in fuels.items():
         if fuel_key in fuel_keys and status_val in status_keys:
-            core.save_report(station_id, fuel_key, status_val, user_id, username, shadow=(not allowed))
+            core.save_report(station_id, fuel_key, status_val, user_id, username, shadow=shadow_mode)
             saved_fuel = True
 
     # Автоснятие остальных очередей: если активен один flag_queue_N — остальные false
@@ -752,7 +796,7 @@ async def handle_report_batch(request):
 
     points_earned = 0
     scouting = False
-    if saved_fuel and allowed:
+    if saved_fuel and allowed and not far_away:
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:

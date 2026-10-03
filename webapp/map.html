@@ -1869,9 +1869,14 @@
     sheetPendingFlags = {};
 
     showSaving(true);
+    // Передаём текущее положение для проверки расстояния на бэке
+    var _repLat = null, _repLng = null;
+    if (lastPosition){ _repLat = lastPosition.lat; _repLng = lastPosition.lng; }
+    else { try { var _cc = map.getCenter(); _repLat = _cc.lat; _repLng = _cc.lng; } catch(e){} }
     return sendOrQueue('/api/report-batch', {
       station_id: stationId, user_id: userId, username: effectiveUsername || '',
-      fuels: fuelsCopy, flags: flagsCopy
+      fuels: fuelsCopy, flags: flagsCopy,
+      lat: _repLat, lng: _repLng
     }).then(function(j){
       if (j && j.ok){
         if (j.points_earned) toast('+' + j.points_earned + ' баллов');

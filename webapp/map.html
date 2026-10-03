@@ -724,9 +724,10 @@
   .sh-flags { gap: 5px; margin-bottom: 4px; }
   .flag-btn { padding: 6px 5px; font-size: 12px; font-weight: 700; min-height: 32px; border-radius: 8px; }
 
-  /* Карточка в landscape — flex-column, контент занимает всю высоту */
-  #sheet { display: flex !important; flex-direction: column !important; padding: 4px 8px 4px !important; }
-  .sh-head { flex: 0 0 auto; margin-bottom: 2px !important; padding-top: 4px !important; margin-top: -4px !important; position: static !important; }
+  /* Landscape: компактная карточка */
+  #sheet { padding: 6px 10px 6px !important; }
+
+  .sh-head { margin-bottom: 2px !important; }
   .sh-brand { font-size: 16px !important; }
   .sh-mic, .sh-close, .sh-fav { width: 28px !important; height: 28px !important; font-size: 14px !important; }
   .sh-addr { font-size: 10px !important; margin: 0 0 2px !important; }
@@ -738,12 +739,9 @@
     gap: 6px;
     margin-bottom: 0 !important;
     align-items: stretch;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
   }
-  .sh-col-left, .sh-col-right { gap: 3px !important; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-  .sh-col-photo { display: flex; align-items: center; justify-content: center; min-height: 0; max-height: 100%; overflow: hidden; }
+  .sh-col-left, .sh-col-right { gap: 3px !important; display: flex; flex-direction: column; }
+  .sh-col-photo { display: flex; align-items: center; justify-content: center; max-height: 60vh; overflow: hidden; }
 
   .sh-fuels { grid-template-columns: 1fr 1fr !important; gap: 3px !important; margin-bottom: 0 !important; }
   .fuel-cell { padding: 3px 3px 3px !important; gap: 2px !important; }
@@ -765,9 +763,9 @@
   .action-btn .ai { font-size: 14px !important; }
   .action-btn .al { font-size: 9px !important; }
 
-  .sh-photo { margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; max-height: 100%; min-height: 0; }
+  .sh-photo { margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; max-height: 60vh; }
   .stell-photo {
-    max-height: 100% !important;
+    max-height: 60vh !important;
     max-width: 100% !important;
     width: auto !important;
     height: auto !important;

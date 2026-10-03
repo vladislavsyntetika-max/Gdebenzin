@@ -612,6 +612,7 @@
   .sh-body { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
   .sh-col-left { display: flex; flex-direction: column; gap: 8px; }
   .sh-col-right { display: flex; flex-direction: column; gap: 8px; }
+  .sh-col-photo { display: flex; flex-direction: column; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .fuel-cell {
     background: #1E2227; border: 1px solid #2B3036; border-radius: 10px;
@@ -697,7 +698,7 @@
   #sheet {
     left: 50%; right: auto; top: 50%; bottom: auto;
     transform: translate(-50%, calc(-50% + 24px)) scale(0.98);
-    width: min(500px, 66vw);
+    width: min(1100px, 96vw);
     max-height: calc(100vh - 72px);
     padding: 7px 10px 8px;
     border-radius: 16px;
@@ -723,13 +724,14 @@
   .sh-flags { gap: 5px; margin-bottom: 4px; }
   .flag-btn { padding: 6px 5px; font-size: 12px; font-weight: 700; min-height: 32px; border-radius: 8px; }
 
-  .sh-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; align-items: start; }
+  .sh-body { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 6px; align-items: stretch; }
   .sh-col-left { gap: 6px; }
   .sh-col-right { gap: 6px; }
+  .sh-col-photo { justify-content: stretch; align-self: stretch; }
   .sh-fuels { grid-template-columns: 1fr 1fr !important; }
   .sh-delivery { margin-top: 0 !important; }
-  .sh-photo { margin-top: 0 !important; }
-  .stell-photo { max-height: 90px !important; }
+  .sh-photo { margin-top: 0 !important; height: 100%; display: flex; flex-direction: column; }
+  .stell-photo { max-height: none !important; height: 100% !important; object-fit: cover; flex: 1 1 auto; min-height: 0; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .fuel-cell { padding: 5px 5px 6px; border-radius: 8px; gap: 3px; }
   .fuel-name { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; }
@@ -1858,8 +1860,8 @@
             '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
             adminDelete +
           '</div>' +
-          photoHtml +
         '</div>' +
+        '<div class="sh-col-photo">' + photoHtml + '</div>' +
       '</div>' +
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 

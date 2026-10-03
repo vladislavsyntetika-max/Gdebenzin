@@ -1511,6 +1511,20 @@
   document.addEventListener('click', _unlockAudio, { passive: true, once: true });
   setTimeout(_unlockAudio, 600);
 
+  // === Регистрация Service Worker для кэширования тайлов ===
+  (function registerSW(){
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function(reg){
+          try { console.log('[GDEBENZIN] SW registered, scope:', reg.scope); } catch(e){}
+        })
+        .catch(function(err){
+          try { console.log('[GDEBENZIN] SW register failed:', err && err.message); } catch(e){}
+        });
+    } catch(e){}
+  })();
+
   function playSound(name){
     try { if (localStorage.getItem('azs_sound_on') === '0') return; } catch(e){}
     var ctx = _initAudioCtx();

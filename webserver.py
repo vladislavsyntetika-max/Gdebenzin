@@ -334,8 +334,50 @@ async def handle_favicon(request):
     return web.FileResponse("webapp/icon-192.png")
 
 async def handle_sw(request):
-    sw = "self.addEventListener('install', e => self.skipWaiting());"
-    return web.Response(text=sw, content_type="application/javascript")
+    sw = """
+// GDEBENZIN Service Worker — кэшируем тайлы для мгновенной повторной загрузки
+const TILE_CACHE = 'gdebenzin-tiles-v1';
+const MAX_TILES = 2000;
+
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== TILE_CACHE).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Только тайлы кэшируем
+  if (url.pathname.startsWith('/tiles/')){
+    e.respondWith(
+      caches.open(TILE_CACHE).then(cache =>
+        cache.match(e.request).then(hit => {
+          if (hit) return hit;
+          return fetch(e.request).then(resp => {
+            if (resp && resp.ok){
+              cache.put(e.request, resp.clone()).then(() => trimCache(cache));
+            }
+            return resp;
+          }).catch(() => caches.match(e.request));
+        })
+      )
+    );
+  }
+});
+
+async function trimCache(cache){
+  const keys = await cache.keys();
+  if (keys.length > MAX_TILES){
+    // Удаляем ~20% старых
+    const toDel = keys.slice(0, keys.length - MAX_TILES + 400);
+    await Promise.all(toDel.map(k => cache.delete(k)));
+  }
+}
+"""
+    return web.Response(text=sw, content_type="application/javascript", headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
 
 
 async def handle_rules(request):

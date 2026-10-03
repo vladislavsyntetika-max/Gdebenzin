@@ -740,33 +740,36 @@
     margin-bottom: 0 !important;
     align-items: stretch;
   }
-  .sh-col-left, .sh-col-right { gap: 4px !important; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; }
+  .sh-col-left, .sh-col-right { gap: 6px !important; display: flex; flex-direction: column; height: 100%; }
   .sh-col-left > * { flex: 0 0 auto; }
-  .sh-col-left > .sh-flags:last-of-type { flex: 1 1 auto; display: flex; }
-  .sh-col-left > .sh-flags:last-of-type > .flag-btn { flex: 1 1 auto; min-height: 100% !important; }
+  .sh-col-left > .sh-fuels { flex: 1 1 auto; grid-template-rows: 1fr 1fr !important; }
+  .sh-col-left > .sh-fuels .fuel-cell { justify-content: center; }
+  .sh-col-left > .sh-flags:last-of-type { flex: 0 0 auto; }
+  .sh-col-left > .sh-flags:last-of-type > .flag-btn { min-height: 44px !important; font-size: 14px !important; }
   .sh-col-right > * { flex: 0 0 auto; }
-  .sh-col-right > .sh-actions { flex: 1 1 auto; align-content: stretch; }
+  .sh-col-right > .sh-actions { flex: 1 1 auto; grid-template-rows: repeat(3, 1fr) !important; align-content: stretch; }
+  .sh-col-right > .sh-actions .action-btn { min-height: 0 !important; }
   .sh-col-photo { display: flex; align-items: center; justify-content: center; max-height: 60vh; overflow: hidden; }
 
   .sh-fuels { grid-template-columns: 1fr 1fr !important; gap: 3px !important; margin-bottom: 0 !important; }
   .fuel-cell { padding: 3px 3px 3px !important; gap: 2px !important; }
-  .fuel-name { font-size: 14px !important; letter-spacing: 0 !important; }
+  .fuel-name { font-size: 22px !important; letter-spacing: 0.5px !important; }
   .fuel-choices { gap: 2px !important; }
-  .fuel-ok, .fuel-none { padding: 3px 2px !important; min-height: 22px !important; font-size: 11px !important; border-radius: 6px !important; }
-  .fuel-fresh { font-size: 9px !important; margin-top: 0 !important; }
+  .fuel-ok, .fuel-none { padding: 8px 4px !important; min-height: 44px !important; font-size: 15px !important; border-radius: 8px !important; }
+  .fuel-fresh { font-size: 11px !important; margin-top: 2px !important; }
 
   .sh-flags { gap: 2px !important; margin-bottom: 0 !important; }
-  .flag-btn { padding: 3px 3px !important; font-size: 10px !important; min-height: 22px !important; border-radius: 6px !important; }
-  .q-hint { font-size: 8px !important; margin-top: -2px !important; }
+  .flag-btn { padding: 8px 5px !important; font-size: 13px !important; min-height: 40px !important; border-radius: 8px !important; }
+  .q-hint { font-size: 10px !important; margin-top: 0 !important; }
 
-  .sh-delivery { margin-top: 0 !important; padding: 4px 6px !important; font-size: 10px !important; border-radius: 8px !important; }
-  .sh-delivery .dlv-head { font-size: 11px !important; margin-bottom: 1px !important; }
-  .sh-delivery .dlv-info { font-size: 9.5px !important; line-height: 1.25 !important; }
+  .sh-delivery { margin-top: 0 !important; padding: 8px 10px !important; font-size: 12px !important; border-radius: 10px !important; }
+  .sh-delivery .dlv-head { font-size: 14px !important; margin-bottom: 4px !important; }
+  .sh-delivery .dlv-info { font-size: 12px !important; line-height: 1.35 !important; }
 
   .sh-actions { gap: 3px !important; margin-bottom: 0 !important; }
-  .action-btn { padding: 3px 2px !important; min-height: 0 !important; font-size: 9px !important; gap: 1px !important; }
-  .action-btn .ai { font-size: 14px !important; }
-  .action-btn .al { font-size: 9px !important; }
+  .action-btn { padding: 8px 4px !important; font-size: 11px !important; gap: 3px !important; }
+  .action-btn .ai { font-size: 22px !important; }
+  .action-btn .al { font-size: 12px !important; font-weight: 700 !important; }
 
   .sh-photo { margin: 0 !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; max-height: 60vh; }
   .stell-photo {

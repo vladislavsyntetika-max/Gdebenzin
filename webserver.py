@@ -630,6 +630,22 @@ async def handle_user_stats(request):
     return web.json_response(stats)
 
 
+async def handle_my_stations(request):
+    """GET /api/my-stations/{user_id} — список id станций, где user отметился >= 3 раз."""
+    try:
+        user_id = int(request.match_info["user_id"])
+    except (KeyError, ValueError):
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    try:
+        stations = core.get_my_stations(user_id, limit=20, min_reports=3)
+    except AttributeError:
+        return web.json_response({"ok": False, "error": "bot_not_updated"}, status=500)
+
+    ids = [st["id"] for st in stations]
+    return web.json_response({"ok": True, "ids": ids}, headers={"Cache-Control": "no-store"})
+
+
 async def handle_delivery_history(request):
     """GET /api/delivery/{station_id} — история завоза топлива."""
     try:
@@ -1279,6 +1295,7 @@ def build_app() -> web.Application:
     app.router.add_post("/api/track-click", handle_track_click)
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_get("/api/delivery/{station_id}", handle_delivery_history)
+    app.router.add_get("/api/my-stations/{user_id}", handle_my_stations)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
     app.router.add_post("/api/report-issue", handle_report_issue)

@@ -623,10 +623,18 @@
     cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
     min-height: 54px;
   }
-  .fuel-ok { color: #FFFFFF; background: #1B8A4A; border-color: #0F5C30; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
-  .fuel-none { color: #FFFFFF; background: #C62828; border-color: #7F1414; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
-  .fuel-ok.current { background: #00E05E; color: #14171A; border-color: #FFFFFF; text-shadow: none; }
-  .fuel-none.current { background: #FF3838; color: #FFFFFF; border-color: #FFFFFF; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  /* Невыбранные — приглушённые, серые */
+  .fuel-ok { color: #8A8F98; background: #232830; border-color: #3A3F45; text-shadow: none; font-weight: 600; }
+  .fuel-none { color: #8A8F98; background: #232830; border-color: #3A3F45; text-shadow: none; font-weight: 600; }
+  /* Выбранные — яркие, с белой рамкой */
+  .fuel-ok.current {
+    background: #00C853; color: #14171A; border-color: #FFFFFF; border-width: 3px;
+    font-weight: 900; box-shadow: 0 0 12px rgba(0,200,83,.55);
+  }
+  .fuel-none.current {
+    background: #FF3B30; color: #FFFFFF; border-color: #FFFFFF; border-width: 3px;
+    font-weight: 900; box-shadow: 0 0 12px rgba(255,59,48,.55);
+  }
   .action-btn .ai { font-size: 22px; line-height: 1; }
   .action-btn .al { font-size: 13px; line-height: 1.1; }
   .action-btn.danger.full { grid-column: 1 / -1; }
@@ -914,6 +922,19 @@
     return u;
   }
   var SUPPORT_URL = _supportUrl();
+  var myStationIds = {};
+  function loadMyStations(){
+    if (!userId || userId <= 0) return;
+    fetch('/api/my-stations/' + userId, { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (j && j.ok && Array.isArray(j.ids)){
+          myStationIds = {};
+          j.ids.forEach(function(id){ myStationIds[id] = true; });
+        }
+      })
+      .catch(function(){});
+  }
   var SUPPORT_REQ = '';
   var ADMIN_ID = 2145359728;
   var PROXIMITY_OPEN_M = 150;
@@ -1801,7 +1822,7 @@
     body.innerHTML =
       '<div class="sh-head">' +
         '<button class="sh-mic" id="sh-mic" data-act="voice" title="Голосовой ввод">\uD83C\uDFA4</button>' +
-        '<div class="sh-brand" style="color:var(--sheet-accent)">'+escapeHtml(s.name)+'</div>' +
+        '<div class="sh-brand" style="color:var(--sheet-accent)">'+escapeHtml(s.name)+(myStationIds[s.id] ? ' <span title="Твоя станция" style="font-size:0.7em;">🏠</span>' : '')+'</div>' +
         '<div class="sh-head-right">' +
           '<button class="sh-fav'+(isFavNow?' on':'')+'" data-act="fav" title="В избранное">'+favGlyph+'</button>' +
           '<button class="sh-close" data-act="close-sheet">\u2715</button>' +
@@ -2509,6 +2530,7 @@
           return false;
         }).length
       };
+      loadMyStations();
       fillFilterOptions();
       renderMarkers();
       renderDpsMarkers();

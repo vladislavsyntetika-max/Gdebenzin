@@ -1232,6 +1232,7 @@ def kb_main():
         InlineKeyboardButton(text="📢 Канал — топ дня и алерты", url="https://t.me/naidibenzin"),
         InlineKeyboardButton(text="📢 Канал MAX", url="https://max.ru/channel_naidibenzin"),
     ])
+    rows.append([InlineKeyboardButton(text="🏠 Мои станции", callback_data="my_st:")])
     rows.append([InlineKeyboardButton(text="☕ Поддержать проект", callback_data="donate:")])
     rows.append([InlineKeyboardButton(text="⚠️ Сообщить об ошибке в боте", callback_data="err:")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -2422,6 +2423,37 @@ def _support_url(amount=None):
         base += "&sum=" + str(amount)
     return base
 SUPPORT_URL = _support_url()
+
+
+@dp.callback_query(F.data == "my_st:")
+async def cb_my_stations(cq: CallbackQuery):
+    await cq.answer()
+    user_id = cq.from_user.id
+    stations = get_my_stations(user_id, limit=5, min_reports=3)
+    if not stations:
+        text = (
+            "🏠 <b>Моих станций пока нет</b>\n\n"
+            "Станция становится «твоей», когда ты отметил на ней "
+            "минимум 3 раза. Обычно это заправки, где ты заправляешься "
+            "чаще всего.\n\n"
+            "За отчёт на «своей» станции — <b>х2 баллов</b>."
+        )
+    else:
+        lines = ["🏠 <b>Мои станции</b>", ""]
+        lines.append("За отчёт на этих станциях — <b>х2 баллов</b>.")
+        lines.append("")
+        medals = ["1.", "2.", "3.", "4.", "5."]
+        for i, st in enumerate(stations):
+            lines.append("<b>" + medals[i] + " " + st["name"] + "</b>")
+            lines.append("   " + st["addr"])
+            lines.append("   Твоих отчётов: <b>" + str(st["cnt"]) + "</b>")
+            lines.append("")
+        lines.append("Чем чаще отмечаешь здесь — тем свежее данные для тебя и соседей.")
+        text = "\n".join(lines)
+    try:
+        await cq.message.answer(text)
+    except Exception:
+        pass
 
 
 @dp.callback_query(F.data == "donate:")

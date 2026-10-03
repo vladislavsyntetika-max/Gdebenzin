@@ -187,7 +187,7 @@
   }
   .sh-close:active { background: #FFB000; color: #14171A; }
 
-  .sh-addr { font-size: 14px; color: #8A8F98; margin: 6px 0 10px; line-height: 1.35; }
+  .sh-addr { font-size: 13px; color: #8A8F98; margin: 4px 0 6px; line-height: 1.3; }
   .sheet-stats, .sheet-promo { display: none !important; }
 
   .voice-banner {
@@ -245,7 +245,7 @@
   .action-btn.primary { background: #FFB000; color: #14171A; border-color: #FFB000; }
   .action-btn.fav-on { color: #FF5E5E; border-color: #FF5E5E55; }
   .action-btn.danger { color: #E5484D; border-color: #E5484D33; font-size: 15px; }
-  .action-btn.issue { color: #B7BBC1; font-size: 15px; grid-column: 1 / -1; }
+  .action-btn.issue { color: #B7BBC1; font-size: 15px; }
   .action-btn.full { grid-column: 1 / -1; }
 
   .sh-delivery {
@@ -610,15 +610,15 @@
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .fuel-cell {
     background: #1E2227; border: 1px solid #2B3036; border-radius: 12px;
-    padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 8px;
+    padding: 8px 8px 8px; display: flex; flex-direction: column; gap: 5px;
   }
   .fuel-name {
-    font-size: 26px; font-weight: 800; text-align: center;
+    font-size: 22px; font-weight: 800; text-align: center;
     color: #E8E6E1; line-height: 1; letter-spacing: 0.5px;
   }
   .fuel-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .fuel-ok, .fuel-none {
-    padding: 14px 4px; font-size: 19px; font-weight: 800;
+    padding: 9px 4px; font-size: 16px; font-weight: 800;
     border-radius: 10px; border: 2px solid; background: transparent;
     cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
     min-height: 54px;
@@ -730,7 +730,7 @@
     grid-column: auto !important;
     align-self: stretch;
   }
-  .action-btn.full, .action-btn.issue, .action-btn.danger { flex-direction: row !important; }
+  .action-btn.full, .action-btn.danger { flex-direction: row !important; }
   .action-btn .ai { font-size: 18px; }
   .action-btn .al { font-size: 11.5px; font-weight: 700; }
   .action-btn.primary { font-size: 11px; }
@@ -1833,16 +1833,16 @@
       '<div class="voice-banner" id="voice-banner"></div>' +
       '<div class="sh-body">' +
         fuelsHtml +
-        '<div class="sh-actions">' +
-          '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
-          '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
-          '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
-          '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
-          adminDelete +
-        '</div>' +
       '</div>' +
       flagsHtml +
       '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
+      '<div class="sh-actions">' +
+        '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
+        '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
+        '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
+        '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
+        adminDelete +
+      '</div>' +
       photoHtml +
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 

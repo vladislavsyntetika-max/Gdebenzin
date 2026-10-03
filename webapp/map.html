@@ -248,6 +248,13 @@
   .action-btn.issue { color: #B7BBC1; font-size: 15px; grid-column: 1 / -1; }
   .action-btn.full { grid-column: 1 / -1; }
 
+  .sh-delivery {
+    background: #1E2227; border: 1px solid #2B3036;
+    border-radius: 12px; padding: 10px 12px; margin-top: 6px;
+    font-size: 13px; color: #E8E6E1; line-height: 1.4;
+  }
+  .sh-delivery .dlv-head { font-weight: 700; color: #FFB000; margin-bottom: 4px; }
+  .sh-delivery .dlv-info { color: #B7BBC1; font-size: 12px; }
   .sh-photo { margin-top: 6px; }
   .stell-photo { width: 100%; max-height: 70px; object-fit: cover; border-radius: 10px; display: block; cursor: zoom-in; background: #0F1215; }
   .photo-meta { font-size: 12px; color: #8A8F98; margin-top: 4px; }
@@ -1669,6 +1676,44 @@
   // =====================================================
   // BOTTOM SHEET
   // =====================================================
+  function _fmtHour(h){
+    return (h < 10 ? '0' : '') + h + ':00';
+  }
+  function _fmtAgo(ts){
+    var diff = Math.floor(Date.now()/1000) - ts;
+    if (diff < 3600) return Math.max(1, Math.round(diff/60)) + ' мин назад';
+    if (diff < 86400) return Math.round(diff/3600) + ' ч назад';
+    return Math.round(diff/86400) + ' дн назад';
+  }
+  function loadDeliveryHistory(stationId){
+    var el = document.getElementById('sh-delivery');
+    if (!el) return;
+    el.style.display = 'none';
+    el.innerHTML = '';
+    fetch('/api/delivery/' + encodeURIComponent(stationId))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j || !j.ok || !j.events || !j.events.length) return;
+        if (sheetStation && sheetStation.id !== stationId) return;
+        var el2 = document.getElementById('sh-delivery');
+        if (!el2) return;
+        var lines = [];
+        lines.push('<div class="dlv-head">🚛 Завоз топлива</div>');
+        if (j.typical_hour !== null && j.typical_hour !== undefined){
+          var info = 'Обычно около ' + _fmtHour(j.typical_hour);
+          if (j.avg_interval_days) info += ' · раз в ' + j.avg_interval_days + ' дн';
+          lines.push('<div class="dlv-info">' + info + '</div>');
+        }
+        var last = j.events[j.events.length - 1];
+        if (last){
+          lines.push('<div class="dlv-info">Последний: ' + _fmtAgo(last.ts) + '</div>');
+        }
+        el2.innerHTML = lines.join('');
+        el2.style.display = 'block';
+      })
+      .catch(function(){});
+  }
+
   function renderSheet(){
     if (!sheetStation) return;
     var s = sheetStation;
@@ -1776,9 +1821,11 @@
         '</div>' +
       '</div>' +
       flagsHtml +
+      '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
       photoHtml +
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 
+    try { loadDeliveryHistory(s.id); } catch(e){}
     var statsEl = document.getElementById('sheet-stats');
     if (statsEl && lastGlobalStats) {
       var parts = [];

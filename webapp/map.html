@@ -1941,6 +1941,8 @@
     });
     fuelsHtml += '</div>';
 
+    var _prevScroll = (document.getElementById("sheet")||{}).scrollTop || 0;
+    var _prevScrollBody = (document.getElementById("sheet-body")||{}).scrollTop || 0;
     var isFavNow = isFav(s.id);
     var favGlyph = isFavNow ? '\u2665' : '\u2661';
 
@@ -1992,6 +1994,12 @@
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 
     try { loadDeliveryHistory(s.id); } catch(e){}
+    try {
+      var _newSheet = document.getElementById("sheet");
+      var _newBody = document.getElementById("sheet-body");
+      if (_newSheet) _newSheet.scrollTop = _prevScroll;
+      if (_newBody) _newBody.scrollTop = _prevScrollBody;
+    } catch(e){}
     var statsEl = document.getElementById('sheet-stats');
     if (statsEl && lastGlobalStats) {
       var parts = [];

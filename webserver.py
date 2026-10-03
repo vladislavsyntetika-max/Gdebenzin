@@ -770,7 +770,20 @@ async def handle_report_batch(request):
         except Exception:
             pass
 
-    shadow_mode = (not allowed) or far_away
+    # Анти-фрод: проверка согласованности с большинством
+    suspicious = False
+    if allowed and not far_away and fuels:
+        try:
+            suspicious, conflicts = core.check_user_consensus(user_id)
+            if suspicious:
+                try:
+                    core.log.info("consensus: user=%s conflicts=%s", user_id, conflicts)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    shadow_mode = (not allowed) or far_away or suspicious
 
     saved_fuel = False
     for fuel_key, status_val in fuels.items():
@@ -796,7 +809,7 @@ async def handle_report_batch(request):
 
     points_earned = 0
     scouting = False
-    if saved_fuel and allowed and not far_away:
+    if saved_fuel and allowed and not far_away and not suspicious:
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:

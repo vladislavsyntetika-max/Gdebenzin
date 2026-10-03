@@ -570,6 +570,57 @@ def check_user_rate(user_id):
         conn.close()
 
 
+def check_user_consensus(user_id, lookback_min=60, min_conflicts=5):
+    """Проверяет, не идёт ли user_id против большинства.
+    Возвращает (suspicious: bool, conflicts: int).
+
+    Логика: за последние lookback_min минут собрать отчёты пользователя
+    по топливным парам. Для каждой пары посмотреть, что ставили другие
+    за последние 24 часа. Если у пользователя 'none', а большинство
+    (>=60%) 'ok' — это конфликт. Если конфликтов >= min_conflicts —
+    подозрительно."""
+    if not user_id:
+        return False, 0
+    now = int(time.time())
+    since = now - lookback_min * 60
+    day_ago = now - 86400
+    conn = db()
+    try:
+        mine = conn.execute(
+            "SELECT station_id, fuel, status FROM feed "
+            "WHERE ts > ? AND user_id = ? AND fuel IN ('f92','f95','f98','dt')",
+            (since, user_id)
+        ).fetchall()
+        if len(mine) < min_conflicts:
+            return False, 0
+
+        conflicts = 0
+        for sid, fuel, my_status in mine:
+            if my_status != 'none':
+                continue
+            others = conn.execute(
+                "SELECT status, COUNT(*) FROM feed "
+                "WHERE ts > ? AND station_id = ? AND fuel = ? AND user_id != ? AND user_id > 0 "
+                "GROUP BY status",
+                (day_ago, sid, fuel, user_id)
+            ).fetchall()
+            total = sum(c for _, c in others)
+            if total < 3:
+                continue
+            ok_cnt = sum(c for st, c in others if st in ('ok', 'low'))
+            if ok_cnt / total >= 0.6:
+                conflicts += 1
+        return (conflicts >= min_conflicts), conflicts
+    except Exception:
+        try:
+            log.exception("check_user_consensus failed")
+        except Exception:
+            pass
+        return False, 0
+    finally:
+        conn.close()
+
+
 def save_report(station_id, fuel, status, user_id, username=None, shadow=False):
     now = int(time.time())
     conn = db()

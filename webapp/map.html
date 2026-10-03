@@ -724,14 +724,29 @@
   .sh-flags { gap: 5px; margin-bottom: 4px; }
   .flag-btn { padding: 6px 5px; font-size: 12px; font-weight: 700; min-height: 32px; border-radius: 8px; }
 
-  .sh-body { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 6px; align-items: stretch; }
-  .sh-col-left { gap: 6px; }
-  .sh-col-right { gap: 6px; }
-  .sh-col-photo { justify-content: stretch; align-self: stretch; }
-  .sh-fuels { grid-template-columns: 1fr 1fr !important; }
-  .sh-delivery { margin-top: 0 !important; }
-  .sh-photo { margin-top: 0 !important; height: 100%; display: flex; flex-direction: column; }
-  .stell-photo { max-height: none !important; height: 100% !important; object-fit: cover; flex: 1 1 auto; min-height: 0; }
+  .sh-body { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 4px; align-items: stretch; }
+  .sh-col-left { gap: 4px; }
+  .sh-col-right { gap: 4px; }
+  .sh-col-photo { align-self: stretch; display: flex; align-items: stretch; justify-content: center; overflow: hidden; }
+  .sh-fuels { grid-template-columns: 1fr 1fr !important; gap: 4px !important; }
+  .fuel-cell { padding: 4px 4px 5px !important; gap: 2px !important; }
+  .fuel-name { font-size: 15px !important; letter-spacing: 0 !important; }
+  .fuel-choices { gap: 3px !important; }
+  .fuel-ok, .fuel-none { padding: 5px 3px !important; min-height: 28px !important; font-size: 12px !important; }
+  .fuel-fresh { font-size: 10px !important; margin-top: 1px !important; }
+  .sh-flags { gap: 3px !important; margin-bottom: 2px !important; }
+  .flag-btn { padding: 5px 4px !important; font-size: 11px !important; min-height: 28px !important; }
+  .q-hint { font-size: 9px !important; margin-top: -1px !important; }
+  .sh-delivery { margin-top: 0 !important; padding: 6px 8px !important; font-size: 11px !important; }
+  .sh-delivery .dlv-head { font-size: 12px !important; margin-bottom: 2px !important; }
+  .sh-delivery .dlv-info { font-size: 10.5px !important; }
+  .sh-actions { gap: 4px !important; }
+  .action-btn { padding: 4px 3px !important; }
+  .action-btn .ai { font-size: 15px !important; }
+  .action-btn .al { font-size: 10px !important; }
+  .sh-photo { margin-top: 0 !important; padding: 0 !important; }
+  .stell-photo { height: 100% !important; width: auto !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain !important; border-radius: 8px !important; }
+  .photo-meta { display: none !important; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .fuel-cell { padding: 5px 5px 6px; border-radius: 8px; gap: 3px; }
   .fuel-name { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; }

@@ -610,6 +610,8 @@
     letter-spacing: -0.2px; color: #E8E6E1;
   }
   .sh-body { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
+  .sh-col-left { display: flex; flex-direction: column; gap: 8px; }
+  .sh-col-right { display: flex; flex-direction: column; gap: 8px; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .fuel-cell {
     background: #1E2227; border: 1px solid #2B3036; border-radius: 10px;
@@ -699,7 +701,9 @@
     max-height: calc(100vh - 72px);
     padding: 7px 10px 8px;
     border-radius: 16px;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     border-top: 4px solid var(--sheet-accent, #FFB000);
     box-shadow: 0 12px 40px rgba(0,0,0,.78);
     transition: transform .18s ease, opacity .18s ease;
@@ -719,7 +723,13 @@
   .sh-flags { gap: 5px; margin-bottom: 4px; }
   .flag-btn { padding: 6px 5px; font-size: 12px; font-weight: 700; min-height: 32px; border-radius: 8px; }
 
-  .sh-body { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 6px; align-items: stretch; }
+  .sh-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; align-items: start; }
+  .sh-col-left { gap: 6px; }
+  .sh-col-right { gap: 6px; }
+  .sh-fuels { grid-template-columns: 1fr 1fr !important; }
+  .sh-delivery { margin-top: 0 !important; }
+  .sh-photo { margin-top: 0 !important; }
+  .stell-photo { max-height: 90px !important; }
   .sh-fuels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 0; }
   .fuel-cell { padding: 5px 5px 6px; border-radius: 8px; gap: 3px; }
   .fuel-name { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; }
@@ -1835,18 +1845,22 @@
       '<div class="sheet-stats" id="sheet-stats"></div>' +
       '<div class="voice-banner" id="voice-banner"></div>' +
       '<div class="sh-body">' +
-        fuelsHtml +
-        flagsHtml +
-        '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
+        '<div class="sh-col-left">' +
+          fuelsHtml +
+          flagsHtml +
+        '</div>' +
+        '<div class="sh-col-right">' +
+          '<div class="sh-delivery" id="sh-delivery" style="display:none;"></div>' +
+          '<div class="sh-actions">' +
+            '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
+            '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
+            '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
+            '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
+            adminDelete +
+          '</div>' +
+          photoHtml +
+        '</div>' +
       '</div>' +
-      '<div class="sh-actions">' +
-        '<button class="action-btn" data-act="route"><span class="ai">\uD83E\uDDED</span><span class="al">Маршрут</span></button>' +
-        '<button class="action-btn primary" data-act="photo"><span class="ai">\uD83D\uDCF7</span><span class="al">Фото</span></button>' +
-        '<button class="action-btn issue" data-act="issue"><span class="ai">\u26A0</span><span class="al">Неточность</span></button>' +
-        '<button class="action-btn" data-act="share"><span class="ai">\uD83D\uDCE3</span><span class="al">Друзьям +10</span></button>' +
-        adminDelete +
-      '</div>' +
-      photoHtml +
       '<div class="sheet-promo">\uD83D\uDCE3 Расскажи о проекте друзьям: <b>@' + BOT_USERNAME + '</b><br>Чем больше отметок — тем точнее карта.</div>';
 
     try { loadDeliveryHistory(s.id); } catch(e){}

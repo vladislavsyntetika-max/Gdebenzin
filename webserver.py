@@ -724,10 +724,13 @@ async def handle_report(request):
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:
-            points_earned = core.POINTS_REPORT + (core.POINTS_SCOUT_BONUS if scouting else 0)
-            core.award_points(user_id, username, core.POINTS_REPORT, "report", station_id)
+            mult = 2 if core.is_my_station(user_id, station_id) else 1
+            base = core.POINTS_REPORT * mult
+            scout = core.POINTS_SCOUT_BONUS if scouting else 0
+            points_earned = base + scout
+            core.award_points(user_id, username, base, "report", station_id)
             if scouting:
-                core.award_points(user_id, username, core.POINTS_SCOUT_BONUS, "scout_bonus", station_id)
+                core.award_points(user_id, username, scout, "scout_bonus", station_id)
         core.record_daily_activity(user_id, username)
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
 
@@ -838,10 +841,13 @@ async def handle_report_batch(request):
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:
-            points_earned = core.POINTS_REPORT + (core.POINTS_SCOUT_BONUS if scouting else 0)
-            core.award_points(user_id, username, core.POINTS_REPORT, "report", station_id)
+            mult = 2 if core.is_my_station(user_id, station_id) else 1
+            base = core.POINTS_REPORT * mult
+            scout = core.POINTS_SCOUT_BONUS if scouting else 0
+            points_earned = base + scout
+            core.award_points(user_id, username, base, "report", station_id)
             if scouting:
-                core.award_points(user_id, username, core.POINTS_SCOUT_BONUS, "scout_bonus", station_id)
+                core.award_points(user_id, username, scout, "scout_bonus", station_id)
         core.record_daily_activity(user_id, username)
 
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})

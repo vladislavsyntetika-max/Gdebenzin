@@ -815,6 +815,55 @@ def get_user_stats(user_id):
     return {"total": total, "stations": stations}
 
 
+def get_my_stations(user_id, limit=5, min_reports=3):
+    """Возвращает список станций, где user_id чаще всего отмечался.
+    Только станции с минимум min_reports отчётами от этого пользователя."""
+    if not user_id:
+        return []
+    conn = db()
+    try:
+        rows = conn.execute(
+            "SELECT station_id, COUNT(*) AS cnt, MAX(ts) AS last_ts FROM feed "
+            "WHERE user_id = ? AND fuel IN ('f92','f95','f98','dt') "
+            "GROUP BY station_id HAVING cnt >= ? "
+            "ORDER BY cnt DESC LIMIT ?",
+            (user_id, min_reports, limit)
+        ).fetchall()
+    finally:
+        conn.close()
+    result = []
+    for sid, cnt, last_ts in rows:
+        st = STATION_BY_ID.get(sid)
+        if not st:
+            continue
+        result.append({
+            "id": sid,
+            "name": st[1],
+            "net": st[2],
+            "addr": st[3] or "—",
+            "cnt": cnt,
+            "last_ts": int(last_ts or 0),
+        })
+    return result
+
+
+def is_my_station(user_id, station_id):
+    """True, если station_id в списке 'моих' для этого пользователя.
+    Используется для x2 бонуса."""
+    if not user_id or not station_id:
+        return False
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM feed WHERE user_id = ? AND station_id = ? AND fuel IN ('f92','f95','f98','dt')",
+            (user_id, station_id)
+        ).fetchone()
+        cnt = row[0] if row else 0
+    finally:
+        conn.close()
+    return cnt >= 3
+
+
 def _ensure_user_row(conn, user_id, username):
     conn.execute(
         "INSERT INTO user_points (user_id, username) VALUES (?, ?) "
@@ -1652,6 +1701,35 @@ async def on_netreport_now_cmd(message: Message):
         await message.answer("Отчёт по сетям опубликован в канал.")
     else:
         await message.answer("Не опубликовано (нет данных или CHANNEL_ID).")
+
+
+@dp.message(Command("мои", "my"))
+async def on_my_stations_cmd(message: Message):
+    user_id = message.from_user.id
+    stations = get_my_stations(user_id, limit=5, min_reports=3)
+    if not stations:
+        await message.answer(
+            "🏠 <b>Моих станций пока нет</b>\n\n"
+            "Станция становится «твоей», когда ты отметил на ней "
+            "минимум 3 раза. Обычно это заправки, где ты заправляешься "
+            "чаще всего.\n\n"
+            "За отчёт на «своей» станции — <b>х2 баллов</b>. "
+            "Отмечай там, где бываешь регулярно.",
+            reply_markup=kb_main()
+        )
+        return
+
+    lines = ["🏠 <b>Мои станции</b>", ""]
+    lines.append("За отчёт на этих станциях — <b>х2 баллов</b>.")
+    lines.append("")
+    medals = ["1.", "2.", "3.", "4.", "5."]
+    for i, st in enumerate(stations):
+        lines.append("<b>" + medals[i] + " " + st["name"] + "</b>")
+        lines.append("   " + st["addr"])
+        lines.append("   Твоих отчётов: <b>" + str(st["cnt"]) + "</b>")
+        lines.append("")
+    lines.append("Чем чаще отмечаешь здесь — тем свежее данные для тебя и соседей.")
+    await message.answer("\n".join(lines), reply_markup=kb_main())
 
 
 @dp.message(Command("проблема", "проблемы", "баг"))

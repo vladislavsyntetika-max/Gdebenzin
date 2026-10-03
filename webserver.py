@@ -664,10 +664,17 @@ async def handle_report(request):
         if status not in dict(core.STATUSES):
             return web.json_response({"ok": False, "error": "unknown_status"}, status=400)
 
-    core.save_report(station_id, fuel, status, user_id, username)
+    # Анти-фрод: rate-limit
+    allowed, reason = True, None
+    try:
+        allowed, reason = core.check_user_rate(user_id)
+    except Exception:
+        allowed = True  # при ошибке не блокируем
+
+    core.save_report(station_id, fuel, status, user_id, username, shadow=(not allowed))
     points_earned = 0
     scouting = False
-    if not is_flag:
+    if not is_flag and allowed:
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:
@@ -714,10 +721,17 @@ async def handle_report_batch(request):
     status_keys = dict(core.STATUSES)
     flag_keys = dict(core.STATION_FLAGS)
 
+    # Анти-фрод: rate-limit (1 проверка на батч, а не на каждую пару топливо-статус)
+    allowed, reason = True, None
+    try:
+        allowed, reason = core.check_user_rate(user_id)
+    except Exception:
+        allowed = True
+
     saved_fuel = False
     for fuel_key, status_val in fuels.items():
         if fuel_key in fuel_keys and status_val in status_keys:
-            core.save_report(station_id, fuel_key, status_val, user_id, username)
+            core.save_report(station_id, fuel_key, status_val, user_id, username, shadow=(not allowed))
             saved_fuel = True
 
     # Автоснятие остальных очередей: если активен один flag_queue_N — остальные false
@@ -738,7 +752,7 @@ async def handle_report_batch(request):
 
     points_earned = 0
     scouting = False
-    if saved_fuel:
+    if saved_fuel and allowed:
         scouting = core.is_scouting_report(station_id)
         allow_points = core.can_award_station_points(user_id, station_id)
         if allow_points:

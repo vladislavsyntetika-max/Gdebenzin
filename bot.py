@@ -402,6 +402,17 @@ def init_db():
             pass
         conn.execute("CREATE TABLE IF NOT EXISTS bot_state (key TEXT PRIMARY KEY, value TEXT)")
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_fraud_state (
+                user_id INTEGER PRIMARY KEY,
+                minute_window_start INTEGER NOT NULL DEFAULT 0,
+                minute_count INTEGER NOT NULL DEFAULT 0,
+                hour_window_start INTEGER NOT NULL DEFAULT 0,
+                hour_count INTEGER NOT NULL DEFAULT 0,
+                violations_count INTEGER NOT NULL DEFAULT 0,
+                flagged_until INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS metrics_counters (
                 day TEXT NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (day, key)
@@ -491,15 +502,84 @@ def set_state(key, value):
     conn.commit()
     conn.close()
 
-def save_report(station_id, fuel, status, user_id, username=None):
+def check_user_rate(user_id):
+    """Проверяет лимиты отчётов для user_id.
+    Возвращает (allowed: bool, reason: str|None)."""
+    if not user_id:
+        return True, None
     now = int(time.time())
     conn = db()
-    conn.execute(
-        "INSERT INTO reports (station_id, fuel, status, ts, user_id, username) VALUES (?,?,?,?,?,?) "
-        "ON CONFLICT(station_id, fuel) DO UPDATE SET status=excluded.status, ts=excluded.ts, "
-        "user_id=excluded.user_id, username=excluded.username",
-        (station_id, fuel, status, now, user_id, username),
-    )
+    try:
+        row = conn.execute(
+            "SELECT minute_window_start, minute_count, hour_window_start, hour_count, violations_count, flagged_until FROM user_fraud_state WHERE user_id=?",
+            (user_id,)
+        ).fetchone()
+        if not row:
+            conn.execute(
+                "INSERT INTO user_fraud_state (user_id, minute_window_start, minute_count, hour_window_start, hour_count) VALUES (?,?,?,?,?)",
+                (user_id, now, 1, now, 1)
+            )
+            conn.commit()
+            return True, None
+
+        mws, mc, hws, hc, vc, fu = row
+
+        # Теневой бан — игнорируем
+        if fu and fu > now:
+            return False, "flagged"
+
+        if now - mws >= 60:
+            mws = now
+            mc = 1
+        else:
+            mc += 1
+
+        if now - hws >= 3600:
+            hws = now
+            hc = 1
+        else:
+            hc += 1
+
+        violation = None
+        if mc > 30:
+            violation = "too_many_per_minute"
+        elif hc > 150:
+            violation = "too_many_per_hour"
+
+        if violation:
+            vc += 1
+            flagged_until = now + 86400 if vc >= 3 else fu
+            conn.execute(
+                "UPDATE user_fraud_state SET minute_window_start=?, minute_count=?, hour_window_start=?, hour_count=?, violations_count=?, flagged_until=? WHERE user_id=?",
+                (mws, mc, hws, hc, vc, flagged_until, user_id)
+            )
+            conn.commit()
+            try:
+                log.warning("rate-limit: user=%s reason=%s mc=%s hc=%s vc=%s", user_id, violation, mc, hc, vc)
+            except Exception:
+                pass
+            return False, violation
+
+        conn.execute(
+            "UPDATE user_fraud_state SET minute_window_start=?, minute_count=?, hour_window_start=?, hour_count=? WHERE user_id=?",
+            (mws, mc, hws, hc, user_id)
+        )
+        conn.commit()
+        return True, None
+    finally:
+        conn.close()
+
+
+def save_report(station_id, fuel, status, user_id, username=None, shadow=False):
+    now = int(time.time())
+    conn = db()
+    if not shadow:
+        conn.execute(
+            "INSERT INTO reports (station_id, fuel, status, ts, user_id, username) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(station_id, fuel) DO UPDATE SET status=excluded.status, ts=excluded.ts, "
+            "user_id=excluded.user_id, username=excluded.username",
+            (station_id, fuel, status, now, user_id, username),
+        )
     conn.execute(
         "INSERT INTO feed (ts, station_id, fuel, status, user_id, username) VALUES (?,?,?,?,?,?)",
         (now, station_id, fuel, status, user_id, username),

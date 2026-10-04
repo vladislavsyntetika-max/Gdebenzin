@@ -380,6 +380,103 @@ async function trimCache(cache){
     return web.Response(text=sw, content_type="application/javascript", headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
 
 
+async def handle_manual(request):
+    html = """<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Как пользоваться — ГДЕ БЕНЗИН!?</title>
+<style>
+body{background:#14171A;color:#E8E6E1;font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+padding:24px 20px 60px;line-height:1.65;max-width:640px;margin:0 auto;font-size:15px}
+h1{font-size:24px;font-weight:800;margin:0 0 8px}
+h2{font-size:18px;color:#FFB000;margin:32px 0 12px;font-weight:800}
+h3{font-size:15px;color:#FFFFFF;margin:20px 0 8px;font-weight:700}
+p{margin:8px 0}
+ul{padding-left:20px;margin:8px 0}
+li{margin:6px 0}
+b{color:#FFFFFF}
+a{color:#FFB000;text-decoration:none}
+.num{display:inline-block;width:22px;height:22px;border-radius:50%;
+background:#FFB000;color:#14171A;text-align:center;font-weight:800;font-size:13px;
+line-height:22px;margin-right:8px}
+.tip{background:#1E2227;border-left:3px solid #FFB000;padding:12px 14px;
+border-radius:8px;margin:12px 0;font-size:14px;color:#B7BBC1}
+.back{margin-top:40px;padding-top:20px;border-top:1px solid #262B31}
+</style>
+</head><body>
+<h1>Как пользоваться</h1>
+<p style="color:#8A8F98;margin-bottom:24px">ГДЕ БЕНЗИН!? — карта наличия топлива от водителей</p>
+
+<h2>Алгоритм в дороге</h2>
+
+<h3>Перед поездкой</h3>
+<p><span class="num">1</span>Запусти карту, нажми <b>&#128752;</b> в левой колонке — GPS включён.</p>
+<p><span class="num">2</span>Карта ведёт тебя по маршруту, периодически поглядывай.</p>
+
+<h3>При подъезде к АЗС</h3>
+<ul>
+<li>Одна станция — скорость до <b>70 км/ч</b>.</li>
+<li>Несколько подряд — до <b>60 км/ч</b>.</li>
+</ul>
+<p><span class="num">3</span>Переключись на окно карты.</p>
+<p><span class="num">4</span>Смотри на стеллу — <b>92 / 95 / 98 / ДТ</b>.</p>
+<p><span class="num">5</span>Замечай попутно: <b>&#128663; очередь</b>, <b>&#128667; бензовоз</b>.</p>
+<p><span class="num">6</span>Карточка всплывёт сама, когда ты рядом. Проверь, что бренд совпадает.</p>
+<p><span class="num">7</span>Быстро вноси всё подряд — карточка закроется через 3 секунды после последнего тапа.</p>
+
+<div class="tip">
+<b>Если не успеваешь:</b> приоритет — 1) топливо → 2) очередь → 3) бензовоз.
+</div>
+
+<div class="tip">
+<b>Несколько станций рядом:</b> оценивай по одной — следующую по направлению движения.
+</div>
+
+<h2>Что видно на карте</h2>
+<ul>
+<li><b>92 / 95 / 98 / ДТ</b> — отдельно по каждому: есть или нет.</li>
+<li><b>Очередь на заправке</b> — короткая / средняя / длинная.</li>
+<li><b>Бензовоз на АЗС</b> — значит скоро подвезут.</li>
+<li><b>Завоз топлива</b> — обычно около HH:00, раз в N дней.</li>
+<li><b>Свежесть отчёта</b> — «5 минут назад» или «вчера».</li>
+<li><b>ДПС и камеры</b> — отметки водителей в реальном времени.</li>
+</ul>
+
+<h2>Цвета маркеров</h2>
+<ul>
+<li><b style="color:#30D158">&#9679; Зелёный</b> — есть топливо.</li>
+<li><b style="color:#FF3B30">&#9679; Красный</b> — нет топлива.</li>
+<li><b style="color:#FFB000">&#9679; Жёлтый (кластер)</b> — смешанный район.</li>
+<li><b style="color:#8A8F98">&#9679; Серый</b> — нет данных.</li>
+</ul>
+
+<h2>Как это работает</h2>
+<p>Данные собирают сами водители. Каждый, кто проехал мимо заправки и отметил статус, помогает остальным видеть свежую картину. Чем больше водителей отмечает — тем точнее карта.</p>
+
+<h2>Баллы и звания</h2>
+<ul>
+<li>Отчёт — <b>+2</b> (на «своей» станции — <b>+4</b>).</li>
+<li>Разведка (первый за 8 часов) — <b>+5</b>.</li>
+<li>Новая АЗС — <b>+50</b>.</li>
+<li>Исправил неточность — <b>+20</b>.</li>
+<li>Репост — <b>+10</b> (раз в сутки).</li>
+</ul>
+<p>Звания: Новичок → Заправщик → Разведчик → Смотритель района → Легенда бензоколонки.</p>
+
+<h2>Мои станции</h2>
+<p>Станция становится «твоей» после трёх отметок на ней. Список — команда <b>/мои</b> в Telegram-боте. Отчёты на «своих» станциях дают <b>х2 баллов</b>.</p>
+
+<h2>Помощь</h2>
+<p>Что-то не работает — команда <b>/проблема</b> в Telegram-боте или кнопка <b>&#128591;</b> на карте.</p>
+
+<div class="back">
+<p><a href="/map">&#8592; Вернуться к карте</a></p>
+<p><a href="https://t.me/naidibenzin_bot">Открыть бота @naidibenzin_bot</a></p>
+</div>
+
+</body></html>"""
+    return web.Response(text=html, content_type="text/html")
+
+
 async def handle_rules(request):
     rules = """<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1324,6 +1421,7 @@ def build_app() -> web.Application:
     app.router.add_get("/manifest.json", handle_manifest)
     app.router.add_get("/sw.js", handle_sw)
     app.router.add_get("/rules", handle_rules)
+    app.router.add_get("/manual", handle_manual)
     app.router.add_get("/icon-192.png", handle_icon_192)
     app.router.add_get("/icon-512.png", handle_icon_512)
     app.router.add_get("/apple-touch-icon.png", handle_apple_icon)

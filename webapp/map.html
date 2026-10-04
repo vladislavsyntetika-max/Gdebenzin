@@ -1913,6 +1913,56 @@
       .catch(function(){});
   }
 
+  var FUEL_ORDER_GLOBAL = ['f92', 'f95', 'dt', 'f98'];
+  function refreshFuelButtons(){
+    var body = document.getElementById('sheet-body');
+    if (!body || !sheetStation) return;
+    var s = sheetStation;
+    FUEL_ORDER_GLOBAL.forEach(function(key){
+      var f = (s.fuels && s.fuels[key]) || {status:'unknown', ts:0};
+      var rawStatus = (key in sheetPending) ? sheetPending[key] : f.status;
+      var displayStatus = (rawStatus === 'low') ? 'ok' : rawStatus;
+      var isKnown = (rawStatus !== 'unknown' && f.fresh_level !== 'gone') || (key in sheetPending);
+      var isOk = isKnown && displayStatus === 'ok';
+      var isNone = isKnown && displayStatus === 'none';
+      var okBtn = body.querySelector('.fuel-ok[data-fuel="'+key+'"]');
+      var noneBtn = body.querySelector('.fuel-none[data-fuel="'+key+'"]');
+      if (okBtn) okBtn.classList.toggle('current', isOk);
+      if (noneBtn) noneBtn.classList.toggle('current', isNone);
+      var cell = okBtn ? okBtn.closest('.fuel-cell') : null;
+      if (cell){
+        var fr = cell.querySelector('.fuel-fresh');
+        if (fr){
+          var _fi = isKnown ? freshnessInfo(f.ts || 0) : freshnessInfo(0);
+          fr.innerHTML = '<span class="dot" style="background:'+_fi.color+'"></span>'+escapeHtml(_fi.label);
+        }
+      }
+    });
+  }
+  function refreshFlagButtons(){
+    var body = document.getElementById('sheet-body');
+    if (!body || !sheetStation) return;
+    var s = sheetStation;
+    var queueLevel = 0;
+    ['flag_queue_1','flag_queue_2','flag_queue_3'].forEach(function(fk, i){
+      var on;
+      if (fk in sheetPendingFlags) on = (sheetPendingFlags[fk] === true || sheetPendingFlags[fk] === 'on');
+      else on = (s.flags && s.flags[fk] && s.flags[fk].on) ? true : false;
+      if (on) queueLevel = i + 1;
+    });
+    var lvl0 = body.querySelector('.flag-btn[data-act="queue"][data-level="0"]');
+    if (lvl0) lvl0.classList.toggle('on', queueLevel === 0);
+    for (var i = 1; i <= 3; i++){
+      var btn = body.querySelector('.flag-btn[data-act="queue"][data-level="'+i+'"]');
+      if (btn) btn.classList.toggle('on', queueLevel === i);
+    }
+    var delOn;
+    if ('flag_delivery' in sheetPendingFlags) delOn = (sheetPendingFlags.flag_delivery === true || sheetPendingFlags.flag_delivery === 'on');
+    else delOn = (s.flags && s.flags.flag_delivery && s.flags.flag_delivery.on) ? true : false;
+    var delBtn = body.querySelector('.flag-btn[data-act="delivery"]');
+    if (delBtn) delBtn.classList.toggle('on', delOn);
+  }
+
   function renderSheet(){
     if (!sheetStation) return;
     var s = sheetStation;
@@ -2095,7 +2145,7 @@
       sheetStation.fuels[fuelKey].stale = false;
       sheetStation.fuels[fuelKey].ts = Math.floor(Date.now() / 1000);
     }
-    renderSheet();
+    refreshFuelButtons();
     scheduleCloseTimer();
     scheduleBatchSave();
   }
@@ -2106,7 +2156,7 @@
       sheetStation.flags[flagKey].on = on;
       sheetStation.flags[flagKey].ts = Math.floor(Date.now() / 1000);
     }
-    renderSheet();
+    refreshFlagButtons();
     scheduleCloseTimer();
     scheduleBatchSave();
   }

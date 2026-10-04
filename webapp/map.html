@@ -1835,15 +1835,11 @@
   }
 
   function startVoiceRecognition(){
-    try {
-      var hasAPI = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-      var hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-      toast('SR=' + hasAPI + ' mic=' + hasMic + ' tg=' + (typeof tg !== 'undefined' && tg ? 'yes' : 'no'));
-    } catch(e){ toast('err: ' + e.message); }
-    if (false)
+    var hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR){
-      toast('Голосовой ввод не поддерживается в этом браузере');
+      var ua = (navigator.userAgent || '').slice(0, 60);
+      toast('SR=no mic=' + (hasMic ? 1 : 0) + ' ' + ua);
       return;
     }
     if (!sheetStation){

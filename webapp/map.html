@@ -1105,6 +1105,8 @@
   var pinResolve = null;
 
   var voiceRecognition = null;
+  var voiceGotResult = false;
+  var voiceSessionAsked = false;
   var voiceListening = false;
 
   function favKey(){ return 'azs_favs'; }
@@ -1844,6 +1846,10 @@
       if (mb) mb.style.display = 'none';
       return;
     }
+    if (voiceSessionAsked && !voiceGotResult){
+      toast('Микрофон уже запрашивали в этой сессии. Перезапустите карту.');
+      return;
+    }
     if (!sheetStation){
       toast('Сначала откройте станцию');
       return;
@@ -1853,6 +1859,7 @@
       voiceRecognition = null;
     }
     voiceListening = false;
+    voiceSessionAsked = true;
 
     voiceRecognition = new SR();
     voiceRecognition.lang = 'ru-RU';
@@ -1876,6 +1883,7 @@
         else interim += r[0].transcript;
       }
       if (finalText){
+        voiceGotResult = true;
         showVoiceBanner(finalText, 'Разбираю…');
         var parsed = parseVoiceText(finalText);
         applyVoiceResult(parsed);

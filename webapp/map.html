@@ -2990,13 +2990,16 @@
         watchId = 'tg-poll';
         setTimeout(function(){
           if (!_tgGotOnce && locateActive){
-            var d = 'LM diag: inited=' + tg.LocationManager.isInited
-              + ' avail=' + tg.LocationManager.isLocationAvailable
-              + ' req=' + tg.LocationManager.isAccessRequested
-              + ' grant=' + tg.LocationManager.isAccessGranted;
-            toast(d);
+            // Telegram не дал координат — fallback на navigator.geolocation
+            try { clearInterval(window._tgPollId); } catch(e){}
+            window._tgPollId = null;
+            watchId = navigator.geolocation.watchPosition(
+              _handlePosition,
+              function(){ toast('Не удалось определить местоположение'); stopLocate(); },
+              { enableHighAccuracy:true, maximumAge:0, timeout:20000 }
+            );
           }
-        }, 6000);
+        }, 3000);
       }, 200);
       return;
     }

@@ -2957,7 +2957,7 @@
     }
 
     // ==== Telegram LocationManager: одно системное разрешение ====
-    if (tg && tg.LocationManager && tg.LocationManager.isLocationAvailable){
+    if (tg && tg.LocationManager){
       tg.LocationManager.init();
       var _tryStartTgPoll = setInterval(function(){
         if (!tg.LocationManager.isInited) return;

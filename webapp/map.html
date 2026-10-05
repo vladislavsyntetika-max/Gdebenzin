@@ -2305,7 +2305,7 @@
       if (favOnly) renderMarkers();
       return;
     }
-    if (act === 'share'){ shareProject(); return; }
+    if (act === 'share'){ shareProject(sheetStation && sheetStation.district); return; }
     if (act === 'issue'){ if (sheetStation) reportStationIssue(sheetStation.id); return; }
     if (act === 'edit-station'){ if (sheetStation) openEditStationDialog(sheetStation); return; }
     if (act === 'delete-station'){ if (sheetStation) confirmDeleteStation(sheetStation.id); return; }
@@ -2376,23 +2376,28 @@
   })();
 
   // ---------- Поделиться (нативная или через копирование) ----------
-  function shareProject(){
+  function shareProject(district){
     var refId;
-    if (userId && userId > 0) {
+    var districtTag = '';
+    if (district) {
+      var dslug = district.replace(/[^a-zA-Zа-яА-Я0-9]/g, '').slice(0, 30);
+      refId = 'district_' + dslug;
+      districtTag = ' Соседям ' + district + ' особенно полезно — тут отметки самых близких.';
+    } else if (userId && userId > 0) {
       refId = 'u' + userId;
     } else {
       var an = (effectiveUsername || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8);
       refId = 'web' + (an || 'anon');
     }
-    var mapUrl = location.origin + '/map?ref=share_' + refId;
-    var shareText = 'В Питере и области больше не надо гадать, где есть бензин. Водители отмечают водителям — видно, где 95-й, где дизель, где пусто. Перед выездом загляни: @naidibenzin_bot';
-    var shortText = 'Карта — где в СПб сейчас есть бензин, а где пусто. Водители отмечают вживую. Перед выездом: @naidibenzin_bot';
+    var mapUrl = location.origin + '/map?ref=' + (district ? '' : 'share_') + refId;
+    var shareText = 'В Питере и области больше не надо гадать, где есть бензин. Водители отмечают водителям — видно, где 95-й, где дизель, где пусто.' + districtTag + ' Перед выездом загляни: @naidibenzin_bot';
+    var shortText = 'Карта — где в СПб сейчас есть бензин, а где пусто. Водители отмечают вживую.' + districtTag + ' @naidibenzin_bot';
 
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     bg.innerHTML =
       '<div class="modal">' +
-        '<h3>📣 Расскажи водителю</h3>' +
+        '<h3>' + (district ? '📣 Расскажи соседям из ' + district : '📣 Расскажи водителю') + '</h3>' +
         '<p style="margin:8px 0 16px;color:var(--text-2);font-size:14px;line-height:1.45;">' +
           '+10 баллов за первый репост в сутки.<br>' +
           'Главное другое: чем больше водителей отмечают, тем точнее карта. И тем реже ты сам будешь приезжать на пустую заправку.' +

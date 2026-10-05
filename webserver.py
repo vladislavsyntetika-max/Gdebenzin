@@ -615,10 +615,18 @@ def _build_stations_payload():
                               "label": label, "ago": core.time_ago(ts), "ts": ts}
             else:
                 flags[key] = {"on": False, "label": label, "ago": None, "ts": 0}
+        _district = None
+        try:
+            _dfn = getattr(core, "district_for_station", None)
+            if _dfn and lat and lng:
+                _district = _dfn(lat, lng)
+        except Exception:
+            _district = None
         return {
             "id": sid, "name": name, "net": net, "addr": addr,
             "lat": lat, "lng": lng, "fuels": fuels, "flags": flags,
             "last_photo": last_photo_for(sid),
+            "district": _district,
         }
 
     try:

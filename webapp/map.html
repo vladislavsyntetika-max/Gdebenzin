@@ -2959,27 +2959,40 @@
     // ==== Telegram LocationManager: одно системное разрешение ====
     if (tg && tg.LocationManager){
       tg.LocationManager.init();
+      var _tgGotOnce = false;
+      var _tgErrShown = false;
       var _tryStartTgPoll = setInterval(function(){
         if (!tg.LocationManager.isInited) return;
         clearInterval(_tryStartTgPoll);
-        if (!tg.LocationManager.isAccessGranted){
-          toast('Разрешите геолокацию в настройках Telegram');
+        if (!tg.LocationManager.isLocationAvailable){
+          toast('Геолокация недоступна на этом устройстве');
           stopLocate();
           return;
         }
         function _pollOnce(){
           if (!locateActive) return;
-          tg.LocationManager.getLocation(function(loc){
-            if (!locateActive || !loc) return;
-            _handlePosition({
-              coords: { latitude: loc.latitude, longitude: loc.longitude, speed: loc.speed },
-              timestamp: Date.now()
+          try {
+            tg.LocationManager.getLocation(function(loc){
+              if (!locateActive) return;
+              if (!loc) return;
+              _tgGotOnce = true;
+              _handlePosition({
+                coords: { latitude: loc.latitude, longitude: loc.longitude, speed: loc.speed },
+                timestamp: Date.now()
+              });
             });
-          });
+          } catch(e){
+            if (!_tgErrShown){ _tgErrShown = true; toast('GPS: ' + e.message); }
+          }
         }
         _pollOnce();
         window._tgPollId = setInterval(_pollOnce, 2000);
         watchId = 'tg-poll';
+        setTimeout(function(){
+          if (!_tgGotOnce && locateActive){
+            toast('Нет координат от Telegram. Разрешите геолокацию в настройках ТГ.');
+          }
+        }, 5000);
       }, 200);
       return;
     }

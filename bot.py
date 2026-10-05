@@ -320,7 +320,78 @@ DISTRICT_CENTROIDS = [
 ]
 
 
+# ==== Точные границы районов (GeoJSON) ====
+_GEO_DISTRICTS = []  # [(name, [(ring, [lng,lat]...)...]), ...]
+
+def _point_in_ring(x, y, ring):
+    """Ray casting. ring — список [lng,lat]."""
+    inside = False
+    n = len(ring)
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-12) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+def _point_in_multipolygon(x, y, coords):
+    """coords: MultiPolygon -> [[[ring],[hole]...],...]"""
+    for poly in coords:
+        if not poly: continue
+        outer = poly[0]
+        if not _point_in_ring(x, y, outer):
+            continue
+        # проверяем дырки
+        in_hole = False
+        for hole in poly[1:]:
+            if _point_in_ring(x, y, hole):
+                in_hole = True; break
+        if not in_hole:
+            return True
+    return False
+
+def _load_geo_districts():
+    global _GEO_DISTRICTS
+    if _GEO_DISTRICTS:
+        return
+    import os as _os
+    base = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "webapp", "geo")
+    for fname in ("spb_districts.geojson", "lo_districts.geojson"):
+        fp = _os.path.join(base, fname)
+        if not _os.path.exists(fp):
+            log.warning("geo file missing: %s", fp)
+            continue
+        try:
+            import json as _json
+            with io.open(fp, encoding="utf-8") as f:
+                gj = _json.load(f)
+            for ft in gj.get("features", []):
+                name = (ft.get("properties") or {}).get("name")
+                geom = ft.get("geometry") or {}
+                if not name or geom.get("type") != "MultiPolygon":
+                    continue
+                _GEO_DISTRICTS.append((name, geom["coordinates"]))
+            log.info("geo districts loaded: %d", len(_GEO_DISTRICTS))
+        except Exception:
+            log.exception("Failed to load %s", fp)
+
+
 def district_for_station(lat, lng):
+    """Точный район по полигонам, fallback — ближайший центроид."""
+    try:
+        _load_geo_districts()
+    except Exception:
+        pass
+    if _GEO_DISTRICTS:
+        for name, coords in _GEO_DISTRICTS:
+            try:
+                if _point_in_multipolygon(lng, lat, coords):
+                    return name
+            except Exception:
+                continue
+    # Fallback: старый способ
     best_name, best_dist = None, None
     for name, clat, clng in DISTRICT_CENTROIDS:
         d = (lat - clat) ** 2 + (lng - clng) ** 2

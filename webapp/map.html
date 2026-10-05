@@ -1846,10 +1846,11 @@
       toast('Сначала откройте станцию');
       return;
     }
-    if (voiceListening){
-      try { voiceRecognition.stop(); } catch(e){}
-      return;
+    if (voiceRecognition){
+      try { voiceRecognition.abort(); } catch(e){}
+      voiceRecognition = null;
     }
+    voiceListening = false;
 
     voiceRecognition = new SR();
     voiceRecognition.lang = 'ru-RU';
@@ -1902,7 +1903,7 @@
     };
 
     try { voiceRecognition.start(); }
-    catch(e){ toast('Не удалось запустить микрофон'); }
+    catch(e){ voiceRecognition = null; voiceListening = false; toast('Микрофон: ' + e.message); }
   }
 
   // =====================================================

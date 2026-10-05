@@ -2990,9 +2990,13 @@
         watchId = 'tg-poll';
         setTimeout(function(){
           if (!_tgGotOnce && locateActive){
-            toast('Нет координат от Telegram. Разрешите геолокацию в настройках ТГ.');
+            var d = 'LM diag: inited=' + tg.LocationManager.isInited
+              + ' avail=' + tg.LocationManager.isLocationAvailable
+              + ' req=' + tg.LocationManager.isAccessRequested
+              + ' grant=' + tg.LocationManager.isAccessGranted;
+            toast(d);
           }
-        }, 5000);
+        }, 6000);
       }, 200);
       return;
     }

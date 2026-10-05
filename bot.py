@@ -1795,6 +1795,14 @@ async def on_dashboard_cmd(message: Message):
             "FROM reports WHERE ts > ? GROUP BY fuel", (d1,)
         ).fetchall()
 
+        # По дням (7 дней, МСК)
+        days_agg = conn.execute(
+            "SELECT date(ts, 'unixepoch', '+3 hours') AS d, COUNT(*), "
+            "COUNT(DISTINCT CASE WHEN user_id > 0 THEN user_id END) "
+            "FROM feed WHERE ts > ? "
+            "GROUP BY d ORDER BY d DESC LIMIT 7", (d7,)
+        ).fetchall()
+
         # Размер БД (приблиз.)
         db_size = 0
         try:
@@ -1840,6 +1848,14 @@ async def on_dashboard_cmd(message: Message):
     lines.append("\u2022 \u041e\u0442\u0447\u0451\u0442\u044b: <b>" + _delta(feed_7d, feed_prev7d) + "</b>")
     lines.append("\u2022 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0435: <b>" + _delta(users_7d, users_prev7d) + "</b>")
     lines.append("\u2022 \u0421\u0442\u0430\u043d\u0446\u0438\u0438: <b>" + _delta(stations_7d, stations_prev7d) + "</b>")
+    lines.append("")
+    lines.append("<b>\U0001F4C5 \u041f\u043e \u0434\u043d\u044f\u043c</b>")
+    for _d, _cnt, _ucnt in days_agg:
+        try:
+            _lbl = _d[8:10] + "." + _d[5:7]
+        except Exception:
+            _lbl = _d
+        lines.append("\u2022 " + _lbl + ": <b>" + str(_cnt) + "</b> \u043e\u0442\u0447 \u00b7 " + str(_ucnt) + " \u044e\u0437")
     lines.append("")
     lines.append("<b>\u0422\u043e\u043f-5 \u0437\u0430 7\u0434</b>")
     medals = ["\U0001F947", "\U0001F948", "\U0001F949", "4.", "5."]

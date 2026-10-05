@@ -1655,14 +1655,18 @@ async def on_contribution_cmd(message: Message):
     await message.answer("\n".join(lines), reply_markup=kb_main())
 
 
-@dp.message(Command("профиль"))
-async def on_profile_cmd(message: Message):
-    user_id = message.from_user.id
-    name = display_name(message.from_user)
-    conn = db()
-    _ensure_user_row(conn, user_id, name)
-    conn.commit()
-    conn.close()
+def render_profile_text(user_id, name=None, is_self=False):
+    """Общий рендер профиля. Возвращает текст (HTML)."""
+    if name is None:
+        conn0 = db()
+        try:
+            row = conn0.execute(
+                "SELECT COALESCE(username, 'id' || user_id) FROM user_points WHERE user_id = ?",
+                (user_id,)
+            ).fetchone()
+            name = row[0] if row else ("id" + str(user_id))
+        finally:
+            conn0.close()
     profile = get_points_profile(user_id)
     stats = get_user_stats(user_id)
     fixed = user_fixed_issues_count(user_id)
@@ -1672,13 +1676,15 @@ async def on_profile_cmd(message: Message):
         top_district = get_user_top_district(user_id)
         if top_district:
             rank_display = f"Смотритель района «{top_district}»"
-    lines = [f"🏅 <b>Профиль {format_display(name)}</b>", ""]
+    head = "🏅 <b>Профиль " + format_display(name) + "</b>"
+    lines = [head, ""]
     lines.append(f"Баллы: <b>{profile['total_points']}</b>")
     lines.append(f"Звание: <b>{rank_display}</b>")
-    nxt = next_rank_info(profile["total_points"])
-    if nxt:
-        need, label = nxt
-        lines.append(f"До звания «{label}»: {need} баллов")
+    if is_self:
+        nxt = next_rank_info(profile["total_points"])
+        if nxt:
+            need, label = nxt
+            lines.append(f"До звания «{label}»: {need} баллов")
     if profile["streak_days"] >= 2:
         lines.append(f"🔥 Стрик: {profile['streak_days']} дн. подряд")
     lines.append("")
@@ -1687,7 +1693,19 @@ async def on_profile_cmd(message: Message):
         lines.append(f"Место в топе за неделю: <b>#{week_place}</b> ({week_points} баллов)")
     if fixed:
         lines.append(f"Подтверждённых исправлений: {fixed} 🙌")
-    await message.answer("\n".join(lines), reply_markup=kb_main())
+    return "\n".join(lines)
+
+
+@dp.message(Command("профиль"))
+async def on_profile_cmd(message: Message):
+    user_id = message.from_user.id
+    name = display_name(message.from_user)
+    conn = db()
+    _ensure_user_row(conn, user_id, name)
+    conn.commit()
+    conn.close()
+    text = render_profile_text(user_id, name=name, is_self=True)
+    await message.answer(text, reply_markup=kb_main())
 
 
 @dp.message(Command("топ"))
@@ -1697,7 +1715,49 @@ async def on_top_cmd(message: Message):
         await message.answer("Пока нет отчётов за неделю.", reply_markup=kb_main())
         return
     text = format_leaderboard_text(rows, title="🏆 <b>Топ-10 недели</b>")
-    await message.answer(text, reply_markup=kb_main())
+    kb_rows = []
+    for i, (uid, uname, pts) in enumerate(rows):
+        mark = ["🥇", "🥈", "🥉"][i] if i < 3 else str(i + 1) + "."
+        label = mark + " " + format_display(uname, uid)[:28] + " · " + str(pts)
+        kb_rows.append([InlineKeyboardButton(text=label, callback_data=f"prof:{uid}")])
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+
+@dp.callback_query(F.data.startswith("prof:"))
+async def cb_view_profile(cq: CallbackQuery):
+    try:
+        target_uid = int(cq.data.split(":", 1)[1])
+    except Exception:
+        await cq.answer("Некорректная ссылка")
+        return
+    text = render_profile_text(target_uid)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад к топу", callback_data="top:back")]
+    ])
+    try:
+        await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await cq.message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await cq.answer()
+
+
+@dp.callback_query(F.data == "top:back")
+async def cb_top_back(cq: CallbackQuery):
+    rows = get_weekly_leaderboard(10)
+    if not rows:
+        await cq.answer("Нет данных")
+        return
+    text = format_leaderboard_text(rows, title="🏆 <b>Топ-10 недели</b>")
+    kb_rows = []
+    for i, (uid, uname, pts) in enumerate(rows):
+        mark = ["🥇", "🥈", "🥉"][i] if i < 3 else str(i + 1) + "."
+        label = mark + " " + format_display(uname, uid)[:28] + " · " + str(pts)
+        kb_rows.append([InlineKeyboardButton(text=label, callback_data=f"prof:{uid}")])
+    try:
+        await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+    except Exception:
+        pass
+    await cq.answer()
 
 @dp.message(Command("daily_now"))
 async def on_daily_now_cmd(message: Message):

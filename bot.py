@@ -1874,6 +1874,27 @@ async def on_dashboard_cmd(message: Message):
             "GROUP BY d ORDER BY d DESC LIMIT 7", (d7,)
         ).fetchall()
 
+        # По районам за 7д
+        district_stats = {}
+        _dist_rows = conn.execute(
+            "SELECT station_id, COUNT(*) FROM feed WHERE ts > ? GROUP BY station_id",
+            (d7,)
+        ).fetchall()
+        for _sid, _cnt in _dist_rows:
+            _st = STATION_BY_ID.get(_sid)
+            if not _st:
+                continue
+            try:
+                _dname = district_for_station(_st[4], _st[5])
+            except Exception:
+                _dname = None
+            if not _dname:
+                continue
+            if _dname not in district_stats:
+                district_stats[_dname] = {"reports": 0, "stations": set()}
+            district_stats[_dname]["reports"] += _cnt
+            district_stats[_dname]["stations"].add(_sid)
+
         # Размер БД (приблиз.)
         db_size = 0
         try:
@@ -1949,6 +1970,12 @@ async def on_dashboard_cmd(message: Message):
     lines.append("<b>\u041d\u043e\u0432\u044b\u0435 \u0410\u0417\u0421</b>")
     lines.append("\u2022 \u0412\u0441\u0435\u0433\u043e: <b>" + str(custom_total) + "</b> \u00b7 \u0437\u0430 7\u0434: <b>" + str(custom_7d) + "</b>")
     lines.append("")
+    if district_stats:
+        lines.append("<b>\U0001F5FA \u0420\u0430\u0439\u043e\u043d\u044b (\u0437\u0430 7\u0434)</b>")
+        _top_dist = sorted(district_stats.items(), key=lambda kv: kv[1]["reports"], reverse=True)[:8]
+        for _dn, _ds in _top_dist:
+            lines.append("\u2022 " + _dn + ": <b>" + str(_ds["reports"]) + "</b> \u043e\u0442\u0447 \u00b7 " + str(len(_ds["stations"])) + " \u0410\u0417\u0421")
+        lines.append("")
     if fuel_agg:
         lines.append("<b>\u0422\u043e\u043f\u043b\u0438\u0432\u043e (\u0437\u0430 24\u0447)</b>")
         for fk, ok_cnt, none_cnt in fuel_agg:
@@ -1961,6 +1988,55 @@ async def on_dashboard_cmd(message: Message):
     if db_size:
         lines.append("")
         lines.append("\u2022 \u0411\u0414: " + str(round(db_size / 1024 / 1024, 1)) + " MB")
+    await message.answer("\n".join(lines))
+
+
+@dp.message(Command("районы", "districts"))
+async def on_districts_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    now = int(time.time())
+    d7 = now - 7 * 86400
+    d1 = now - 86400
+    conn = db()
+    try:
+        _dist_rows = conn.execute(
+            "SELECT station_id, COUNT(*), MAX(ts) FROM feed WHERE ts > ? GROUP BY station_id",
+            (d7,)
+        ).fetchall()
+    finally:
+        conn.close()
+    district_stats = {}
+    for _sid, _cnt, _last in _dist_rows:
+        _st = STATION_BY_ID.get(_sid)
+        if not _st:
+            continue
+        try:
+            _dname = district_for_station(_st[4], _st[5])
+        except Exception:
+            _dname = None
+        if not _dname:
+            continue
+        if _dname not in district_stats:
+            district_stats[_dname] = {"reports": 0, "stations": set(), "last": 0}
+        district_stats[_dname]["reports"] += _cnt
+        district_stats[_dname]["stations"].add(_sid)
+        if _last and _last > district_stats[_dname]["last"]:
+            district_stats[_dname]["last"] = _last
+    if not district_stats:
+        await message.answer("\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0437\u0430 7 \u0434\u043d\u0435\u0439.")
+        return
+    total_reports = sum(v["reports"] for v in district_stats.values())
+    total_stations = sum(len(v["stations"]) for v in district_stats.values())
+    lines = ["\U0001F5FA <b>\u0420\u0430\u0439\u043e\u043d\u044b \u00b7 \u0437\u0430 7 \u0434\u043d\u0435\u0439</b>", ""]
+    lines.append("\u0412\u0441\u0435\u0433\u043e: <b>" + str(total_reports) + "</b> \u043e\u0442\u0447 \u043f\u043e <b>" + str(total_stations) + "</b> \u0410\u0417\u0421")
+    lines.append("")
+    ranked = sorted(district_stats.items(), key=lambda kv: kv[1]["reports"], reverse=True)
+    medals = ["\U0001F947", "\U0001F948", "\U0001F949"]
+    for i, (_dn, _ds) in enumerate(ranked):
+        mark = medals[i] if i < 3 else str(i + 1) + "."
+        lines.append(mark + " " + _dn + " \u2014 <b>" + str(_ds["reports"]) + "</b> \u043e\u0442\u0447 \u00b7 " + str(len(_ds["stations"])) + " \u0410\u0417\u0421")
     await message.answer("\n".join(lines))
 
 

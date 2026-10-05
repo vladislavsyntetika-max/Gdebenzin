@@ -2859,8 +2859,9 @@
 
   function startLocate(){
     if (!navigator.geolocation){ toast('Геолокация не поддерживается'); return; }
+    if (window._tgPollId){ clearInterval(window._tgPollId); window._tgPollId = null; watchId = null; }
     // Watch уже активен — просто возобновляем слежение
-    if (watchId !== null){
+    if (watchId !== null && watchId !== 'tg-poll'){
       locateActive = true;
       followMode = true;
       document.getElementById('btn-locate').classList.add('active');
@@ -2870,8 +2871,7 @@
     locateActive = true; followMode = true;
     try { localStorage.setItem('azs_locate_on', '1'); } catch(e){}
     document.getElementById('btn-locate').classList.add('active');
-    watchId = navigator.geolocation.watchPosition(
-      function(pos){
+    function _handlePosition(pos){
         if (!locateActive) return;
         if (isRealJump(pos)) return;
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
@@ -2954,7 +2954,39 @@
           var dToSheet = haversine(lat, lng, sheetStation.lat, sheetStation.lng);
           if (dToSheet > PROXIMITY_CLOSE_M) closeSheet(true);
         }
-      },
+    }
+
+    // ==== Telegram LocationManager: одно системное разрешение ====
+    if (tg && tg.LocationManager && tg.LocationManager.isLocationAvailable){
+      tg.LocationManager.init();
+      var _tryStartTgPoll = setInterval(function(){
+        if (!tg.LocationManager.isInited) return;
+        clearInterval(_tryStartTgPoll);
+        if (!tg.LocationManager.isAccessGranted){
+          toast('Разрешите геолокацию в настройках Telegram');
+          stopLocate();
+          return;
+        }
+        function _pollOnce(){
+          if (!locateActive) return;
+          tg.LocationManager.getLocation(function(loc){
+            if (!locateActive || !loc) return;
+            _handlePosition({
+              coords: { latitude: loc.latitude, longitude: loc.longitude, speed: loc.speed },
+              timestamp: Date.now()
+            });
+          });
+        }
+        _pollOnce();
+        window._tgPollId = setInterval(_pollOnce, 2000);
+        watchId = 'tg-poll';
+      }, 200);
+      return;
+    }
+
+    // ==== Fallback: navigator.geolocation.watchPosition ====
+    watchId = navigator.geolocation.watchPosition(
+      _handlePosition,
       function(){ toast('Не удалось определить местоположение'); stopLocate(); },
       { enableHighAccuracy:true, maximumAge:0, timeout:20000 }
     );

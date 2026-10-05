@@ -1835,11 +1835,10 @@
   }
 
   function startVoiceRecognition(){
-    var hasMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR){
-      var ua = (navigator.userAgent || '').slice(0, 60);
-      toast('SR=no mic=' + (hasMic ? 1 : 0) + ' ' + ua);
+      var mb = document.getElementById('sh-mic');
+      if (mb) mb.style.display = 'none';
       return;
     }
     if (!sheetStation){

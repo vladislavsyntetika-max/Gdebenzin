@@ -373,6 +373,9 @@
   .modal-btns button { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; }
   .modal-primary { background: #FFB000; color: var(--bg); border: none; }
   .modal-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .set-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-2); font-size: 15px; color: var(--text); }
+  .set-row:last-of-type { border-bottom: none; }
+  .set-toggle { background: var(--btn); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .modal-section { font-weight: 700; margin: 12px 0 0; font-size: 14px; color: #FFFFFF; }
   .modal-coords { font-size: 11.5px; color: var(--text-3); margin: 0 0 6px; }
   .issue-textarea { width: 100%; box-sizing: border-box; background: var(--btn); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 15px; line-height: 1.4; resize: vertical; outline: none; min-height: 90px; }
@@ -904,8 +907,8 @@
     <select id="fuel-select" class="ctrl"><option value="all">Топливо</option></select>
     <input id="search-input" class="search" type="search" placeholder="Поиск…" autocomplete="off">
     <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
-    <button id="sound-toggle" class="icon-btn" title="Sound">&#128266;</button>
-    <button id="theme-toggle" class="icon-btn" title="Тема">&#9728;&#65039;</button>
+    <button id="sound-toggle" class="icon-btn" title="Sound" style="display:none;">&#128266;</button>
+    <button id="theme-toggle" class="icon-btn" title="Тема" style="display:none;">&#9728;&#65039;</button>
     <button id="help-toggle" class="icon-btn" title="Help">?</button>
     <button id="install-btn" class="icon-btn" title="Установить" style="display:none;">⤓</button>
   </div>
@@ -932,7 +935,6 @@
 <div id="mk-legend"><span class="lg-dot lg-ok"></span>есть<span class="lg-dot lg-none"></span>нет<span class="lg-dot lg-unk"></span>нет данных</div>
 <div id="side-tools-left">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">🛰</button>
-  <button class="tool-btn" id="btn-route" title="Маршрут до ближайшей АЗС">↗️</button>
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
   <button class="tool-btn" id="btn-zoom-out" title="Отдалить">−</button>
 </div>
@@ -942,9 +944,7 @@
     <button class="tool-btn" id="dps-btn" title="DPS"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/><rect x="9.5" y="3.5" width="5" height="2" rx="0.6" fill="currentColor" stroke="none"/></svg></button>
     <button class="tool-btn" id="osm-scan-btn" title="OSM scan" style="display:none;">🔍</button>
     <button class="tool-btn" id="cam-btn" title="Camera"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M16.75 12h3.632a1 1 0 0 1 .894 1.447l-2.034 4.069a1 1 0 0 1-1.708.134l-2.142-2.904"/><path d="M17.106 9.053a1 1 0 0 1 .447 1.341l-3.106 6.211a1 1 0 0 1-1.342.447L3.61 12.3a2.92 2.92 0 0 1-1.3-3.91L3.69 5.6a2.92 2.92 0 0 1 3.91-1.3z"/><path d="M2 19h3.76a2 2 0 0 0 1.8-1.1L9 15"/><path d="M2 21v-4"/><path d="M7 9h.01"/></svg></button>
-  <button class="tool-btn" id="support-btn" title="Поддержать проект">
-    🙏
-  </button>
+  <button class="tool-btn" id="settings-btn" title="Настройки">&#9881;&#65039;</button>
 </div>
 
 <div id="bottom">
@@ -3391,7 +3391,7 @@
   document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
   document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
 
-  document.getElementById('support-btn').addEventListener('click', function(){
+  function _openSupportModal(){
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     bg.innerHTML = '<div class="modal"><h3>☕ Поддержать</h3>'+
@@ -3412,7 +3412,47 @@
     document.body.appendChild(bg);
     bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
     document.getElementById('m-close').addEventListener('click', function(){ bg.remove(); });
-  });
+  }
+
+  function _openSettingsModal(){
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    var isLight = document.documentElement.classList.contains('theme-light');
+    var soundOn = false;
+    try { soundOn = localStorage.getItem('azs_sound') !== 'off'; } catch(e){}
+    bg.innerHTML = '<div class="modal"><h3>\u2699\uFE0F \u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</h3>'+
+      '<div class="set-row"><span>\uD83D\uDD0A \u0417\u0432\u0443\u043a</span><button class="set-toggle" id="set-sound">'+ (soundOn ? '\u0412\u043a\u043b' : '\u0412\u044b\u043a\u043b') +'</button></div>'+
+      '<div class="set-row"><span>' + (isLight ? '\u2600\uFE0F' : '\uD83C\uDF19') + ' \u0422\u0435\u043c\u0430</span><button class="set-toggle" id="set-theme">'+ (isLight ? '\u0421\u0432\u0435\u0442\u043b\u0430\u044f' : '\u0422\u0451\u043c\u043d\u0430\u044f') +'</button></div>'+
+      '<div class="set-row"><span>\uD83D\uDCF2 \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435</span><button class="set-toggle" id="set-install">\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c</button></div>'+
+      '<div class="set-row"><span>\u2615 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u0430\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442</span><button class="set-toggle" id="set-support">\u041e\u0442\u043a\u0440\u044b\u0442\u044c</button></div>'+
+      '<div class="modal-btns"><button class="modal-secondary" id="set-close">\u0417\u0430\u043a\u0440\u044b\u0442\u044c</button></div>'+
+      '</div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+    bg.querySelector('#set-close').addEventListener('click', function(){ bg.remove(); });
+    bg.querySelector('#set-theme').addEventListener('click', function(){
+      var tb = document.getElementById('theme-toggle');
+      if (tb) tb.click();
+      bg.remove();
+    });
+    bg.querySelector('#set-sound').addEventListener('click', function(){
+      var sb = document.getElementById('sound-toggle');
+      if (sb) sb.click();
+      bg.remove();
+    });
+    bg.querySelector('#set-install').addEventListener('click', function(){
+      var ib = document.getElementById('install-btn');
+      if (ib) ib.click();
+      bg.remove();
+    });
+    bg.querySelector('#set-support').addEventListener('click', function(){
+      bg.remove();
+      if (typeof _openSupportModal === 'function') _openSupportModal();
+    });
+  }
+
+  var _settingsBtn = document.getElementById('settings-btn');
+  if (_settingsBtn) _settingsBtn.addEventListener('click', _openSettingsModal);
 
   var deferredInstallPrompt = null;
   var installBtn = document.getElementById('install-btn');

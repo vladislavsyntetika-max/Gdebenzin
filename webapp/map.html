@@ -3404,8 +3404,9 @@
     try { soundOn = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){}
     bg.innerHTML = '<div class="modal"><h3>\u2699\uFE0F \u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</h3>'+
       '<div class="set-row"><span>\uD83D\uDD0A \u0417\u0432\u0443\u043a</span><button class="set-toggle" id="set-sound">'+ (soundOn ? '\u0412\u043a\u043b' : '\u0412\u044b\u043a\u043b') +'</button></div>'+
-      '<div class="set-row"><span>' + (isLight ? '\u2600\uFE0F' : '\uD83C\uDF19') + ' \u0422\u0435\u043c\u0430</span><button class="set-toggle" id="set-theme">'+ (isLight ? '\u0421\u0432\u0435\u0442\u043b\u0430\u044f' : '\u0422\u0451\u043c\u043d\u0430\u044f') +'</button></div>'+
-      '<div class="set-row"><span>\uD83D\uDCF2 \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435</span><button class="set-toggle" id="set-install">\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c</button></div>'+
+      '<div class="set-row"><span id="set-theme-label">' + (isLight ? '\u2600\uFE0F' : '\uD83C\uDF19') + ' \u0422\u0435\u043c\u0430</span><button class="set-toggle" id="set-theme">'+ (isLight ? '\u0421\u0432\u0435\u0442\u043b\u0430\u044f' : '\u0422\u0451\u043c\u043d\u0430\u044f') +'</button></div>'+
+(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? '' :
+        '<div class="set-row"><span>\uD83D\uDCF2 \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435</span><button class="set-toggle" id="set-install">\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c</button></div>')+
       '<div class="set-row"><span>\u2615 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u0430\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442</span><button class="set-toggle" id="set-support">\u041e\u0442\u043a\u0440\u044b\u0442\u044c</button></div>'+
       '<div class="modal-btns"><button class="modal-secondary" id="set-close">\u0417\u0430\u043a\u0440\u044b\u0442\u044c</button></div>'+
       '</div>';
@@ -3415,14 +3416,24 @@
     bg.querySelector('#set-theme').addEventListener('click', function(){
       var tb = document.getElementById('theme-toggle');
       if (tb) tb.click();
-      bg.remove();
+      var light = document.documentElement.classList.contains('theme-light');
+      var btn = bg.querySelector('#set-theme');
+      btn.textContent = light ? '\u0421\u0432\u0435\u0442\u043b\u0430\u044f' : '\u0422\u0451\u043c\u043d\u0430\u044f';
+      var label = bg.querySelector('#set-theme-label');
+      if (label) label.textContent = (light ? '\u2600\uFE0F' : '\uD83C\uDF19') + ' \u0422\u0435\u043c\u0430';
     });
     bg.querySelector('#set-sound').addEventListener('click', function(){
+      var on = true;
+      try { on = localStorage.getItem('azs_sound_on') !== '0'; } catch(e){}
+      try { localStorage.setItem('azs_sound_on', on ? '0' : '1'); } catch(e){}
       var sb = document.getElementById('sound-toggle');
-      if (sb) sb.click();
-      bg.remove();
+      if (sb) sb.textContent = (on ? '\uD83D\uDD07' : '\uD83D\uDD0A');
+      var btn = bg.querySelector('#set-sound');
+      btn.textContent = on ? '\u0412\u044b\u043a\u043b' : '\u0412\u043a\u043b';
+      if (typeof toast === 'function') toast(on ? '\u0417\u0432\u0443\u043a \u0432\u044b\u043a\u043b' : '\u0417\u0432\u0443\u043a \u0432\u043a\u043b');
     });
-    bg.querySelector('#set-install').addEventListener('click', function(){
+    var _installRow = bg.querySelector('#set-install');
+    if (_installRow) _installRow.addEventListener('click', function(){
       if (typeof isIOS !== 'undefined' && isIOS) {
         bg.remove();
         if (typeof showIOSInstructions === 'function') showIOSInstructions();

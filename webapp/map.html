@@ -3048,24 +3048,6 @@
     } else startLocate();
   });
 
-  document.getElementById('btn-route').addEventListener('click', function(){
-    if (!stationsData.length){ toast('Данные грузятся'); return; }
-    var from = lastPosition || map.getCenter();
-    var candidates = stationsData.filter(function(s){ return statusFor(s.fuels, activeFuel) === 'ok'; });
-    if (!candidates.length) candidates = stationsData.filter(function(s){ return statusFor(s.fuels, activeFuel) !== 'unknown'; });
-    if (!candidates.length){ toast('Нет АЗС с топливом'); return; }
-    var best = null, bestD = Infinity;
-    candidates.forEach(function(s){
-      var d = haversine(from.lat, from.lng, s.lat, s.lng);
-      if (d < bestD){ bestD = d; best = s; }
-    });
-    if (!best){ toast('Не найдено'); return; }
-    toast('Ближайшая: ' + best.name + ' — ' + (bestD/1000).toFixed(1) + ' км');
-    var url = 'https://yandex.ru/maps/?rtext=' +
-              from.lat.toFixed(6) + ',' + from.lng.toFixed(6) + '~' +
-              best.lat.toFixed(6) + ',' + best.lng.toFixed(6) + '&rtt=auto';
-    if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
-  });
 
   // =====================================================
   // PIN MODE: булавка в центре экрана, двигаем карту

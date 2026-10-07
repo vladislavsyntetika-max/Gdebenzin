@@ -3108,6 +3108,7 @@
       followMode = true;
       document.getElementById('btn-locate').classList.add('active');
       clearRayPins();
+      window._rayAutoDone = false;
       if (lastPosition) {
         _programmatic(function(){
           map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });

@@ -1635,7 +1635,8 @@ async def cb_moderate(cq: CallbackQuery):
 
 @dp.message(Command("recent"))
 async def on_recent_cmd(message: Message):
-    await message.answer(feed_text(), reply_markup=kb_main())
+    text, ids = feed_text()
+    await message.answer(text, reply_markup=feed_kb(ids))
 
 
 @dp.message(Command("вклад"))
@@ -2553,13 +2554,30 @@ def feed_text():
         return "Пока нет отчётов. Станьте первым — выберите станцию через /start."
     fuel_label = {k: v for k, v in FUELS}
     lines = ["🕓 <b>Последние отчёты сообщества</b>", ""]
+    seen = []
     for ts, station_id, fuel, status, username in rows:
         s = get_station(station_id)
         if not s:
             continue
         who = f" · {format_display(username)}" if username else ""
         lines.append(f"{s[1]}, {s[3]} — {fuel_label.get(fuel, fuel)} {STATUS_LABEL[status]} · {time_ago(ts)}{who}")
-    return "\n".join(lines)
+        if station_id not in seen:
+            seen.append(station_id)
+    return "\n".join(lines), seen
+
+
+def feed_kb(station_ids):
+    rows = []
+    for sid in station_ids[:12]:
+        s = get_station(sid)
+        if not s:
+            continue
+        label = s[1] + " · " + (s[3] or "—")
+        if len(label) > 60:
+            label = label[:57] + "…"
+        rows.append([InlineKeyboardButton(text="⛽ " + label, callback_data=f"stn:{sid}")])
+    rows.append([InlineKeyboardButton(text="⬅️ В меню", callback_data="menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @dp.callback_query(F.data == "menu")
@@ -2570,7 +2588,8 @@ async def cb_menu(cq: CallbackQuery):
 
 @dp.callback_query(F.data == "feed")
 async def cb_feed(cq: CallbackQuery):
-    await safe_edit(cq, feed_text(), kb_main())
+    text, ids = feed_text()
+    await safe_edit(cq, text, feed_kb(ids))
     await cq.answer()
 
 

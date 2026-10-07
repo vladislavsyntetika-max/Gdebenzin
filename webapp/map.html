@@ -2807,6 +2807,9 @@
     clearRays();
     if (!fuel || fuel === 'all') return;
     if (!lastPosition) return;
+    if (markerCluster && markerCluster.disableClustering) {
+      try { markerCluster.disableClustering(); } catch(e){}
+    }
     var from = lastPosition;
     var candidates = stationsData.filter(function(s){
       return statusFor(s.fuels, fuel) === 'ok';
@@ -2862,6 +2865,9 @@
     if (_raysLayer) _raysLayer.clearLayers();
     _rayStationIds = [];
     _dimNonRayMarkers(false);
+    if (markerCluster && markerCluster.enableClustering) {
+      try { markerCluster.enableClustering(); } catch(e){}
+    }
   }
 
   function _dimNonRayMarkers(on){

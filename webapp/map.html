@@ -2902,13 +2902,25 @@
       _raysLayer.addLayer(big);
       _rayStationIds.push(s.id);
     });
-    var _z = map.getBoundsZoom(bounds, false, [80, 80]);
-    if (_z > 16) _z = 16;
-    if (_z < 8) _z = 8;
-    var _c = bounds.getCenter();
-    _programmatic(function(){
-      map.setView([_c.lat, _c.lng], _z, { animate: false });
-    });
+    // GPS-режим (нет origin): центрируем на bounds — все точки в кадре.
+    // Режим булавки (origin задан): НЕ двигаем карту, булавка остаётся в центре экрана.
+    if (!origin){
+      var _z = map.getBoundsZoom(bounds, false, [80, 80]);
+      if (_z > 16) _z = 16;
+      if (_z < 8) _z = 8;
+      var _c = bounds.getCenter();
+      _programmatic(function(){
+        map.setView([_c.lat, _c.lng], _z, { animate: false });
+      });
+    } else {
+      // Мягкий зум-аут, если станции не влезают в текущий вид. Центр не меняем.
+      var _z2 = map.getBoundsZoom(bounds, false, [80, 80]);
+      if (_z2 > 16) _z2 = 16;
+      if (_z2 < 8) _z2 = 8;
+      if (_z2 < map.getZoom()){
+        map.setZoom(_z2, { animate: false });
+      }
+    }
     _dimNonRayMarkers(true);
   }
 

@@ -1271,7 +1271,7 @@
 
   // При ручном сдвиге карты — булавка и лучи от центра
   var _rayMoveTimer = null;
-  map.on('movestart', function(){
+  map.on('dragstart', function(){
     if (_programmaticMove > 0) return;
     if (activeFuel && activeFuel !== 'all' && (_rayStationIds && _rayStationIds.length)) {
       showRayPin();
@@ -2853,7 +2853,7 @@
     if (!fuel || fuel === 'all') return;
     var from = origin || lastPosition;
     if (!from) return;
-    var noFit = !!(opts && opts.noFit);
+
     if (markerCluster && markerCluster.disableClustering) {
       try { markerCluster.disableClustering(); } catch(e){}
     }
@@ -2897,11 +2897,12 @@
       _raysLayer.addLayer(big);
       _rayStationIds.push(s.id);
     });
-    if (!noFit){
-      _programmatic(function(){
-        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
-      });
-    }
+    var _z = map.getBoundsZoom(bounds, false, [60, 60]);
+    if (_z > 16) _z = 16;
+    if (_z < 8) _z = 8;
+    _programmatic(function(){
+      map.setView([from.lat, from.lng], _z, { animate: false });
+    });
     _dimNonRayMarkers(true);
   }
 
@@ -2916,7 +2917,7 @@
   function refreshRaysFromCenter(){
     if (!activeFuel || activeFuel === 'all') return;
     var c = map.getCenter();
-    drawRays(activeFuel, { lat: c.lat, lng: c.lng }, { noFit: true });
+    drawRays(activeFuel, { lat: c.lat, lng: c.lng });
   }
 
   function clearRays(){
@@ -3055,6 +3056,7 @@
       return;
     }
     locateActive = true; followMode = true;
+    hideRayPin();
     try { localStorage.setItem('azs_locate_on', '1'); } catch(e){}
     document.getElementById('btn-locate').classList.add('active');
     function _handlePosition(pos){

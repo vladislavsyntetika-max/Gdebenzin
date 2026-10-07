@@ -2856,6 +2856,8 @@
     if (!origin && !followMode) return;
     var from = origin || lastPosition;
     if (!from) return;
+    // Если расчёт НЕ от булавки — прячем булавку.
+    if (!origin) hideRayPin();
 
     if (markerCluster && markerCluster.disableClustering) {
       try { markerCluster.disableClustering(); } catch(e){}

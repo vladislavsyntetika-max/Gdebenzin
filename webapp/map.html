@@ -2851,6 +2851,9 @@
   function drawRays(fuel, origin, opts){
     clearRays();
     if (!fuel || fuel === 'all') return;
+    // От точки GPS рисуем только при активном слежении.
+    // Явный origin (булавка) — рисуем всегда.
+    if (!origin && !followMode) return;
     var from = origin || lastPosition;
     if (!from) return;
 

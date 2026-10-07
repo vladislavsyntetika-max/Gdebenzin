@@ -1272,13 +1272,16 @@
   // При ручном сдвиге карты — булавка и лучи от центра
   var _rayMoveTimer = null;
   map.on('movestart', function(){
+    if (_programmaticMove) return;
     if (activeFuel && activeFuel !== 'all' && (_rayStationIds && _rayStationIds.length)) {
       showRayPin();
     }
   });
   map.on('moveend', function(){
+    if (_programmaticMove) return;
     if (!activeFuel || activeFuel === 'all') return;
-    if (!document.getElementById('ray-pin').classList.contains('show')) return;
+    var pinEl = document.getElementById('ray-pin');
+    if (!pinEl || !pinEl.classList.contains('show')) return;
     if (_rayMoveTimer) clearTimeout(_rayMoveTimer);
     _rayMoveTimer = setTimeout(refreshRaysFromCenter, 350);
   });
@@ -2830,6 +2833,7 @@
   // ============ RAY MODE: топ-5 станций с выбранным топливом от моей GPS-точки ============
   var _raysLayer = null;
   var _rayStationIds = [];
+  var _programmaticMove = false;
 
   function _rayDistanceLabel(km){
     if (km < 10) return km.toFixed(1) + ' км';
@@ -2884,7 +2888,9 @@
       _raysLayer.addLayer(big);
       _rayStationIds.push(s.id);
     });
+    _programmaticMove = true;
     map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+    setTimeout(function(){ _programmaticMove = false; }, 800);
     _dimNonRayMarkers(true);
   }
 
@@ -3029,7 +3035,11 @@
       followMode = true;
       document.getElementById('btn-locate').classList.add('active');
       hideRayPin();
-      if (lastPosition) map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
+      if (lastPosition) {
+        _programmaticMove = true;
+        map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
+        setTimeout(function(){ _programmaticMove = false; }, 800);
+      }
       if (activeFuel && activeFuel !== 'all' && lastPosition) drawRays(activeFuel);
       return;
     }

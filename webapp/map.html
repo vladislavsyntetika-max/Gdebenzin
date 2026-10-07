@@ -876,6 +876,13 @@
     0%   { box-shadow: 0 0 0 0 rgba(255,176,0,.7), 0 2px 8px rgba(0,0,0,.6); }
     100% { box-shadow: 0 0 0 16px rgba(255,176,0,0), 0 2px 8px rgba(0,0,0,.6); }
   }
+  .ray-tip {
+    background: #14171A !important; color: #FFB000 !important;
+    border: 1px solid #FFB000 !important; border-radius: 8px !important;
+    padding: 2px 8px !important; font-size: 11px !important; font-weight: 700 !important;
+    white-space: nowrap !important; box-shadow: 0 2px 6px rgba(0,0,0,.5) !important;
+  }
+  .ray-tip::before { display: none !important; }
   .ray-dist {
     background: var(--panel); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px;
@@ -2824,24 +2831,13 @@
     var top = candidates.slice(0, 5);
     if (!_raysLayer) _raysLayer = L.layerGroup().addTo(map);
     var bounds = L.latLngBounds([[from.lat, from.lng]]);
-    top.forEach(function(s){
+    top.forEach(function(s, idx){
       var km = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
       bounds.extend([s.lat, s.lng]);
       var line = L.polyline([[from.lat, from.lng], [s.lat, s.lng]], {
         color: '#FFB000', weight: 3, dashArray: '8 6', opacity: 0.85
       });
       _raysLayer.addLayer(line);
-      var midLat = (from.lat + s.lat) / 2;
-      var midLng = (from.lng + s.lng) / 2;
-      var label = L.marker([midLat, midLng], {
-        icon: L.divIcon({
-          className: '',
-          html: '<div class="ray-dist">' + _rayDistanceLabel(km) + '</div>',
-          iconSize: [70, 22], iconAnchor: [35, 11]
-        }),
-        interactive: false, zIndexOffset: 500
-      });
-      _raysLayer.addLayer(label);
       var big = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
           className: '',
@@ -2849,6 +2845,11 @@
           iconSize: [28, 28], iconAnchor: [14, 14]
         }),
         zIndexOffset: 2000
+      });
+      var dir = (idx % 2 === 0) ? 'top' : 'bottom';
+      big.bindTooltip(_rayDistanceLabel(km), {
+        permanent: true, direction: dir, offset: [0, dir === 'top' ? -16 : 16],
+        className: 'ray-tip'
       });
       big.on('click', function(e){
         L.DomEvent.stopPropagation(e);

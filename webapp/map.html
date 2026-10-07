@@ -3101,6 +3101,11 @@
         }
 
         try { preloadAround(lat, lng); } catch(e){}
+        // Авто-отрисовка лучей при первой позиции GPS, если топливо уже выбрано
+        if (!window._rayAutoDone && activeFuel && activeFuel !== 'all' && followMode){
+          window._rayAutoDone = true;
+          try { drawRays(activeFuel); } catch(e){}
+        }
         if (followMode && (!_rayStationIds || !_rayStationIds.length)) {
           var _z = 16;
           try {
@@ -3220,6 +3225,7 @@
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
     if (typeof clearRays === 'function') clearRays();
     if (typeof hideRayPin === 'function') hideRayPin();
+    window._rayAutoDone = false;
   }
 
   document.getElementById('dps-btn').addEventListener('click', function(){ sendDpsReport('dps'); });

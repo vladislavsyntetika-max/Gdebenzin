@@ -3018,7 +3018,7 @@
         }
 
         try { preloadAround(lat, lng); } catch(e){}
-        if (followMode) {
+        if (followMode && (!_rayStationIds || !_rayStationIds.length)) {
           var _z = 16;
           try {
             var sp = (pos.coords && typeof pos.coords.speed === 'number') ? pos.coords.speed : null;

@@ -2913,13 +2913,14 @@
         map.setView([_c.lat, _c.lng], _z, { animate: false });
       });
     } else {
-      // Мягкий зум-аут, если станции не влезают в текущий вид. Центр не меняем.
-      var _z2 = map.getBoundsZoom(bounds, false, [80, 80]);
-      if (_z2 > 16) _z2 = 16;
-      if (_z2 < 8) _z2 = 8;
-      if (_z2 < map.getZoom()){
-        map.setZoom(_z2, { animate: false });
-      }
+      // Пин-режим: булавка остаётся в центре экрана, зум — чтобы все точки влезли.
+      _programmatic(function(){
+        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16 });
+        var _z = map.getZoom();
+        if (_z > 16) _z = 16;
+        if (_z < 8) _z = 8;
+        map.setView([origin.lat, origin.lng], _z, { animate: false });
+      });
     }
     _dimNonRayMarkers(true);
   }
@@ -3113,6 +3114,8 @@
         }
 
         try { preloadAround(lat, lng); } catch(e){}
+        // При активном слежении GPS булавка не нужна
+        if (followMode) hideRayPin();
         // Авто-отрисовка лучей при первой позиции GPS, если топливо уже выбрано
         if (!window._rayAutoDone && activeFuel && activeFuel !== 'all' && followMode){
           window._rayAutoDone = true;

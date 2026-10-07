@@ -529,6 +529,21 @@
     font-size: 40px; line-height: 1;
   }
   #ray-pin.show { display: block; }
+  #ray-pin-ok {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, 14px);
+    z-index: 2001;
+    display: none;
+    background: #FFB000; color: #14171A;
+    border: none; border-radius: 10px;
+    padding: 10px 22px;
+    font-size: 15px; font-weight: 800;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 4px 12px rgba(0,0,0,.55);
+    letter-spacing: 0.3px;
+  }
+  #ray-pin-ok.show { display: block; }
 
   .toast {
     position: fixed; left: 50%; bottom: 106px; transform: translateX(-50%);
@@ -875,6 +890,11 @@
   #mk-legend .lg-ok   { background: #30D158; }
   #mk-legend .lg-none { background: #FF3B30; }
   #mk-legend .lg-unk  { background: var(--text-3); }
+  .pin-marker {
+    font-size: 34px; line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.7));
+    pointer-events: none;
+  }
   .mk-ray {
     width: 28px; height: 28px; border-radius: 50%;
     background: #FFB000;
@@ -1001,6 +1021,7 @@
 
 <!-- Центральная булавка для добавления АЗС -->
 <div id="ray-pin">&#128205;</div>
+<button id="ray-pin-ok">&#1054;&#1050;</button>
 <div id="center-pin">
   <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M24 2 C13.5 2 5 10.5 5 21 C5 30 12 38 21 50 L24 62 L27 50 C36 38 43 30 43 21 C43 10.5 34.5 2 24 2 Z"
@@ -1270,21 +1291,18 @@
   map.on('dragstart', dropFollow);
 
   // При ручном сдвиге карты — булавка и лучи от центра
-  var _rayMoveTimer = null;
-  map.on('dragstart', function(){
-    if (_programmaticMove > 0) return;
-    if (activeFuel && activeFuel !== 'all' && (_rayStationIds && _rayStationIds.length)) {
-      showRayPin();
-    }
-  });
-  map.on('moveend', function(){
+  function _userTouchedMap(){
     if (_programmaticMove > 0) return;
     if (!activeFuel || activeFuel === 'all') return;
-    var pinEl = document.getElementById('ray-pin');
-    if (!pinEl || !pinEl.classList.contains('show')) return;
-    if (_rayMoveTimer) clearTimeout(_rayMoveTimer);
-    _rayMoveTimer = setTimeout(refreshRaysFromCenter, 350);
-  });
+    showRayPin();
+  }
+  map.on('dragstart', _userTouchedMap);
+  map.on('zoomstart', _userTouchedMap);
+
+  (function(){
+    var ok = document.getElementById('ray-pin-ok');
+    if (ok) ok.addEventListener('click', _onPinConfirm);
+  })();
   map.getContainer().addEventListener('touchstart', function(e){ if (e.touches && e.touches.length > 1) dropFollow(); }, { passive: true });
   map.on('zoomend', applyMarkerOpacity);
 
@@ -2833,6 +2851,8 @@
   // ============ RAY MODE: топ-5 станций с выбранным топливом от моей GPS-точки ============
   var _raysLayer = null;
   var _rayStationIds = [];
+  var _rayPinCoord = null;
+  var _rayPinMarker = null;
   var _programmaticMove = 0;
   function _programmatic(fn){
     _programmaticMove++;
@@ -2903,7 +2923,7 @@
       _rayStationIds.push(s.id);
     });
     // GPS-режим (нет origin): центрируем на bounds — все точки в кадре.
-    // Режим булавки (origin задан): НЕ двигаем карту, булавка остаётся в центре экрана.
+    // Пин-режим (origin задан): карту НЕ двигаем.
     if (!origin){
       var _z = map.getBoundsZoom(bounds, false, [80, 80]);
       if (_z > 16) _z = 16;
@@ -2912,31 +2932,49 @@
       _programmatic(function(){
         map.setView([_c.lat, _c.lng], _z, { animate: false });
       });
-    } else {
-      // Пин-режим: булавка остаётся в центре экрана, зум — чтобы все точки влезли.
-      _programmatic(function(){
-        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16 });
-        var _z = map.getZoom();
-        if (_z > 16) _z = 16;
-        if (_z < 8) _z = 8;
-        map.setView([origin.lat, origin.lng], _z, { animate: false });
-      });
     }
     _dimNonRayMarkers(true);
   }
 
   function showRayPin(){
     var el = document.getElementById('ray-pin');
+    var ok = document.getElementById('ray-pin-ok');
     if (el) el.classList.add('show');
+    if (ok) ok.classList.add('show');
   }
   function hideRayPin(){
     var el = document.getElementById('ray-pin');
+    var ok = document.getElementById('ray-pin-ok');
     if (el) el.classList.remove('show');
+    if (ok) ok.classList.remove('show');
   }
-  function refreshRaysFromCenter(){
-    if (!activeFuel || activeFuel === 'all') return;
+
+  function _dropMarkerPin(lat, lng){
+    if (_rayPinMarker){ map.removeLayer(_rayPinMarker); _rayPinMarker = null; }
+    _rayPinCoord = { lat: lat, lng: lng };
+    _rayPinMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="pin-marker">&#128205;</div>',
+        iconSize: [36, 36], iconAnchor: [18, 34]
+      }),
+      zIndexOffset: 2500
+    }).addTo(map);
+  }
+
+  function clearRayPins(){
+    hideRayPin();
+    if (_rayPinMarker){ map.removeLayer(_rayPinMarker); _rayPinMarker = null; }
+    _rayPinCoord = null;
+  }
+
+  function _onPinConfirm(){
     var c = map.getCenter();
-    drawRays(activeFuel, { lat: c.lat, lng: c.lng });
+    hideRayPin();
+    _dropMarkerPin(c.lat, c.lng);
+    if (activeFuel && activeFuel !== 'all'){
+      drawRays(activeFuel, { lat: c.lat, lng: c.lng }, { noFit: true });
+    }
   }
 
   function clearRays(){
@@ -3019,16 +3057,15 @@
     renderMarkers();
     if (activeFuel === 'all') {
       clearRays();
-      hideRayPin();
+      clearRayPins();
+    } else if (followMode && lastPosition) {
+      clearRayPins();
+      drawRays(activeFuel);
+    } else if (_rayPinCoord) {
+      drawRays(activeFuel, _rayPinCoord, { noFit: true });
     } else {
-      var pinOn = document.getElementById('ray-pin').classList.contains('show');
-      if (pinOn) {
-        refreshRaysFromCenter();
-      } else if (followMode && lastPosition) {
-        drawRays(activeFuel);
-      } else {
-        toast('\u0412\u043a\u043b\u044e\u0447\u0438 GPS \u2014 \u043f\u043e\u043a\u0430\u0436\u0443 3 \u0431\u043b\u0438\u0436\u0430\u0439\u0448\u0438\u0435 \u0410\u0417\u0421');
-      }
+      // Показать булавку + кнопку OK в центре
+      showRayPin();
     }
   });
   document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
@@ -3070,7 +3107,7 @@
       locateActive = true;
       followMode = true;
       document.getElementById('btn-locate').classList.add('active');
-      hideRayPin();
+      clearRayPins();
       if (lastPosition) {
         _programmatic(function(){
           map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
@@ -3239,7 +3276,7 @@
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
     if (typeof clearRays === 'function') clearRays();
-    if (typeof hideRayPin === 'function') hideRayPin();
+    if (typeof clearRayPins === 'function') clearRayPins();
     window._rayAutoDone = false;
   }
 

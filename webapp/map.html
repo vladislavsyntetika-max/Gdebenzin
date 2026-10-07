@@ -518,6 +518,17 @@
     filter: drop-shadow(0 5px 10px rgba(0,0,0,.65));
   }
   #center-pin.show { display: block; }
+  #ray-pin {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -100%);
+    z-index: 2000;
+    pointer-events: none;
+    display: none;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,.65));
+    font-size: 40px; line-height: 1;
+  }
+  #ray-pin.show { display: block; }
 
   .toast {
     position: fixed; left: 50%; bottom: 106px; transform: translateX(-50%);
@@ -989,6 +1000,7 @@
 <div id="saving-pill">Сохраняю…</div>
 
 <!-- Центральная булавка для добавления АЗС -->
+<div id="ray-pin">&#128205;</div>
 <div id="center-pin">
   <svg width="48" height="64" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M24 2 C13.5 2 5 10.5 5 21 C5 30 12 38 21 50 L24 62 L27 50 C36 38 43 30 43 21 C43 10.5 34.5 2 24 2 Z"
@@ -1256,6 +1268,20 @@
 
   function dropFollow(){ followMode = false; var b=document.getElementById('btn-locate'); if (b) b.classList.remove('active'); }
   map.on('dragstart', dropFollow);
+
+  // При ручном сдвиге карты — булавка и лучи от центра
+  var _rayMoveTimer = null;
+  map.on('movestart', function(){
+    if (activeFuel && activeFuel !== 'all' && (_rayStationIds && _rayStationIds.length)) {
+      showRayPin();
+    }
+  });
+  map.on('moveend', function(){
+    if (!activeFuel || activeFuel === 'all') return;
+    if (!document.getElementById('ray-pin').classList.contains('show')) return;
+    if (_rayMoveTimer) clearTimeout(_rayMoveTimer);
+    _rayMoveTimer = setTimeout(refreshRaysFromCenter, 350);
+  });
   map.getContainer().addEventListener('touchstart', function(e){ if (e.touches && e.touches.length > 1) dropFollow(); }, { passive: true });
   map.on('zoomend', applyMarkerOpacity);
 
@@ -2810,14 +2836,14 @@
     return Math.round(km) + ' км';
   }
 
-  function drawRays(fuel){
+  function drawRays(fuel, origin){
     clearRays();
     if (!fuel || fuel === 'all') return;
-    if (!lastPosition) return;
+    var from = origin || lastPosition;
+    if (!from) return;
     if (markerCluster && markerCluster.disableClustering) {
       try { markerCluster.disableClustering(); } catch(e){}
     }
-    var from = lastPosition;
     var candidates = stationsData.filter(function(s){
       return statusFor(s.fuels, fuel) === 'ok';
     });
@@ -2860,6 +2886,20 @@
     });
     map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
     _dimNonRayMarkers(true);
+  }
+
+  function showRayPin(){
+    var el = document.getElementById('ray-pin');
+    if (el) el.classList.add('show');
+  }
+  function hideRayPin(){
+    var el = document.getElementById('ray-pin');
+    if (el) el.classList.remove('show');
+  }
+  function refreshRaysFromCenter(){
+    if (!activeFuel || activeFuel === 'all') return;
+    var c = map.getCenter();
+    drawRays(activeFuel, { lat: c.lat, lng: c.lng });
   }
 
   function clearRays(){
@@ -2940,7 +2980,14 @@
   document.getElementById('fuel-select').addEventListener('change', function(e){
     activeFuel = e.target.value;
     renderMarkers();
-    drawRays(activeFuel);
+    if (activeFuel === 'all') {
+      clearRays();
+      hideRayPin();
+    } else {
+      var pinOn = document.getElementById('ray-pin').classList.contains('show');
+      if (pinOn) refreshRaysFromCenter();
+      else drawRays(activeFuel);
+    }
   });
   document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
   document.getElementById('fav-toggle').addEventListener('click', function(e){
@@ -2981,7 +3028,9 @@
       locateActive = true;
       followMode = true;
       document.getElementById('btn-locate').classList.add('active');
+      hideRayPin();
       if (lastPosition) map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
+      if (activeFuel && activeFuel !== 'all' && lastPosition) drawRays(activeFuel);
       return;
     }
     locateActive = true; followMode = true;
@@ -3136,6 +3185,7 @@
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
     if (typeof clearRays === 'function') clearRays();
+    if (typeof hideRayPin === 'function') hideRayPin();
   }
 
   document.getElementById('dps-btn').addEventListener('click', function(){ sendDpsReport('dps'); });

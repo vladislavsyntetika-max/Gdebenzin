@@ -2870,7 +2870,7 @@
     candidates.sort(function(a,b){
       return haversine(from.lat, from.lng, a.lat, a.lng) - haversine(from.lat, from.lng, b.lat, b.lng);
     });
-    var top = candidates.slice(0, 5);
+    var top = candidates.slice(0, 3);
     if (!_raysLayer) _raysLayer = L.layerGroup().addTo(map);
     var bounds = L.latLngBounds([[from.lat, from.lng]]);
     top.forEach(function(s, idx){

@@ -864,6 +864,25 @@
   #mk-legend .lg-ok   { background: #30D158; }
   #mk-legend .lg-none { background: #FF3B30; }
   #mk-legend .lg-unk  { background: var(--text-3); }
+  .mk-ray {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #FFB000;
+    border: 3px solid #14171A;
+    box-shadow: 0 0 0 2px #FFB000, 0 2px 8px rgba(0,0,0,.6);
+    animation: mkRayPulse 1.8s ease-out infinite;
+    cursor: pointer;
+  }
+  @keyframes mkRayPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,176,0,.7), 0 2px 8px rgba(0,0,0,.6); }
+    100% { box-shadow: 0 0 0 16px rgba(255,176,0,0), 0 2px 8px rgba(0,0,0,.6); }
+  }
+  .ray-dist {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 2px 8px; font-size: 11px; font-weight: 700;
+    text-align: center; white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
   .mk-cluster-wrap { background: transparent !important; border: none !important; }
   .mk-cluster {
     width: 40px; height: 40px; border-radius: 50%;
@@ -2775,6 +2794,85 @@
     applyMarkerOpacity();
   }
 
+  // ============ RAY MODE: топ-5 станций с выбранным топливом от моей GPS-точки ============
+  var _raysLayer = null;
+  var _rayStationIds = [];
+
+  function _rayDistanceLabel(km){
+    if (km < 10) return km.toFixed(1) + ' км';
+    return Math.round(km) + ' км';
+  }
+
+  function drawRays(fuel){
+    clearRays();
+    if (!fuel || fuel === 'all') return;
+    if (!lastPosition) return;
+    var from = lastPosition;
+    var candidates = stationsData.filter(function(s){
+      return statusFor(s.fuels, fuel) === 'ok';
+    });
+    if (!candidates.length){
+      toast('Нет АЗС с этим топливом');
+      return;
+    }
+    candidates.sort(function(a,b){
+      return haversine(from.lat, from.lng, a.lat, a.lng) - haversine(from.lat, from.lng, b.lat, b.lng);
+    });
+    var top = candidates.slice(0, 5);
+    if (!_raysLayer) _raysLayer = L.layerGroup().addTo(map);
+    var bounds = L.latLngBounds([[from.lat, from.lng]]);
+    top.forEach(function(s){
+      var km = haversine(from.lat, from.lng, s.lat, s.lng) / 1000;
+      bounds.extend([s.lat, s.lng]);
+      var line = L.polyline([[from.lat, from.lng], [s.lat, s.lng]], {
+        color: '#FFB000', weight: 3, dashArray: '8 6', opacity: 0.85
+      });
+      _raysLayer.addLayer(line);
+      var midLat = (from.lat + s.lat) / 2;
+      var midLng = (from.lng + s.lng) / 2;
+      var label = L.marker([midLat, midLng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="ray-dist">' + _rayDistanceLabel(km) + '</div>',
+          iconSize: [70, 22], iconAnchor: [35, 11]
+        }),
+        interactive: false, zIndexOffset: 500
+      });
+      _raysLayer.addLayer(label);
+      var big = L.marker([s.lat, s.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="mk-ray"></div>',
+          iconSize: [28, 28], iconAnchor: [14, 14]
+        }),
+        zIndexOffset: 2000
+      });
+      big.on('click', function(e){
+        L.DomEvent.stopPropagation(e);
+        openRoute(s.lat, s.lng);
+      });
+      _raysLayer.addLayer(big);
+      _rayStationIds.push(s.id);
+    });
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+    _dimNonRayMarkers(true);
+  }
+
+  function clearRays(){
+    if (_raysLayer) _raysLayer.clearLayers();
+    _rayStationIds = [];
+    _dimNonRayMarkers(false);
+  }
+
+  function _dimNonRayMarkers(on){
+    Object.keys(markers).forEach(function(sid){
+      var m = markers[sid];
+      if (!m) return;
+      if (_rayStationIds.indexOf(sid) !== -1) return;
+      m.setOpacity(on ? 0.35 : 1);
+    });
+  }
+
   function fillFilterOptions(){
     var netSel = document.getElementById('net-select');
     netSel.length = 1;
@@ -2832,7 +2930,11 @@
     flushOfflineQueue();
   }
   document.getElementById('net-select').addEventListener('change', function(e){ activeNet = e.target.value; renderMarkers(); });
-  document.getElementById('fuel-select').addEventListener('change', function(e){ activeFuel = e.target.value; renderMarkers(); });
+  document.getElementById('fuel-select').addEventListener('change', function(e){
+    activeFuel = e.target.value;
+    renderMarkers();
+    drawRays(activeFuel);
+  });
   document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
   document.getElementById('fav-toggle').addEventListener('click', function(e){
     favOnly = !favOnly; e.currentTarget.classList.toggle('active', favOnly); renderMarkers();
@@ -3026,6 +3128,7 @@
     try { localStorage.setItem('azs_locate_on', '0'); } catch(e){}
     document.getElementById('btn-locate').classList.remove('active');
     if (meMarker){ map.removeLayer(meMarker); meMarker = null; }
+    if (typeof clearRays === 'function') clearRays();
   }
 
   document.getElementById('dps-btn').addEventListener('click', function(){ sendDpsReport('dps'); });

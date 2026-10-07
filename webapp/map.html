@@ -1272,13 +1272,13 @@
   // При ручном сдвиге карты — булавка и лучи от центра
   var _rayMoveTimer = null;
   map.on('movestart', function(){
-    if (_programmaticMove) return;
+    if (_programmaticMove > 0) return;
     if (activeFuel && activeFuel !== 'all' && (_rayStationIds && _rayStationIds.length)) {
       showRayPin();
     }
   });
   map.on('moveend', function(){
-    if (_programmaticMove) return;
+    if (_programmaticMove > 0) return;
     if (!activeFuel || activeFuel === 'all') return;
     var pinEl = document.getElementById('ray-pin');
     if (!pinEl || !pinEl.classList.contains('show')) return;
@@ -2833,18 +2833,27 @@
   // ============ RAY MODE: топ-5 станций с выбранным топливом от моей GPS-точки ============
   var _raysLayer = null;
   var _rayStationIds = [];
-  var _programmaticMove = false;
+  var _programmaticMove = 0;
+  function _programmatic(fn){
+    _programmaticMove++;
+    var done = false;
+    function finish(){ if (!done){ done = true; _programmaticMove = Math.max(0, _programmaticMove - 1); } }
+    map.once('moveend', finish);
+    setTimeout(finish, 1500);
+    fn();
+  }
 
   function _rayDistanceLabel(km){
     if (km < 10) return km.toFixed(1) + ' км';
     return Math.round(km) + ' км';
   }
 
-  function drawRays(fuel, origin){
+  function drawRays(fuel, origin, opts){
     clearRays();
     if (!fuel || fuel === 'all') return;
     var from = origin || lastPosition;
     if (!from) return;
+    var noFit = !!(opts && opts.noFit);
     if (markerCluster && markerCluster.disableClustering) {
       try { markerCluster.disableClustering(); } catch(e){}
     }
@@ -2888,9 +2897,11 @@
       _raysLayer.addLayer(big);
       _rayStationIds.push(s.id);
     });
-    _programmaticMove = true;
-    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
-    setTimeout(function(){ _programmaticMove = false; }, 800);
+    if (!noFit){
+      _programmatic(function(){
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+      });
+    }
     _dimNonRayMarkers(true);
   }
 
@@ -2905,7 +2916,7 @@
   function refreshRaysFromCenter(){
     if (!activeFuel || activeFuel === 'all') return;
     var c = map.getCenter();
-    drawRays(activeFuel, { lat: c.lat, lng: c.lng });
+    drawRays(activeFuel, { lat: c.lat, lng: c.lng }, { noFit: true });
   }
 
   function clearRays(){
@@ -3036,9 +3047,9 @@
       document.getElementById('btn-locate').classList.add('active');
       hideRayPin();
       if (lastPosition) {
-        _programmaticMove = true;
-        map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
-        setTimeout(function(){ _programmaticMove = false; }, 800);
+        _programmatic(function(){
+          map.setView([lastPosition.lat, lastPosition.lng], 16, { animate:true });
+        });
       }
       if (activeFuel && activeFuel !== 'all' && lastPosition) drawRays(activeFuel);
       return;

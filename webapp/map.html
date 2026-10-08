@@ -929,6 +929,20 @@
   #mk-legend .lg-ok   { background: #30D158; }
   #mk-legend .lg-none { background: #FF3B30; }
   #mk-legend .lg-unk  { background: var(--text-3); }
+  .rt-pop {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: #FFB000; border: 3px solid #14171A;
+    box-shadow: 0 4px 14px rgba(0,0,0,.7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; line-height: 1; font-weight: 800;
+    color: #14171A;
+    animation: rtPopIn 0.35s ease-out;
+  }
+  @keyframes rtPopIn {
+    from { transform: scale(0.3); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .rt-pop.rt-none { background: #FF3B30; color: #FFFFFF; }
   .pin-marker {
     font-size: 34px; line-height: 1;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,.7));
@@ -4005,6 +4019,78 @@
     console.log('[GDEBENZIN] page load count =', _lc + 1);
   } catch(e){}
   try { loadStations(); } catch(e){}
+
+  // ============ Real-time: чужие отметки ============
+  var _rtWs = null;
+  var _rtReconnectTimer = null;
+  var _rtAudioCtx = null;
+
+  function _rtBeep(){
+    try {
+      if (!_rtAudioCtx) _rtAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = _rtAudioCtx;
+      if (ctx.state === 'suspended') ctx.resume();
+      var now = ctx.currentTime;
+      [880, 1320].forEach(function(freq, i){
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, now + i * 0.12);
+        g.gain.exponentialRampToValueAtTime(0.18, now + i * 0.12 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.11);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(now + i * 0.12);
+        o.stop(now + i * 0.12 + 0.12);
+      });
+    } catch(e){}
+  }
+
+  function _rtShowPopup(lat, lng, kind, text){
+    try {
+      var cls = 'rt-pop' + (kind === 'none' ? ' rt-none' : '');
+      var html = '<div class="' + cls + '">' + (kind === 'none' ? '&#10007;' : '&#10003;') + '</div>';
+      var icon = L.divIcon({ className: '', html: html, iconSize: [44, 44], iconAnchor: [22, 22] });
+      var m = L.marker([lat, lng], { icon: icon, interactive: false, zIndexOffset: 3000 }).addTo(map);
+      setTimeout(function(){ try { map.removeLayer(m); } catch(e){} }, 1500);
+    } catch(e){}
+  }
+
+  function _rtOnMessage(evt){
+    try {
+      var d = JSON.parse(evt.data);
+      if (d.type !== 'report') return;
+      if (d.user_id && userId && d.user_id === userId) return; // свой отчёт — игнор
+      var kind = 'ok';
+      if (d.fuels){
+        for (var k in d.fuels){ if (d.fuels[k] === 'none'){ kind = 'none'; break; } }
+      }
+      _rtShowPopup(d.lat, d.lng, kind, d.name);
+      try { if (localStorage.getItem('azs_sound_on') !== '0') _rtBeep(); } catch(e){ _rtBeep(); }
+    } catch(e){}
+  }
+
+  function _rtConnect(){
+    try {
+      var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var url = proto + '//' + location.host + '/ws';
+      _rtWs = new WebSocket(url);
+      _rtWs.onmessage = _rtOnMessage;
+      _rtWs.onclose = function(){
+        _rtWs = null;
+        if (_rtReconnectTimer) clearTimeout(_rtReconnectTimer);
+        _rtReconnectTimer = setTimeout(_rtConnect, 4000);
+      };
+      _rtWs.onerror = function(){ try { _rtWs.close(); } catch(e){} };
+    } catch(e){
+      if (_rtReconnectTimer) clearTimeout(_rtReconnectTimer);
+      _rtReconnectTimer = setTimeout(_rtConnect, 5000);
+    }
+  }
+
+  if (location.protocol === 'https:' || location.hostname === 'localhost'){
+    _rtConnect();
+  }
   
 // Deep-link из бота: ?station=<id> — открыть карточку этой станции
 (function(){

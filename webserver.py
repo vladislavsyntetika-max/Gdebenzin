@@ -32,6 +32,10 @@ _TILE_UPSTREAMS = [
 _TILE_SESSION = None
 _TILE_HEADERS = {"User-Agent": "GDEBENZIN/1.0 (+https://azs-spb-bot-syntetika.amvera.io/)"}
 
+# ---------- WebSocket: real-time уведомления о чужих отметках ----------
+_WS_CLIENTS = set()       # set[web.WebSocketResponse]
+_WS_LOCK = asyncio.Lock()
+
 
 async def _get_tile_session():
     global _TILE_SESSION
@@ -1013,6 +1017,25 @@ async def handle_report_batch(request):
                 core.award_points(user_id, username, scout, "scout_bonus", station_id)
         core.record_daily_activity(user_id, username)
 
+    # Real-time broadcast: чужой отчёт
+    try:
+        st_obj = core.STATION_BY_ID.get(station_id)
+        if st_obj and not shadow_mode:
+            _evt = {
+                "type": "report",
+                "station_id": station_id,
+                "lat": st_obj[4],
+                "lng": st_obj[5],
+                "name": st_obj[1],
+                "user_id": user_id,
+                "fuels": {k: v for k, v in fuels.items() if k in fuel_keys and v in status_keys},
+                "flags": {k: bool(v) for k, v in flags.items() if k in flag_keys},
+                "ts": int(time.time()),
+            }
+            asyncio.create_task(_broadcast_event(_evt))
+    except Exception:
+        pass
+
     return web.json_response({"ok": True, "points_earned": points_earned, "scouting": scouting})
 
 
@@ -1414,10 +1437,42 @@ async def gzip_middleware(request, handler):
     resp.headers["Vary"] = "Accept-Encoding"
     return resp
 
+async def _broadcast_event(payload):
+    """Рассылает событие всем подключённым WebSocket-клиентам."""
+    if not _WS_CLIENTS:
+        return
+    msg = json.dumps(payload, ensure_ascii=False)
+    dead = []
+    for ws in list(_WS_CLIENTS):
+        try:
+            await ws.send_str(msg)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        _WS_CLIENTS.discard(ws)
+
+
+async def handle_ws(request):
+    """GET /ws — WebSocket для real-time событий карты."""
+    ws = web.WebSocketResponse(heartbeat=30)
+    await ws.prepare(request)
+    _WS_CLIENTS.add(ws)
+    try:
+        async for msg in ws:
+            # клиент может прислать {"type":"ping"} — игнорируем
+            pass
+    except Exception:
+        pass
+    finally:
+        _WS_CLIENTS.discard(ws)
+    return ws
+
+
 def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware, gzip_middleware])
     app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
+    app.router.add_get("/ws", handle_ws)
     app.router.add_get(r"/tiles/{z:\d+}/{x:\d+}/{y:\d+}.png", handle_tile)
     app.router.add_get("/leaflet.js", handle_leaflet_js)
     app.router.add_get("/leaflet.css", handle_leaflet_css)

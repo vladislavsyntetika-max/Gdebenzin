@@ -708,9 +708,22 @@
     background: var(--card); border: 1px solid var(--border); border-radius: 10px;
     padding: 6px 6px 6px; display: flex; flex-direction: column; gap: 4px;
   }
+  .fuel-head {
+    display: flex; align-items: center; justify-content: flex-start;
+    gap: 8px; padding: 2px 4px 2px;
+  }
+  .fuel-dot {
+    display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+    flex: 0 0 auto; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25);
+  }
   .fuel-name {
-    font-size: 19px; font-weight: 800; text-align: center;
+    font-size: 19px; font-weight: 800; text-align: left;
     color: var(--text); line-height: 1; letter-spacing: 0.5px;
+    flex: 0 0 auto;
+  }
+  .fuel-fresh {
+    font-size: 11px; color: var(--text-3); margin-left: auto;
+    white-space: nowrap;
   }
   .fuel-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .fuel-ok, .fuel-none {
@@ -2077,9 +2090,11 @@
       var cell = okBtn ? okBtn.closest('.fuel-cell') : null;
       if (cell){
         var fr = cell.querySelector('.fuel-fresh');
-        if (fr){
+        var fd = cell.querySelector('.fuel-dot');
+        if (fr || fd){
           var _fi = isKnown ? freshnessInfo(f.ts || 0) : freshnessInfo(0);
-          fr.innerHTML = '<span class="dot" style="background:'+_fi.color+'"></span>'+escapeHtml(_fi.label);
+          if (fr) fr.textContent = _fi.label;
+          if (fd) fd.style.background = _fi.color;
         }
       }
     });
@@ -2160,12 +2175,15 @@
 
       var _fi = isKnown ? freshnessInfo(f.ts || 0) : freshnessInfo(0);
       fuelsHtml += '<div class="fuel-cell">' +
-        '<div class="fuel-name">'+escapeHtml(shortLabel)+'</div>' +
+        '<div class="fuel-head">' +
+          '<span class="fuel-dot" style="background:'+_fi.color+'"></span>' +
+          '<span class="fuel-name">'+escapeHtml(shortLabel)+'</span>' +
+          '<span class="fuel-fresh">'+escapeHtml(_fi.label)+'</span>' +
+        '</div>' +
         '<div class="fuel-choices">' +
           '<button class="fuel-ok'+(isOk?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="ok">ЕСТЬ</button>' +
           '<button class="fuel-none'+(isNone?' current':'')+'" data-act="report" data-fuel="'+escapeHtml(key)+'" data-status="none">НЕТ</button>' +
         '</div>' +
-        '<div class="fuel-fresh"><span class="dot" style="background:'+_fi.color+'"></span>'+escapeHtml(_fi.label)+'</div>' +
       '</div>';
     });
     fuelsHtml += '</div>';

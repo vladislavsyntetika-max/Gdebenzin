@@ -40,6 +40,28 @@
     --text-2: #3A3F45;
     --text-3: #6B6F76;
   }
+  /* Светлая тема: чёрная обводка для контраста на солнце */
+  html.theme-light .fuel-cell,
+  html.theme-light .flag-btn,
+  html.theme-light .sh-delivery,
+  html.theme-light .action-btn,
+  html.theme-light .q-hint,
+  html.theme-light #top .ctrl,
+  html.theme-light #top .search,
+  html.theme-light #top .icon-btn {
+    border-color: #000 !important;
+    border-width: 2px !important;
+  }
+  html.theme-light .fuel-ok,
+  html.theme-light .fuel-none {
+    border-color: #000 !important;
+    border-width: 2px !important;
+  }
+  html.theme-light .fuel-ok.current,
+  html.theme-light .fuel-none.current {
+    border-color: #FFFFFF !important;
+    box-shadow: 0 0 0 2px #000, 0 0 12px rgba(0,0,0,.4) !important;
+  }
   html, body {
     position: fixed; inset: 0; width: 100%; height: 100%;
     margin: 0; padding: 0; overflow: hidden;

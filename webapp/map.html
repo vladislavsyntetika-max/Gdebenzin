@@ -4052,7 +4052,7 @@
       var html = '<div class="' + cls + '">' + (kind === 'none' ? '&#10007;' : '&#10003;') + '</div>';
       var icon = L.divIcon({ className: '', html: html, iconSize: [44, 44], iconAnchor: [22, 22] });
       var m = L.marker([lat, lng], { icon: icon, interactive: false, zIndexOffset: 3000 }).addTo(map);
-      setTimeout(function(){ try { map.removeLayer(m); } catch(e){} }, 1500);
+      setTimeout(function(){ try { map.removeLayer(m); } catch(e){} }, 10000);
     } catch(e){}
   }
 

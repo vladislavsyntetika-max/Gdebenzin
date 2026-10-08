@@ -2968,9 +2968,12 @@
         }),
         zIndexOffset: 2000
       });
+      // Чередуем верх/низ и добавляем вертикальный сдвиг для избежания наложения
       var dir = (idx % 2 === 0) ? 'top' : 'bottom';
+      var shift = 16 + Math.floor(idx / 2) * 22;
       big.bindTooltip(_rayDistanceLabel(km), {
-        permanent: true, direction: dir, offset: [0, dir === 'top' ? -16 : 16],
+        permanent: true, direction: dir,
+        offset: [0, dir === 'top' ? -shift : shift],
         className: 'ray-tip'
       });
       big.on('click', function(e){

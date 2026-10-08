@@ -365,7 +365,7 @@ def _load_geo_districts():
             continue
         try:
             import json as _json
-            with io.open(fp, encoding="utf-8") as f:
+            with open(fp, encoding="utf-8") as f:
                 gj = _json.load(f)
             for ft in gj.get("features", []):
                 name = (ft.get("properties") or {}).get("name")

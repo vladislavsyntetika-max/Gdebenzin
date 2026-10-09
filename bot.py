@@ -497,6 +497,44 @@ def init_db():
             )
         """)
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS route_tasks (
+                id TEXT PRIMARY KEY,
+                district TEXT NOT NULL,
+                plan_json TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                assigned_to INTEGER,
+                assigned_username TEXT,
+                assigned_ts INTEGER,
+                completed_json TEXT DEFAULT '[]',
+                bonus_awarded INTEGER DEFAULT 0,
+                created_ts INTEGER NOT NULL,
+                closed_ts INTEGER
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_route_tasks_status
+            ON route_tasks(status)
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS route_tasks (
+                id TEXT PRIMARY KEY,
+                district TEXT NOT NULL,
+                plan_json TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                assigned_to INTEGER,
+                assigned_username TEXT,
+                assigned_ts INTEGER,
+                completed_json TEXT DEFAULT '[]',
+                bonus_awarded INTEGER DEFAULT 0,
+                created_ts INTEGER NOT NULL,
+                closed_ts INTEGER
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_route_tasks_status
+            ON route_tasks(status)
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS custom_stations (
                 id TEXT PRIMARY KEY, name TEXT NOT NULL, net TEXT NOT NULL, addr TEXT,
                 lat REAL NOT NULL, lng REAL NOT NULL,
@@ -3281,6 +3319,346 @@ async def _send_daily_report(bot: Bot, day_str: str):
     await bot.send_message(ADMIN_ID, "\n".join(lines))
 
 
+# ==================== ROUTE TASKS (задания) ====================
+import uuid as _uuid
+import json as _json
+
+
+def create_route_task(district, plan, ttl_hours=36):
+    """Создаёт задание. Возвращает id или None."""
+    tid = _uuid.uuid4().hex[:12]
+    now = int(time.time())
+    conn = db()
+    try:
+        conn.execute(
+            "INSERT INTO route_tasks (id, district, plan_json, status, created_ts) VALUES (?,?,?,?,?)",
+            (tid, district, _json.dumps(plan, ensure_ascii=False), "open", now)
+        )
+        conn.commit()
+    except Exception:
+        log.exception("create_route_task failed")
+        return None
+    finally:
+        conn.close()
+    return tid
+
+
+def get_route_tasks(status_filter=("open", "in_progress"), limit=20):
+    """Возвращает список активных заданий, отсортированных по остроте."""
+    if not status_filter:
+        return []
+    placeholders = ",".join("?" * len(status_filter))
+    conn = db()
+    try:
+        rows = conn.execute(
+            f"SELECT id, district, plan_json, status, assigned_to, assigned_username, assigned_ts, completed_json, created_ts "
+            f"FROM route_tasks WHERE status IN ({placeholders}) ORDER BY created_ts DESC LIMIT ?",
+            (*status_filter, limit)
+        ).fetchall()
+    finally:
+        conn.close()
+    out = []
+    for r in rows:
+        try:
+            plan = _json.loads(r[2] or "{}")
+            completed = _json.loads(r[7] or "[]")
+        except Exception:
+            plan = {}
+            completed = []
+        out.append({
+            "id": r[0], "district": r[1], "plan": plan, "status": r[3],
+            "assigned_to": r[4], "assigned_username": r[5], "assigned_ts": r[6],
+            "completed": completed, "created_ts": r[8],
+        })
+    return out
+
+
+def take_route_task(task_id, user_id, username):
+    """Пробует взять задание. Возвращает True если успех."""
+    now = int(time.time())
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT status FROM route_tasks WHERE id = ?", (task_id,)
+        ).fetchone()
+        if not row or row[0] != "open":
+            return False
+        conn.execute(
+            "UPDATE route_tasks SET status='in_progress', assigned_to=?, assigned_username=?, assigned_ts=? WHERE id=? AND status='open'",
+            (user_id, username, now, task_id)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        log.exception("take_route_task failed")
+        return False
+    finally:
+        conn.close()
+
+
+def get_user_active_task(user_id):
+    """Задание, которое сейчас в работе у юзера. Или None."""
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT id, district, plan_json, completed_json, assigned_ts FROM route_tasks WHERE assigned_to = ? AND status='in_progress' ORDER BY assigned_ts DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    try:
+        plan = _json.loads(row[2] or "{}")
+        completed = _json.loads(row[3] or "[]")
+    except Exception:
+        plan = {}
+        completed = []
+    return {
+        "id": row[0], "district": row[1], "plan": plan,
+        "completed": completed, "assigned_ts": row[4],
+    }
+
+
+def mark_task_station_done(station_id, user_id):
+    """Если у юзера активное задание и station_id в нём — отмечает выполнение.
+    Возвращает (completed_count, total, task_closed)."""
+    task = get_user_active_task(user_id)
+    if not task:
+        return (0, 0, False)
+    plan = task.get("plan") or {}
+    points = plan.get("points") or []
+    valid_sids = [p.get("sid") for p in points]
+    if station_id not in valid_sids:
+        return (len(task["completed"]), len(points), False)
+    completed = list(task["completed"])
+    if station_id in completed:
+        return (len(completed), len(points), False)
+    completed.append(station_id)
+    total = len(points)
+    closed = (len(completed) >= total)
+    now = int(time.time())
+    conn = db()
+    try:
+        conn.execute(
+            "UPDATE route_tasks SET completed_json=?, status=CASE WHEN ? THEN 'done' ELSE status END, closed_ts=CASE WHEN ? THEN ? ELSE closed_ts END WHERE id=?",
+            (_json.dumps(completed), 1 if closed else 0, 1 if closed else 0, now, task["id"])
+        )
+        conn.commit()
+    except Exception:
+        log.exception("mark_task_station_done failed")
+        return (len(completed), total, False)
+    finally:
+        conn.close()
+    return (len(completed), total, closed)
+
+
+def route_task_text(task):
+    """Текст карточки задания."""
+    plan = task.get("plan") or {}
+    points = plan.get("points") or []
+    total = len(points)
+    done = len(task.get("completed") or [])
+    cov = plan.get("coverage_pct", "?")
+    avg_ov = plan.get("avg_overdue_days", "?")
+    km = plan.get("total_km", "?")
+    district = task.get("district", "—")
+    status = task.get("status", "open")
+
+    lines = []
+    if status == "open":
+        lines.append("\U0001F195 <b>\u041e\u0442\u043a\u0440\u044b\u0442\u043e\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0435</b>")
+    elif status == "in_progress":
+        who = task.get("assigned_username") or ("id" + str(task.get("assigned_to")))
+        lines.append("\U0001F513 <b>\u0412 \u0440\u0430\u0431\u043e\u0442\u0435 \u0443 " + str(who) + "</b>")
+
+    lines.append("")
+    lines.append("\U0001F5FA <b>" + district + "</b>")
+    lines.append("\u041f\u043e\u043a\u0440\u044b\u0442\u0438\u0435: <b>" + str(cov) + "%</b> \u00b7 \u0441\u0440\u0435\u0434. \u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430: <b>" + str(avg_ov) + " \u0434\u043d</b>")
+    lines.append("\u0422\u043e\u0447\u0435\u043a: <b>" + str(total) + "</b> \u00b7 \u0434\u043b\u0438\u043d\u0430: ~<b>" + str(km) + " \u043a\u043c</b>")
+    if status == "in_progress":
+        lines.append("\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441: <b>" + str(done) + " / " + str(total) + "</b>")
+    lines.append("")
+    for i, p in enumerate(points, 1):
+        mark = "\u2705 " if p.get("sid") in (task.get("completed") or []) else ""
+        lines.append(mark + str(i) + ". " + p.get("name", "?") + " \u2014 " + (p.get("addr") or "\u2014") + " (\u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430 " + str(p.get("overdue", "?")) + " \u0434\u043d)")
+    lines.append("")
+    if status == "open":
+        lines.append("\u2b50 \u0417\u0430 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u0435 \u0432\u0441\u0435\u0445 \u0442\u043e\u0447\u0435\u043a: <b>+50 \u0431\u0430\u043b\u043b\u043e\u0432</b>")
+        lines.append("\u26a1 \u041a\u0430\u0436\u0434\u044b\u0439 \u043e\u0442\u0447\u0451\u0442 \u043d\u0430 \u0441\u0442\u0430\u043d\u0446\u0438\u0438 \u0438\u0437 \u0437\u0430\u0434\u0430\u043d\u0438\u044f: <b>x3 \u0431\u0430\u043b\u043b\u0430</b>")
+    return "\n".join(lines)
+
+
+# ==================== ROUTE TASKS (задания) ====================
+import uuid as _uuid
+import json as _json
+
+
+def create_route_task(district, plan, ttl_hours=36):
+    """Создаёт задание. Возвращает id или None."""
+    tid = _uuid.uuid4().hex[:12]
+    now = int(time.time())
+    conn = db()
+    try:
+        conn.execute(
+            "INSERT INTO route_tasks (id, district, plan_json, status, created_ts) VALUES (?,?,?,?,?)",
+            (tid, district, _json.dumps(plan, ensure_ascii=False), "open", now)
+        )
+        conn.commit()
+    except Exception:
+        log.exception("create_route_task failed")
+        return None
+    finally:
+        conn.close()
+    return tid
+
+
+def get_route_tasks(status_filter=("open", "in_progress"), limit=20):
+    """Возвращает список активных заданий, отсортированных по остроте."""
+    if not status_filter:
+        return []
+    placeholders = ",".join("?" * len(status_filter))
+    conn = db()
+    try:
+        rows = conn.execute(
+            f"SELECT id, district, plan_json, status, assigned_to, assigned_username, assigned_ts, completed_json, created_ts "
+            f"FROM route_tasks WHERE status IN ({placeholders}) ORDER BY created_ts DESC LIMIT ?",
+            (*status_filter, limit)
+        ).fetchall()
+    finally:
+        conn.close()
+    out = []
+    for r in rows:
+        try:
+            plan = _json.loads(r[2] or "{}")
+            completed = _json.loads(r[7] or "[]")
+        except Exception:
+            plan = {}
+            completed = []
+        out.append({
+            "id": r[0], "district": r[1], "plan": plan, "status": r[3],
+            "assigned_to": r[4], "assigned_username": r[5], "assigned_ts": r[6],
+            "completed": completed, "created_ts": r[8],
+        })
+    return out
+
+
+def take_route_task(task_id, user_id, username):
+    """Пробует взять задание. Возвращает True если успех."""
+    now = int(time.time())
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT status FROM route_tasks WHERE id = ?", (task_id,)
+        ).fetchone()
+        if not row or row[0] != "open":
+            return False
+        conn.execute(
+            "UPDATE route_tasks SET status='in_progress', assigned_to=?, assigned_username=?, assigned_ts=? WHERE id=? AND status='open'",
+            (user_id, username, now, task_id)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        log.exception("take_route_task failed")
+        return False
+    finally:
+        conn.close()
+
+
+def get_user_active_task(user_id):
+    """Задание, которое сейчас в работе у юзера. Или None."""
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT id, district, plan_json, completed_json, assigned_ts FROM route_tasks WHERE assigned_to = ? AND status='in_progress' ORDER BY assigned_ts DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    try:
+        plan = _json.loads(row[2] or "{}")
+        completed = _json.loads(row[3] or "[]")
+    except Exception:
+        plan = {}
+        completed = []
+    return {
+        "id": row[0], "district": row[1], "plan": plan,
+        "completed": completed, "assigned_ts": row[4],
+    }
+
+
+def mark_task_station_done(station_id, user_id):
+    """Если у юзера активное задание и station_id в нём — отмечает выполнение.
+    Возвращает (completed_count, total, task_closed)."""
+    task = get_user_active_task(user_id)
+    if not task:
+        return (0, 0, False)
+    plan = task.get("plan") or {}
+    points = plan.get("points") or []
+    valid_sids = [p.get("sid") for p in points]
+    if station_id not in valid_sids:
+        return (len(task["completed"]), len(points), False)
+    completed = list(task["completed"])
+    if station_id in completed:
+        return (len(completed), len(points), False)
+    completed.append(station_id)
+    total = len(points)
+    closed = (len(completed) >= total)
+    now = int(time.time())
+    conn = db()
+    try:
+        conn.execute(
+            "UPDATE route_tasks SET completed_json=?, status=CASE WHEN ? THEN 'done' ELSE status END, closed_ts=CASE WHEN ? THEN ? ELSE closed_ts END WHERE id=?",
+            (_json.dumps(completed), 1 if closed else 0, 1 if closed else 0, now, task["id"])
+        )
+        conn.commit()
+    except Exception:
+        log.exception("mark_task_station_done failed")
+        return (len(completed), total, False)
+    finally:
+        conn.close()
+    return (len(completed), total, closed)
+
+
+def route_task_text(task):
+    """Текст карточки задания."""
+    plan = task.get("plan") or {}
+    points = plan.get("points") or []
+    total = len(points)
+    done = len(task.get("completed") or [])
+    cov = plan.get("coverage_pct", "?")
+    avg_ov = plan.get("avg_overdue_days", "?")
+    km = plan.get("total_km", "?")
+    district = task.get("district", "—")
+    status = task.get("status", "open")
+
+    lines = []
+    if status == "open":
+        lines.append("\U0001F195 <b>\u041e\u0442\u043a\u0440\u044b\u0442\u043e\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0435</b>")
+    elif status == "in_progress":
+        who = task.get("assigned_username") or ("id" + str(task.get("assigned_to")))
+        lines.append("\U0001F513 <b>\u0412 \u0440\u0430\u0431\u043e\u0442\u0435 \u0443 " + str(who) + "</b>")
+
+    lines.append("")
+    lines.append("\U0001F5FA <b>" + district + "</b>")
+    lines.append("\u041f\u043e\u043a\u0440\u044b\u0442\u0438\u0435: <b>" + str(cov) + "%</b> \u00b7 \u0441\u0440\u0435\u0434. \u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430: <b>" + str(avg_ov) + " \u0434\u043d</b>")
+    lines.append("\u0422\u043e\u0447\u0435\u043a: <b>" + str(total) + "</b> \u00b7 \u0434\u043b\u0438\u043d\u0430: ~<b>" + str(km) + " \u043a\u043c</b>")
+    if status == "in_progress":
+        lines.append("\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441: <b>" + str(done) + " / " + str(total) + "</b>")
+    lines.append("")
+    for i, p in enumerate(points, 1):
+        mark = "\u2705 " if p.get("sid") in (task.get("completed") or []) else ""
+        lines.append(mark + str(i) + ". " + p.get("name", "?") + " \u2014 " + (p.get("addr") or "\u2014") + " (\u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430 " + str(p.get("overdue", "?")) + " \u0434\u043d)")
+    lines.append("")
+    if status == "open":
+        lines.append("\u2b50 \u0417\u0430 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u0435 \u0432\u0441\u0435\u0445 \u0442\u043e\u0447\u0435\u043a: <b>+50 \u0431\u0430\u043b\u043b\u043e\u0432</b>")
+        lines.append("\u26a1 \u041a\u0430\u0436\u0434\u044b\u0439 \u043e\u0442\u0447\u0451\u0442 \u043d\u0430 \u0441\u0442\u0430\u043d\u0446\u0438\u0438 \u0438\u0437 \u0437\u0430\u0434\u0430\u043d\u0438\u044f: <b>x3 \u0431\u0430\u043b\u043b\u0430</b>")
+    return "\n".join(lines)
+
+
 # ==================== ROUTE PLANNER ====================
 import math as _math
 from xml.sax.saxutils import escape as _xml_escape
@@ -3614,6 +3992,147 @@ async def on_route_cmd(message: Message):
     ]])
     await message.answer(text, reply_markup=kb)
     await message.answer_document(doc, caption="\U0001F4E5 GPX \u2014 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043b\u044e\u0431\u043e\u043c \u043d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440\u0435")
+
+
+@dp.message(Command("задания", "tasks"))
+async def on_tasks_cmd(message: Message):
+    tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=10)
+    if not tasks:
+        await message.answer("\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0437\u0430\u0434\u0430\u043d\u0438\u0439. \u0421\u043a\u043e\u0440\u043e \u0431\u0443\u0434\u0443\u0442 \u2014 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u043a\u0430\u0436\u0434\u044b\u0439 \u0434\u0435\u043d\u044c \u0432 09:00.")
+        return
+    lines = ["\U0001F3AF <b>\u0417\u0430\u0434\u0430\u043d\u0438\u044f \u043d\u0430 \u043e\u0431\u044a\u0435\u0437\u0434</b>", ""]
+    for t in tasks[:8]:
+        plan = t.get("plan") or {}
+        points = plan.get("points") or []
+        status_icon = "\U0001F195" if t["status"] == "open" else "\U0001F513"
+        who = ""
+        if t["status"] == "in_progress":
+            who = " \u00b7 " + (t["assigned_username"] or ("id" + str(t["assigned_to"])))
+        lines.append(status_icon + " <b>" + t["district"] + "</b>" + who)
+        lines.append("   " + str(len(points)) + " \u0442\u043e\u0447\u0435\u043a, ~" + str(plan.get("total_km", "?")) + " \u043a\u043c, \u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430 " + str(plan.get("avg_overdue_days", "?")) + " \u0434\u043d")
+    lines.append("")
+    lines.append("\u0422\u0430\u043f\u043d\u0438 \u2014 \u0432\u0437\u044f\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435 \u0438 \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u0440\u043e\u0431\u043d\u043e\u0441\u0442\u0438.")
+
+    kb_rows = []
+    for t in tasks[:8]:
+        if t["status"] != "open":
+            continue
+        label = "\U0001F3AF " + t["district"]
+        if len(label) > 40:
+            label = label[:38] + "\u2026"
+        kb_rows.append([InlineKeyboardButton(text=label, callback_data="rt:show:" + t["id"])])
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows) if kb_rows else None
+    await message.answer("\n".join(lines), reply_markup=kb)
+
+
+@dp.callback_query(F.data.startswith("rt:"))
+async def cb_route_task(cq: CallbackQuery):
+    parts = cq.data.split(":", 2)
+    action = parts[1] if len(parts) > 1 else ""
+    if action == "show" and len(parts) == 3:
+        tid = parts[2]
+        tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
+        task = next((t for t in tasks if t["id"] == tid), None)
+        if not task:
+            await cq.answer("\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", show_alert=True)
+            return
+        text = route_task_text(task)
+        kb_rows = []
+        if task["status"] == "open":
+            kb_rows.append([InlineKeyboardButton(text="\U0001F3AF \u0412\u0437\u044f\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:take:" + tid)])
+        elif task["status"] == "in_progress" and task["assigned_to"] == cq.from_user.id:
+            kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
+        kb_rows.append([InlineKeyboardButton(text="\u2b05\uFE0F \u041a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="rt:list")])
+        try:
+            await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+        except Exception:
+            await cq.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+        await cq.answer()
+        return
+
+    if action == "list":
+        # перерисовываем список
+        tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=10)
+        if not tasks:
+            await cq.answer("\u041d\u0435\u0442 \u0437\u0430\u0434\u0430\u043d\u0438\u0439", show_alert=True)
+            return
+        lines = ["\U0001F3AF <b>\u0417\u0430\u0434\u0430\u043d\u0438\u044f</b>", ""]
+        for t in tasks[:8]:
+            plan = t.get("plan") or {}
+            points = plan.get("points") or []
+            status_icon = "\U0001F195" if t["status"] == "open" else "\U0001F513"
+            who = (" \u00b7 " + (t["assigned_username"] or ("id" + str(t["assigned_to"])))) if t["status"] == "in_progress" else ""
+            lines.append(status_icon + " <b>" + t["district"] + "</b>" + who)
+            lines.append("   " + str(len(points)) + " \u0442\u043e\u0447\u0435\u043a, ~" + str(plan.get("total_km", "?")) + " \u043a\u043c")
+        kb_rows = []
+        for t in tasks[:8]:
+            if t["status"] != "open":
+                continue
+            label = "\U0001F3AF " + t["district"]
+            if len(label) > 40:
+                label = label[:38] + "\u2026"
+            kb_rows.append([InlineKeyboardButton(text=label, callback_data="rt:show:" + t["id"])])
+        kb_rows.append([InlineKeyboardButton(text="\u2b05\uFE0F \u0412 \u043c\u0435\u043d\u044e", callback_data="menu")])
+        await cq.message.edit_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+        await cq.answer()
+        return
+
+    if action == "take" and len(parts) == 3:
+        tid = parts[2]
+        uid = cq.from_user.id
+        uname = format_display(cq.from_user.username or cq.from_user.first_name, uid)
+        ok = take_route_task(tid, uid, uname)
+        if not ok:
+            await cq.answer("\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0443\u0436\u0435 \u0432\u0437\u044f\u0442\u043e \u043a\u0435\u043c-\u0442\u043e \u0434\u0440\u0443\u0433\u0438\u043c", show_alert=True)
+            return
+        await cq.answer("\u2705 \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0437\u044f\u0442\u043e!")
+        # Обновить сообщение на деталь задания
+        tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
+        task = next((t for t in tasks if t["id"] == tid), None)
+        if task:
+            text = route_task_text(task)
+            kb_rows = [[InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)]]
+            try:
+                await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+            except Exception:
+                pass
+        return
+
+    if action == "close" and len(parts) == 3:
+        tid = parts[2]
+        uid = cq.from_user.id
+        conn = db()
+        try:
+            row = conn.execute(
+                "SELECT assigned_to, completed_json FROM route_tasks WHERE id=?", (tid,)
+            ).fetchone()
+            if not row or row[0] != uid:
+                await cq.answer("\u041d\u0435 \u0442\u0432\u043e\u0451 \u0437\u0430\u0434\u0430\u043d\u0438\u0435", show_alert=True)
+                return
+            try:
+                completed = _json.loads(row[1] or "[]")
+            except Exception:
+                completed = []
+            conn.execute(
+                "UPDATE route_tasks SET status='done', closed_ts=? WHERE id=?",
+                (int(time.time()), tid)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        # Бонус +50 за закрытие
+        try:
+            award_points(uid, format_display(cq.from_user.username or cq.from_user.first_name, uid), 50, "route_done", tid)
+        except Exception:
+            pass
+        await cq.answer("\U0001F389 +50 \u0431\u0430\u043b\u043b\u043e\u0432!")
+        try:
+            await cq.message.edit_text("\u2705 <b>\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0437\u0430\u043a\u0440\u044b\u0442\u043e</b>\n\n\u0421\u043f\u0430\u0441\u0438\u0431\u043e! +50 \u0431\u0430\u043b\u043b\u043e\u0432.", parse_mode="HTML")
+        except Exception:
+            pass
+        return
+
+    await cq.answer()
 
 
 async def daily_dups_task(bot: Bot):

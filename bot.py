@@ -2052,6 +2052,15 @@ async def on_dashboard_cmd(message: Message):
     await message.answer("\n".join(lines))
 
 
+SPB_DISTRICTS = {
+    "Адмиралтейский", "Василеостровский", "Выборгский", "Калининский",
+    "Кировский", "Колпинский", "Красногвардейский", "Красносельский",
+    "Кронштадтский", "Курортный", "Московский", "Невский",
+    "Петроградский", "Петродворцовый", "Приморский", "Пушкинский",
+    "Фрунзенский", "Центральный",
+}
+
+
 @dp.message(Command("районы", "districts"))
 async def on_districts_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:
@@ -2059,45 +2068,150 @@ async def on_districts_cmd(message: Message):
         return
     now = int(time.time())
     d7 = now - 7 * 86400
-    d1 = now - 86400
     conn = db()
     try:
         _dist_rows = conn.execute(
-            "SELECT station_id, COUNT(*), MAX(ts) FROM feed WHERE ts > ? GROUP BY station_id",
+            "SELECT station_id, COUNT(*), MAX(ts), COUNT(DISTINCT CASE WHEN user_id>0 THEN user_id END) "
+            "FROM feed WHERE ts > ? GROUP BY station_id",
+            (d7,)
+        ).fetchall()
+        _fuel_rows = conn.execute(
+            "SELECT station_id, fuel, status FROM reports WHERE ts > ?",
             (d7,)
         ).fetchall()
     finally:
         conn.close()
+
+    # Собираем инфу по всем районам
     district_stats = {}
-    for _sid, _cnt, _last in _dist_rows:
+    all_districts = set()
+    for _st in STATIONS:
+        sid, name, net, addr, lat, lng = _st[0], _st[1], _st[2], _st[3], _st[4], _st[5]
+        try:
+            _dn = district_for_station(lat, lng)
+        except Exception:
+            _dn = None
+        if not _dn:
+            continue
+        all_districts.add(_dn)
+        if _dn not in district_stats:
+            district_stats[_dn] = {
+                "reports": 0, "active_stations": set(), "users": 0,
+                "total_stations": 0, "top_stations": [],
+            }
+        district_stats[_dn]["total_stations"] += 1
+    try:
+        _custom = get_custom_stations()
+    except Exception:
+        _custom = []
+    for row in _custom:
+        sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
+        try:
+            _dn = district_for_station(lat, lng)
+        except Exception:
+            _dn = None
+        if not _dn:
+            continue
+        all_districts.add(_dn)
+        if _dn not in district_stats:
+            district_stats[_dn] = {
+                "reports": 0, "active_stations": set(), "users": 0,
+                "total_stations": 0, "top_stations": [],
+            }
+        district_stats[_dn]["total_stations"] += 1
+
+    # Отчёты и юзеры
+    for _sid, _cnt, _last, _ucnt in _dist_rows:
         _st = STATION_BY_ID.get(_sid)
         if not _st:
             continue
         try:
-            _dname = district_for_station(_st[4], _st[5])
+            _dn = district_for_station(_st[4], _st[5])
         except Exception:
-            _dname = None
-        if not _dname:
+            _dn = None
+        if not _dn:
             continue
-        if _dname not in district_stats:
-            district_stats[_dname] = {"reports": 0, "stations": set(), "last": 0}
-        district_stats[_dname]["reports"] += _cnt
-        district_stats[_dname]["stations"].add(_sid)
-        if _last and _last > district_stats[_dname]["last"]:
-            district_stats[_dname]["last"] = _last
+        if _dn not in district_stats:
+            district_stats[_dn] = {
+                "reports": 0, "active_stations": set(), "users": 0,
+                "total_stations": 0, "top_stations": [],
+            }
+        district_stats[_dn]["reports"] += _cnt
+        district_stats[_dn]["active_stations"].add(_sid)
+        district_stats[_dn]["users"] += (_ucnt or 0)
+        district_stats[_dn]["top_stations"].append((_cnt, _st[1], _sid))
+
+    # Дефицит: считаем по району для каждого топлива % "нет"
+    deficit = {}  # district -> fuel -> [ok, none]
+    for _sid, _fuel, _status in _fuel_rows:
+        _st = STATION_BY_ID.get(_sid)
+        if not _st:
+            continue
+        try:
+            _dn = district_for_station(_st[4], _st[5])
+        except Exception:
+            continue
+        if not _dn:
+            continue
+        if _dn not in deficit:
+            deficit[_dn] = {}
+        if _fuel not in deficit[_dn]:
+            deficit[_dn][_fuel] = [0, 0]
+        if _status in ("ok", "low"):
+            deficit[_dn][_fuel][0] += 1
+        elif _status == "none":
+            deficit[_dn][_fuel][1] += 1
+
     if not district_stats:
-        await message.answer("\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0437\u0430 7 \u0434\u043d\u0435\u0439.")
+        await message.answer("Нет данных.")
         return
-    total_reports = sum(v["reports"] for v in district_stats.values())
-    total_stations = sum(len(v["stations"]) for v in district_stats.values())
-    lines = ["\U0001F5FA <b>\u0420\u0430\u0439\u043e\u043d\u044b \u00b7 \u0437\u0430 7 \u0434\u043d\u0435\u0439</b>", ""]
-    lines.append("\u0412\u0441\u0435\u0433\u043e: <b>" + str(total_reports) + "</b> \u043e\u0442\u0447 \u043f\u043e <b>" + str(total_stations) + "</b> \u0410\u0417\u0421")
+
+    # Сводка
+    spb_keys = [k for k in district_stats.keys() if k in SPB_DISTRICTS]
+    lo_keys = [k for k in district_stats.keys() if k not in SPB_DISTRICTS]
+    spb_rep = sum(district_stats[k]["reports"] for k in spb_keys)
+    lo_rep = sum(district_stats[k]["reports"] for k in lo_keys)
+    spb_st = sum(district_stats[k]["total_stations"] for k in spb_keys)
+    lo_st = sum(district_stats[k]["total_stations"] for k in lo_keys)
+    total_rep = spb_rep + lo_rep
+    total_st = spb_st + lo_st
+
+    lines = ["\U0001F5FA <b>\u0420\u0430\u0439\u043e\u043d\u044b \u00b7 7 \u0434\u043d\u0435\u0439</b>", ""]
+    lines.append("<b>\u0421\u041f\u0431:</b> " + str(spb_rep) + " \u043e\u0442\u0447 \u00b7 " + str(spb_st) + " \u0410\u0417\u0421")
+    lines.append("<b>\u041b\u041e:</b> " + str(lo_rep) + " \u043e\u0442\u0447 \u00b7 " + str(lo_st) + " \u0410\u0417\u0421")
+    lines.append("\u0412\u0441\u0435\u0433\u043e: " + str(total_rep) + " \u043e\u0442\u0447 \u00b7 " + str(total_st) + " \u0410\u0417\u0421")
     lines.append("")
+
+    # Все районы, отсортированные по отчётам
     ranked = sorted(district_stats.items(), key=lambda kv: kv[1]["reports"], reverse=True)
-    medals = ["\U0001F947", "\U0001F948", "\U0001F949"]
     for i, (_dn, _ds) in enumerate(ranked):
-        mark = medals[i] if i < 3 else str(i + 1) + "."
-        lines.append(mark + " " + _dn + " \u2014 <b>" + str(_ds["reports"]) + "</b> \u043e\u0442\u0447 \u00b7 " + str(len(_ds["stations"])) + " \u0410\u0417\u0421")
+        total_d = _ds["total_stations"]
+        active_d = len(_ds["active_stations"])
+        coverage = round(active_d / total_d * 100) if total_d else 0
+        # Определяем лидера по дефициту
+        d_info = deficit.get(_dn, {})
+        worst = None
+        for fk, (ok_c, none_c) in d_info.items():
+            tot = ok_c + none_c
+            if tot < 3:
+                continue
+            pct = round(none_c / tot * 100)
+            if worst is None or pct > worst[1]:
+                worst = (fk, pct)
+        fuel_short = FUEL_SHORT
+        worst_str = ""
+        if worst and worst[1] >= 40:
+            worst_str = " \u26a0 " + fuel_short.get(worst[0], worst[0]) + " " + str(worst[1]) + "% \u043d\u0435\u0442"
+
+        lines.append("<b>" + str(i + 1) + ". " + _dn + "</b>")
+        lines.append("  " + str(_ds["reports"]) + " \u043e\u0442\u0447 \u00b7 " + str(active_d) + "/" + str(total_d) + " \u0410\u0417\u0421 (" + str(coverage) + "%)" + worst_str)
+
+        # Топ-3 станции в районе
+        _ds["top_stations"].sort(reverse=True)
+        for _cnt, _name, _sid in _ds["top_stations"][:3]:
+            lines.append("    \u2022 " + _name + " \u2014 " + str(_cnt))
+        lines.append("")
+
     await message.answer("\n".join(lines))
 
 

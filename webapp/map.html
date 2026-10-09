@@ -1044,7 +1044,6 @@
   <div class="row">
     <select id="net-select" class="ctrl"><option value="all">Все сети</option></select>
     <select id="fuel-select" class="ctrl"><option value="all">Топливо</option></select>
-    <input id="search-input" class="search" type="search" placeholder="Поиск…" autocomplete="off">
     <button id="fav-toggle" class="icon-btn" title="Избранное">★</button>
     <button id="sound-toggle" class="icon-btn" title="Sound" style="display:none;">&#128266;</button>
     <button id="theme-toggle" class="icon-btn" title="Тема" style="display:none;">&#9728;&#65039;</button>
@@ -2957,7 +2956,6 @@
     if (markerCluster) markerCluster.clearLayers();
     else Object.keys(markers).forEach(function(k){ map.removeLayer(markers[k]); });
     markers = {};
-    var q = searchQuery.trim().toLowerCase();
     var reported = 0;
 
     stationsData.forEach(function(s){
@@ -2965,7 +2963,6 @@
       if (st !== 'unknown') reported++;
       if (activeNet !== 'all' && s.net !== activeNet) return;
       if (favOnly && !isFav(s.id)) return;
-      if (q && (s.addr + ' ' + s.name).toLowerCase().indexOf(q) === -1) return;
 
       var m = L.marker([s.lat, s.lng], { icon: makeIcon(STATUS_COLOR[st], getFreshInfo(s), queueLevelFor(s), s) });
       m._st = st;
@@ -3203,7 +3200,6 @@
       showRayPin();
     }
   });
-  document.getElementById('search-input').addEventListener('input', function(e){ searchQuery = e.target.value; renderMarkers(); });
   document.getElementById('fav-toggle').addEventListener('click', function(e){
     favOnly = !favOnly; e.currentTarget.classList.toggle('active', favOnly); renderMarkers();
   });
@@ -3211,7 +3207,7 @@
     document.getElementById('net-select').value = 'all';
     document.getElementById('fuel-select').value = 'all';
     document.getElementById('search-input').value = '';
-    activeNet='all'; activeFuel='all'; searchQuery='';
+    activeNet='all'; activeFuel='all';
     renderMarkers();
     var pts = stationsData.map(function(s){ return [s.lat, s.lng]; });
     if (pts.length) map.fitBounds(pts, { padding:[30,30] });

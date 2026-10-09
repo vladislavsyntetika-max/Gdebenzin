@@ -507,6 +507,17 @@
   .nearby-header h3 { margin: 0; font-size: 19px; font-weight: 700; }
   .nearby-close { width: 40px; height: 40px; border-radius: 50%; background: var(--btn); color: var(--text); border: none; font-size: 22px; cursor: pointer; padding: 0; font-family: inherit; display: flex; align-items: center; justify-content: center; }
   .nearby-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 12px; }
+  .nearby-sub {
+    font-size: 12px; color: var(--text-3); font-weight: 500;
+    margin-top: 2px;
+  }
+  .ni-fuels { display: inline-block; margin-left: 6px; font-weight: 600; }
+  .ni-fuels .fv { display: inline-block; margin-right: 4px; }
+  .ni-fuels .fv.ok  { color: #1B8A4A; }
+  .ni-fuels .fv.no  { color: #C62828; }
+  .ni-fuels .fv.un  { color: var(--text-3); }
+  .ni-fresh { color: var(--text-3); font-size: 11px; margin-left: 6px; }
+
   .nearby-empty { padding: 32px 20px; text-align: center; color: var(--text-3); font-size: 15px; line-height: 1.5; }
   .nearby-item { padding: 16px 18px; display: flex; gap: 12px; align-items: center; cursor: pointer; border-bottom: 1px solid #1F2226; }
   .nearby-item:last-child { border-bottom: none; }
@@ -1095,7 +1106,10 @@
 <div class="nearby-sheet" id="nearby-sheet">
   <div class="nearby-handle"></div>
   <div class="nearby-header">
-    <h3>🎯 Что рядом</h3>
+    <div>
+      <h3>🎯 Рядом с тобой</h3>
+      <div class="nearby-sub" id="nearby-sub"></div>
+    </div>
     <button class="nearby-close" id="nearby-close" aria-label="Закрыть">✕</button>
   </div>
   <div class="nearby-list" id="nearby-list"></div>
@@ -3653,50 +3667,86 @@
 
   function openNearbySheet(){
     var from = lastPosition;
-    if (!from){ toast('Включите геолокацию'); return; }
+    if (!from){ toast('\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u0435 \u0433\u0435\u043e\u043b\u043e\u043a\u0430\u0446\u0438\u044e'); return; }
     var list = document.getElementById('nearby-list');
+    var subEl = document.getElementById('nearby-sub');
     list.innerHTML = '';
-    // Группируем: 1) с топливом, 2) без данных. Внутри группы — по расстоянию.
-    var order = { ok: 0, low: 0, unknown: 1, none: 9 };
-    var scored = stationsData.map(function(s){
+
+    var fuelFilter = (activeFuel && activeFuel !== 'all') ? activeFuel : null;
+    var fuelLabel = fuelFilter ? (FUEL_SHORT[fuelFilter] || fuelFilter) : null;
+    subEl.textContent = fuelFilter
+      ? ('\u0442\u043e\u043b\u044c\u043a\u043e \u0441 \u0442\u043e\u043f\u043b\u0438\u0432\u043e\u043c ' + fuelLabel)
+      : '\u0432\u0441\u0435 \u0431\u043b\u0438\u0436\u0430\u0439\u0448\u0438\u0435 \u0410\u0417\u0421';
+
+    var items = stationsData.map(function(s){
       var d = haversine(from.lat, from.lng, s.lat, s.lng);
-      var st = statusFor(s.fuels, 'all');
-      return { s: s, dist: d, status: st };
+      var stAny = statusFor(s.fuels, 'all');
+      var stF = fuelFilter ? statusFor(s.fuels, fuelFilter) : null;
+      return { s: s, dist: d, stAny: stAny, stF: stF };
     }).filter(function(x){
       if (x.dist > NEARBY_MAX_KM * 1000) return false;
-      if (x.status === 'none') return false;
+      // При активном фильтре — только станции, где это топливо есть (не unknown)
+      if (fuelFilter) {
+        if (x.stF !== 'ok' && x.stF !== 'low') return false;
+      } else {
+        if (x.stAny === 'none') return false;
+      }
       return true;
-    }).sort(function(a, b){
-      var oa = order[a.status] !== undefined ? order[a.status] : 5;
-      var ob = order[b.status] !== undefined ? order[b.status] : 5;
-      if (oa !== ob) return oa - ob;
-      return a.dist - b.dist;
-    }).slice(0, isTelegramWebApp ? 12 : 3);
+    }).sort(function(a, b){ return a.dist - b.dist; })
+      .slice(0, 15);
 
-    if (!scored.length){
-      list.innerHTML = '<div class="nearby-empty">Нет станций в радиусе ' + NEARBY_MAX_KM + ' км.</div>';
+    if (!items.length){
+      var msg = fuelFilter
+        ? '\u041d\u0435\u0442 \u0441\u0442\u0430\u043d\u0446\u0438\u0439 \u0441 ' + escapeHtml(fuelLabel) + ' \u0432 \u0440\u0430\u0434\u0438\u0443\u0441\u0435 ' + NEARBY_MAX_KM + ' \u043a\u043c.'
+        : '\u041d\u0435\u0442 \u0441\u0442\u0430\u043d\u0446\u0438\u0439 \u0432 \u0440\u0430\u0434\u0438\u0443\u0441\u0435 ' + NEARBY_MAX_KM + ' \u043a\u043c.';
+      list.innerHTML = '<div class="nearby-empty">' + msg + '</div>';
     } else {
-      scored.forEach(function(x){
+      items.forEach(function(x){
         var s = x.s;
-        var st = statusFor(s.fuels, 'all');
+        var st = fuelFilter ? x.stF : x.stAny;
         var color = STATUS_COLOR[st] || 'var(--text-3)';
-        var distStr = x.dist < 950 ? Math.round(x.dist) + ' м' : (x.dist / 1000).toFixed(1) + ' км';
-        var fu = [];
-        for (var fk in s.fuels){ if (s.fuels[fk].status === 'ok' && !s.fuels[fk].stale) fu.push(FUEL_SHORT[fk] || fk); }
-        var fuelLine = fu.length ? fu.join(' · ') + ' ✅' : 'нет данных';
+        var distStr = x.dist < 950 ? Math.round(x.dist) + ' \u043c' : (x.dist / 1000).toFixed(1) + ' \u043a\u043c';
+
+        // Компактные статусы топлива: 92✓ 95✗ ДТ✓ 98·
+        var fuelBits = '';
+        var order = ['f92', 'f95', 'dt', 'f98'];
+        order.forEach(function(fk){
+          var f = (s.fuels && s.fuels[fk]) || null;
+          if (!f) return;
+          var cls, mark;
+          var known = f.status && f.status !== 'unknown' && f.fresh_level !== 'gone';
+          if (known && (f.status === 'ok' || f.status === 'low')){ cls = 'ok'; mark = '\u2713'; }
+          else if (known && f.status === 'none'){ cls = 'no'; mark = '\u2717'; }
+          else { cls = 'un'; mark = '\u00b7'; }
+          fuelBits += '<span class="fv ' + cls + '">' + (FUEL_SHORT[fk] || fk) + mark + '</span>';
+        });
+
+        // Свежесть: самый свежий ts среди топлив
+        var newestTs = 0;
+        for (var fk in s.fuels){ if (s.fuels[fk].ts && s.fuels[fk].ts > newestTs) newestTs = s.fuels[fk].ts; }
+        var freshStr = newestTs ? timeAgoShort(newestTs) : '';
+
         var flags = [];
-        if (s.flags && s.flags.flag_queue_1 && s.flags.flag_queue_1.on) flags.push('🚗');
-        if (s.flags && s.flags.flag_queue_2 && s.flags.flag_queue_2.on) flags.push('🚗🚗');
-        if (s.flags && s.flags.flag_queue_3 && s.flags.flag_queue_3.on) flags.push('🚗🚗🚗');
-        if (s.flags && s.flags.flag_delivery && s.flags.flag_delivery.on) flags.push('🚛');
+        if (s.flags && s.flags.flag_delivery && s.flags.flag_delivery.on) flags.push('\U0001F69B');
+        if (s.flags && s.flags.flag_queue_3 && s.flags.flag_queue_3.on) flags.push('\U0001F697\U0001F697\U0001F697');
+        else if (s.flags && s.flags.flag_queue_2 && s.flags.flag_queue_2.on) flags.push('\U0001F697\U0001F697');
+        else if (s.flags && s.flags.flag_queue_1 && s.flags.flag_queue_1.on) flags.push('\U0001F697');
         var flagStr = flags.length ? ' ' + flags.join(' ') : '';
+
         var item = document.createElement('div');
         item.className = 'nearby-item';
         item.innerHTML = '<span class="ni-dot" style="background:'+color+'"></span>' +
           '<div class="ni-main"><div class="ni-name">'+escapeHtml(s.name)+'</div>' +
-          '<div class="ni-meta">'+escapeHtml(s.addr)+' · '+escapeHtml(fuelLine)+flagStr+'</div></div>' +
+          '<div class="ni-meta">'+escapeHtml(s.addr)+'<span class="ni-fuels">'+fuelBits+'</span>' +
+          (freshStr ? '<span class="ni-fresh">'+escapeHtml(freshStr)+'</span>' : '') +
+          flagStr + '</div></div>' +
           '<div class="ni-dist">'+distStr+'</div>';
         item.addEventListener('click', function(){
+          closeNearbySheet();
+          if (from) openRoute(s.lat, s.lng);
+        });
+        item.addEventListener('contextmenu', function(e){
+          e.preventDefault();
           closeNearbySheet();
           map.setView([s.lat, s.lng], 16, { animate:true });
           setTimeout(function(){ openSheet(s, false); }, 400);
@@ -3705,6 +3755,17 @@
       });
     }
     document.getElementById('nearby-sheet').classList.add('show');
+  }
+
+  function timeAgoShort(ts){
+    var d = Math.max(0, Math.floor(Date.now()/1000) - ts);
+    if (d < 60) return '\u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u043e';
+    var m = Math.floor(d/60);
+    if (m < 60) return m + ' \u043c\u0438\u043d';
+    var h = Math.floor(m/60);
+    if (h < 24) return h + ' \u0447';
+    var dd = Math.floor(h/24);
+    return dd + ' \u0434\u043d';
   }
 
   function closeNearbySheet(){ document.getElementById('nearby-sheet').classList.remove('show'); }

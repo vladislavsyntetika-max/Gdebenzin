@@ -507,6 +507,23 @@
   .nearby-header h3 { margin: 0; font-size: 19px; font-weight: 700; }
   .nearby-close { width: 40px; height: 40px; border-radius: 50%; background: var(--btn); color: var(--text); border: none; font-size: 22px; cursor: pointer; padding: 0; font-family: inherit; display: flex; align-items: center; justify-content: center; }
   .nearby-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 12px; }
+  #heatmap-legend {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: 148px; z-index: 900;
+    background: var(--panel); opacity: 0.96; backdrop-filter: blur(6px);
+    border: 1px solid var(--border-2); border-radius: 12px;
+    padding: 8px 12px; font-size: 11px; color: var(--text);
+    pointer-events: none; white-space: nowrap;
+    display: none; flex-direction: column; gap: 6px; max-width: 92vw;
+  }
+  #heatmap-legend.show { display: flex; }
+  #heatmap-legend .hml-bar {
+    display: flex; height: 10px; border-radius: 5px; overflow: hidden;
+    width: 260px; max-width: 80vw;
+  }
+  #heatmap-legend .hml-bar span { flex: 1; }
+  #heatmap-legend .hml-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-3); }
+  #heatmap-legend .hml-row b { color: var(--text); font-weight: 700; }
   .nearby-sub {
     font-size: 12px; color: var(--text-3); font-weight: 500;
     margin-top: 2px;
@@ -1055,6 +1072,24 @@
   <a class="tgb-go" id="tg-banner-go" href="https://t.me/naidibenzin_bot" target="_blank" rel="noopener" style="display:inline-block;text-align:center;text-decoration:none;box-sizing:border-box;">Открыть в Telegram</a>
 </div>
 <div id="mk-legend"><span class="lg-dot lg-ok"></span>есть<span class="lg-dot lg-none"></span>нет<span class="lg-dot lg-unk"></span>нет данных</div>
+<div id="heatmap-legend">
+  <div class="hml-bar">
+    <span style="background:#00E676"></span>
+    <span style="background:#76FF03"></span>
+    <span style="background:#C6FF00"></span>
+    <span style="background:#FFEB3B"></span>
+    <span style="background:#FF9800"></span>
+    <span style="background:#F44336"></span>
+    <span style="background:#B71C1C"></span>
+    <span style="background:#9C27B0"></span>
+    <span style="background:#424242"></span>
+  </div>
+  <div class="hml-row">
+    <span>свежо</span>
+    <b id="heatmap-mode-label"></b>
+    <span>старьё / нет данных</span>
+  </div>
+</div>
 <div id="side-tools-left">
   <button class="tool-btn" id="btn-locate" title="Моё местоположение">🛰</button>
   <button class="tool-btn" id="btn-zoom-in" title="Приблизить">+</button>
@@ -1065,6 +1100,7 @@
   <button class="tool-btn" id="nearby-btn" title="Что рядом">🧲</button>
     <button class="tool-btn" id="dps-btn" title="DPS"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/><rect x="9.5" y="3.5" width="5" height="2" rx="0.6" fill="currentColor" stroke="none"/></svg></button>
     <button class="tool-btn" id="osm-scan-btn" title="OSM scan" style="display:none;">🔍</button>
+    <button class="tool-btn" id="heatmap-btn" title="Тепловая карта" style="display:none;">🌡</button>
     <button class="tool-btn" id="cam-btn" title="Camera"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M16.75 12h3.632a1 1 0 0 1 .894 1.447l-2.034 4.069a1 1 0 0 1-1.708.134l-2.142-2.904"/><path d="M17.106 9.053a1 1 0 0 1 .447 1.341l-3.106 6.211a1 1 0 0 1-1.342.447L3.61 12.3a2.92 2.92 0 0 1-1.3-3.91L3.69 5.6a2.92 2.92 0 0 1 3.91-1.3z"/><path d="M2 19h3.76a2 2 0 0 0 1.8-1.1L9 15"/><path d="M2 21v-4"/><path d="M7 9h.01"/></svg></button>
   <button class="tool-btn" id="settings-btn" title="Настройки">&#9881;&#65039;</button>
 </div>
@@ -3387,6 +3423,8 @@
       osmBtn.style.display = 'flex';
       osmBtn.addEventListener('click', scanOsmFuel);
     }
+    var hmBtn = document.getElementById('heatmap-btn');
+    if (hmBtn){ hmBtn.style.display = 'flex'; }
   }
   document.getElementById('btn-locate').addEventListener('click', function(){
     if (locateActive){
@@ -3771,6 +3809,200 @@
   function closeNearbySheet(){ document.getElementById('nearby-sheet').classList.remove('show'); }
   document.getElementById('nearby-btn').addEventListener('click', openNearbySheet);
   document.getElementById('nearby-close').addEventListener('click', closeNearbySheet);
+
+  // ============ HEATMAP (только админ) ============
+  var _hmLayer = null;
+  var _hmMode = 'fresh'; // 'fresh' | 'density' | 'deficit'
+  var _hmActive = false;
+
+  function _hmColorFresh(ts){
+    if (!ts) return '#424242';
+    var age = Math.floor(Date.now()/1000) - ts;
+    if (age < 3600)       return '#00E676';
+    if (age < 3 * 3600)   return '#76FF03';
+    if (age < 8 * 3600)   return '#C6FF00';
+    if (age < 24 * 3600)  return '#FFEB3B';
+    if (age < 48 * 3600)  return '#FF9800';
+    if (age < 4 * 86400)  return '#F44336';
+    if (age < 7 * 86400)  return '#B71C1C';
+    return '#9C27B0';
+  }
+
+  function _hmColorDensity(cnt){
+    if (cnt === 0)       return '#E3F2FD';
+    if (cnt < 3)         return '#90CAF9';
+    if (cnt < 8)         return '#42A5F5';
+    if (cnt < 15)        return '#1E88E5';
+    if (cnt < 30)        return '#1565C0';
+    return '#0D47A1';
+  }
+
+  function _hmColorDeficit(noneCount){
+    if (noneCount === 0) return '#00E676';
+    if (noneCount === 1) return '#C6FF00';
+    if (noneCount === 2) return '#FF9800';
+    if (noneCount === 3) return '#F44336';
+    return '#9C27B0';
+  }
+
+  function _hmStationColor(s){
+    if (_hmMode === 'fresh'){
+      var newest = 0;
+      if (s.fuels){
+        for (var k in s.fuels){
+          var f = s.fuels[k];
+          if (f && f.ts && f.ts > newest) newest = f.ts;
+        }
+      }
+      return _hmColorFresh(newest);
+    }
+    if (_hmMode === 'density'){
+      return _hmColorDensity(s._hmCnt || 0);
+    }
+    if (_hmMode === 'deficit'){
+      var noneCount = 0;
+      if (s.fuels){
+        for (var k in s.fuels){
+          var f = s.fuels[k];
+          if (f && f.status === 'none' && f.fresh_level !== 'gone') noneCount++;
+        }
+      }
+      return _hmColorDeficit(noneCount);
+    }
+    return '#424242';
+  }
+
+  function _hmOpacity(s){
+    if (_hmMode === 'fresh'){
+      var newest = 0;
+      if (s.fuels){
+        for (var k in s.fuels){
+          var f = s.fuels[k];
+          if (f && f.ts && f.ts > newest) newest = f.ts;
+        }
+      }
+      if (!newest) return 0.30;
+      var age = Math.floor(Date.now()/1000) - newest;
+      if (age < 8 * 3600) return 0.65;
+      if (age < 48 * 3600) return 0.50;
+      return 0.35;
+    }
+    return 0.55;
+  }
+
+  function _hmBuild(){
+    if (_hmLayer){ map.removeLayer(_hmLayer); _hmLayer = null; }
+    _hmLayer = L.layerGroup().addTo(map);
+
+    // Предрасчёт для density
+    if (_hmMode === 'density'){
+      // Считаем отчёты за 7д на станцию из глобального счётчика
+      // (используем данные, которые уже приходят от API — reports_24h нам не хватит,
+      // поэтому считаем «reported» по числу известных топлив как прокси)
+      stationsData.forEach(function(s){
+        var cnt = 0;
+        if (s.fuels){
+          for (var k in s.fuels){
+            var f = s.fuels[k];
+            if (f && f.status && f.status !== 'unknown' && f.fresh_level !== 'gone') cnt++;
+          }
+        }
+        // Масштабируем на 10 — чтобы покрыть диапазон heatmap
+        s._hmCnt = cnt * 4;
+      });
+    }
+
+    // Рисуем точки
+    stationsData.forEach(function(s){
+      var color = _hmStationColor(s);
+      var opacity = _hmOpacity(s);
+      var circle = L.circleMarker([s.lat, s.lng], {
+        radius: 30, stroke: false, fill: true,
+        fillColor: color, fillOpacity: opacity,
+        interactive: true, bubblingMouseEvents: false,
+      });
+      circle.on('click', function(e){
+        L.DomEvent.stopPropagation(e);
+        openSheet(s, false);
+      });
+      _hmLayer.addLayer(circle);
+    });
+
+    // Затемнение обычных маркеров
+    Object.keys(markers).forEach(function(sid){
+      var m = markers[sid];
+      if (m) m.setOpacity(0.05);
+    });
+  }
+
+  function _hmSetMode(mode){
+    _hmMode = mode;
+    var lbl = document.getElementById('heatmap-mode-label');
+    if (lbl){
+      lbl.textContent = (mode === 'fresh') ? '\u0441\u0432\u0435\u0436\u0435\u0441\u0442\u044c' :
+                        (mode === 'density') ? '\u043f\u043b\u043e\u0442\u043d\u043e\u0441\u0442\u044c' :
+                        '\u0434\u0435\u0444\u0438\u0446\u0438\u0442';
+    }
+    if (_hmActive) _hmBuild();
+  }
+
+  function _hmToggle(){
+    _hmActive = !_hmActive;
+    var btn = document.getElementById('heatmap-btn');
+    var legend = document.getElementById('heatmap-legend');
+    if (_hmActive){
+      if (btn) btn.classList.add('active');
+      if (legend) legend.classList.add('show');
+      if (typeof markerCluster !== 'undefined' && markerCluster && markerCluster.disableClustering){
+        try { markerCluster.disableClustering(); } catch(e){}
+      }
+      _hmBuild();
+      _hmSetMode(_hmMode); // обновит подпись
+    } else {
+      if (btn) btn.classList.remove('active');
+      if (legend) legend.classList.remove('show');
+      if (_hmLayer){ map.removeLayer(_hmLayer); _hmLayer = null; }
+      // Вернуть обычные маркеры
+      Object.keys(markers).forEach(function(sid){
+        var m = markers[sid];
+        if (m) m.setOpacity(1);
+      });
+      if (typeof markerCluster !== 'undefined' && markerCluster && markerCluster.enableClustering){
+        try { markerCluster.enableClustering(); } catch(e){}
+      }
+    }
+  }
+
+  // Долгое нажатие на кнопку — переключить режим
+  (function(){
+    var btn = document.getElementById('heatmap-btn');
+    if (!btn) return;
+    var pressTimer = null;
+    var longPressed = false;
+    btn.addEventListener('click', function(e){
+      if (longPressed){ longPressed = false; return; }
+      _hmToggle();
+    });
+    btn.addEventListener('touchstart', function(){
+      longPressed = false;
+      pressTimer = setTimeout(function(){
+        longPressed = true;
+        var modes = ['fresh', 'density', 'deficit'];
+        var idx = modes.indexOf(_hmMode);
+        _hmSetMode(modes[(idx + 1) % modes.length]);
+        if (typeof toast === 'function') toast('\u0420\u0435\u0436\u0438\u043c: ' + _hmMode);
+      }, 700);
+    }, { passive: true });
+    btn.addEventListener('touchend', function(){ if (pressTimer) clearTimeout(pressTimer); });
+    btn.addEventListener('touchmove', function(){ if (pressTimer) clearTimeout(pressTimer); });
+    btn.addEventListener('contextmenu', function(e){
+      e.preventDefault();
+      var modes = ['fresh', 'density', 'deficit'];
+      var idx = modes.indexOf(_hmMode);
+      _hmSetMode(modes[(idx + 1) % modes.length]);
+      if (typeof toast === 'function') toast('\u0420\u0435\u0436\u0438\u043c: ' + _hmMode);
+    });
+  })();
 
   function _openSupportModal(){
     var bg = document.createElement('div');

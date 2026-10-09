@@ -4161,6 +4161,111 @@ async def cb_route_task(cq: CallbackQuery):
     await cq.answer()
 
 
+async def daily_tasks_task(bot: Bot):
+    """Раз в сутки в 09:00 МСК создаёт 3 задания по самым острым районам
+    и шлёт админу дайджест с кнопкой 'отправить разведчику'."""
+    if not ADMIN_ID:
+        return
+    POST_HOUR_UTC = 6  # 09:00 МСК
+    POLL_INTERVAL = 1800
+    while True:
+        try:
+            now = datetime.utcnow()
+            if now.hour >= POST_HOUR_UTC:
+                today_str = now.strftime("%Y-%m-%d")
+                if get_state("last_daily_tasks_date") != today_str:
+                    try:
+                        await _generate_and_send_daily_tasks(bot)
+                    except Exception:
+                        log.exception("generate daily tasks failed")
+                    set_state("last_daily_tasks_date", today_str)
+        except Exception:
+            log.exception("daily_tasks_task error")
+        await asyncio.sleep(POLL_INTERVAL)
+
+
+async def _generate_and_send_daily_tasks(bot: Bot):
+    """Находит 3 самых острых района, строит маршруты, создаёт задания и шлёт админу."""
+    # Все районы с покрытием
+    all_districts = set()
+    for st in STATIONS:
+        try:
+            dn = _norm_district_name(district_for_station(st[4], st[5]))
+        except Exception:
+            continue
+        if dn:
+            all_districts.add(dn)
+    try:
+        for row in get_custom_stations():
+            try:
+                dn = _norm_district_name(district_for_station(row[4], row[5]))
+            except Exception:
+                continue
+            if dn:
+                all_districts.add(dn)
+    except Exception:
+        pass
+
+    # Считаем остроту для каждого района
+    ranked = []
+    for dn in all_districts:
+        total, active, cov, avg_ov = _district_coverage(dn)
+        if total == 0:
+            continue
+        sharpness = avg_ov * (1 + (1 - cov / 100.0))
+        ranked.append((dn, sharpness, total, cov, avg_ov))
+    ranked.sort(key=lambda x: x[1], reverse=True)
+
+    # Уже есть открытые/в работе задания? Пропускаем эти районы.
+    existing = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
+    existing_districts = {t["district"] for t in existing}
+
+    created = []
+    for dn, sharpness, total, cov, avg_ov in ranked:
+        if len(created) >= 3:
+            break
+        if dn in existing_districts:
+            continue
+        try:
+            plan = build_route_plan(dn, n=7, min_overdue_days=3)
+        except Exception:
+            log.exception("route plan for %s failed", dn)
+            continue
+        if not plan or not plan.get("points"):
+            continue
+        tid = create_route_task(dn, plan)
+        if tid:
+            created.append((tid, plan))
+
+    if not created:
+        log.info("daily_tasks: nothing created")
+        return
+
+    # Формируем дайджест
+    lines = ["\U0001F3AF <b>\u0417\u0430\u0434\u0430\u043d\u0438\u044f \u043d\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f</b>", ""]
+    for i, (tid, plan) in enumerate(created, 1):
+        lines.append("<b>" + str(i) + ". " + plan["district"] + "</b>")
+        lines.append("   \u041f\u043e\u043a\u0440\u044b\u0442\u0438\u0435: <b>" + str(plan["coverage_pct"]) + "%</b> \u00b7 \u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430 <b>" + str(plan["avg_overdue_days"]) + " \u0434\u043d</b>")
+        lines.append("   " + str(len(plan["points"])) + " \u0442\u043e\u0447\u0435\u043a, ~<b>" + str(plan["total_km"]) + " \u043a\u043c</b>")
+    lines.append("")
+    lines.append("\u0417\u0430\u0434\u0430\u043d\u0438\u044f \u0432\u0438\u0434\u043d\u044b \u0432\u0441\u0435\u043c \u0432 /\u0437\u0430\u0434\u0430\u043d\u0438\u044f. \u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u0437\u044f\u0432\u0448\u0438\u0439 \u2014 \u0437\u0430\u043a\u0440\u044b\u0432\u0430\u0435\u0442 \u0435\u0433\u043e \u0434\u043b\u044f \u043e\u0441\u0442\u0430\u043b\u044c\u043d\u044b\u0445.")
+    lines.append("")
+    lines.append("\u041f\u0440\u043e\u0432\u0435\u0440\u044c: \u0441\u0435\u0433\u043e\u0434\u043d\u044f \u0432 \u0433\u043e\u0440\u043e\u0434\u0435 \u0435\u0441\u0442\u044c \u043b\u044e\u0434\u0438 \u043d\u0430 \u043a\u0430\u0440\u0442\u0435?")
+
+    kb_rows = []
+    for tid, plan in created:
+        kb_rows.append([InlineKeyboardButton(
+            text="\U0001F4E4 \u041a\u0430\u0440\u0442\u043e\u0447\u043a\u0430: " + plan["district"][:25],
+            callback_data="rt:show:" + tid
+        )])
+    kb_rows.append([InlineKeyboardButton(text="\U0001F4CB \u0412\u0441\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u044f", callback_data="rt:list")])
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+    try:
+        await bot.send_message(ADMIN_ID, "\n".join(lines), reply_markup=kb)
+    except Exception:
+        log.exception("send daily tasks digest failed")
+
+
 async def daily_dups_task(bot: Bot):
     """Раз в сутки в 09:00 МСК сканирует дубли АЗС."""
     if not ADMIN_ID:
@@ -4657,6 +4762,7 @@ async def main():
     asyncio.create_task(weekly_network_task(bot))
     asyncio.create_task(stale_stations_task(bot))
     asyncio.create_task(daily_dups_task(bot))
+    asyncio.create_task(daily_tasks_task(bot))
     asyncio.create_task(daily_report_task(bot))
 
     await dp.start_polling(bot, request_timeout=15)

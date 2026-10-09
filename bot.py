@@ -1946,7 +1946,7 @@ async def on_dashboard_cmd(message: Message):
             if not _st:
                 continue
             try:
-                _dname = district_for_station(_st[4], _st[5])
+                _dname = _norm_district_name(district_for_station(_st[4], _st[5]))
             except Exception:
                 _dname = None
             if not _dname:
@@ -2099,7 +2099,7 @@ async def on_districts_cmd(message: Message):
     for _st in STATIONS:
         sid, name, net, addr, lat, lng = _st[0], _st[1], _st[2], _st[3], _st[4], _st[5]
         try:
-            _dn = district_for_station(lat, lng)
+            _dn = _norm_district_name(district_for_station(lat, lng))
         except Exception:
             _dn = None
         if not _dn:
@@ -2118,7 +2118,7 @@ async def on_districts_cmd(message: Message):
     for row in _custom:
         sid, name, net, addr, lat, lng = row[0], row[1], row[2], row[3], row[4], row[5]
         try:
-            _dn = district_for_station(lat, lng)
+            _dn = _norm_district_name(district_for_station(lat, lng))
         except Exception:
             _dn = None
         if not _dn:
@@ -2137,7 +2137,7 @@ async def on_districts_cmd(message: Message):
         if not _st:
             continue
         try:
-            _dn = district_for_station(_st[4], _st[5])
+            _dn = _norm_district_name(district_for_station(_st[4], _st[5]))
         except Exception:
             _dn = None
         if not _dn:
@@ -2159,7 +2159,7 @@ async def on_districts_cmd(message: Message):
         if not _st:
             continue
         try:
-            _dn = district_for_station(_st[4], _st[5])
+            _dn = _norm_district_name(district_for_station(_st[4], _st[5]))
         except Exception:
             continue
         if not _dn:

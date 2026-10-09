@@ -822,6 +822,33 @@ async def handle_delivery_history(request):
     return web.json_response({"ok": True, **data}, headers={"Cache-Control": "no-store"})
 
 
+async def handle_track(request):
+    """POST /api/track — клиент присылает событие {event, user_id?, ref?}."""
+    try:
+        data = await request.json()
+        event = str(data.get("event") or "").strip()[:40]
+        if not event:
+            return web.json_response({"ok": False, "error": "no_event"}, status=400)
+        user_id = int(data.get("user_id") or 0)
+        ref = str(data.get("ref") or "").strip()[:40]
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_request"}, status=400)
+
+    try:
+        core.inc_metric("ev_" + event)
+        if user_id:
+            core.inc_metric("ev_user_" + event)
+            try:
+                core.track_user_today(user_id)
+            except Exception:
+                pass
+        if ref:
+            core.inc_metric("ref_" + ref)
+    except Exception:
+        core.log.exception("track failed")
+    return web.json_response({"ok": True})
+
+
 async def handle_report(request):
     try:
         data = await request.json()
@@ -1501,6 +1528,7 @@ def build_app() -> web.Application:
     app.router.add_get("/api/my-stations/{user_id}", handle_my_stations)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
+    app.router.add_post("/api/track", handle_track)
     app.router.add_post("/api/report-issue", handle_report_issue)
     app.router.add_post("/api/share-credit", handle_share_credit)
     app.router.add_post("/api/add-station", handle_add_station)

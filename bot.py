@@ -20,6 +20,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.filters import CommandStart, Command, CommandObject
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import BufferedInputFile
 from aiogram.exceptions import TelegramBadRequest
 from aiohttp import TCPConnector, ClientSession, ClientTimeout
 
@@ -3278,6 +3279,341 @@ async def _send_daily_report(bot: Bot, day_str: str):
             lines.append("\u2022 " + REF_LABELS.get(ref, ref) + ": <b>" + str(value) + "</b>")
 
     await bot.send_message(ADMIN_ID, "\n".join(lines))
+
+
+# ==================== ROUTE PLANNER ====================
+import math as _math
+from xml.sax.saxutils import escape as _xml_escape
+
+
+def _route_score_station(sid, coverage_pct):
+    """Скор станции: просрочка × (1 + штраф за плохое покрытие)."""
+    st = STATION_BY_ID.get(sid)
+    if not st:
+        return 0
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT MAX(ts) FROM feed WHERE station_id = ?", (sid,)
+        ).fetchone()
+        last_ts = row[0] if row and row[0] else 0
+    finally:
+        conn.close()
+    overdue_days = (int(time.time()) - last_ts) / 86400.0 if last_ts else 90
+    overdue_days = min(overdue_days, 30)
+    cov_penalty = 1 + (1 - coverage_pct / 100.0)
+    return overdue_days * cov_penalty
+
+
+def _district_coverage(district):
+    """Возвращает (total_stations, active_stations, coverage_pct, avg_overdue_days)."""
+    all_st = []
+    for st in STATIONS:
+        try:
+            dn = _norm_district_name(district_for_station(st[4], st[5]))
+        except Exception:
+            dn = None
+        if dn == district:
+            all_st.append(st[0])
+    try:
+        custom = get_custom_stations()
+    except Exception:
+        custom = []
+    for row in custom:
+        try:
+            dn = _norm_district_name(district_for_station(row[4], row[5]))
+        except Exception:
+            dn = None
+        if dn == district:
+            all_st.append(row[0])
+
+    if not all_st:
+        return (0, 0, 0, 0)
+    d7 = int(time.time()) - 7 * 86400
+    conn = db()
+    try:
+        placeholders = ",".join("?" * len(all_st))
+        active = conn.execute(
+            f"SELECT COUNT(DISTINCT station_id) FROM feed WHERE ts > ? AND station_id IN ({placeholders})",
+            (d7, *all_st)
+        ).fetchone()[0]
+        last_rows = conn.execute(
+            f"SELECT station_id, MAX(ts) FROM feed WHERE station_id IN ({placeholders}) GROUP BY station_id",
+            tuple(all_st)
+        ).fetchall()
+    finally:
+        conn.close()
+    last_map = {sid: ts for sid, ts in last_rows}
+    overdue_sum = 0
+    now = int(time.time())
+    for sid in all_st:
+        ts = last_map.get(sid, 0)
+        overdue_sum += min((now - ts) / 86400.0 if ts else 90, 30)
+    avg_overdue = overdue_sum / len(all_st) if all_st else 0
+    cov = round(active / len(all_st) * 100) if all_st else 0
+    return (len(all_st), active, cov, round(avg_overdue, 1))
+
+
+def _haversine_km(lat1, lng1, lat2, lng2):
+    R = 6371.0
+    dlat = _math.radians(lat2 - lat1)
+    dlng = _math.radians(lng2 - lng1)
+    a = _math.sin(dlat / 2) ** 2 + _math.cos(_math.radians(lat1)) * _math.cos(_math.radians(lat2)) * _math.sin(dlng / 2) ** 2
+    return 2 * R * _math.asin(_math.sqrt(a))
+
+
+def _route_nearest_neighbor(start, points):
+    """Greedy: всегда ближайшая непосещённая. points: [(sid, name, lat, lng), ...]"""
+    if not points:
+        return []
+    remaining = list(points)
+    ordered = []
+    cur = start
+    while remaining:
+        best_i, best_d = 0, None
+        for i, pt in enumerate(remaining):
+            d = _haversine_km(cur[0], cur[1], pt[2], pt[3])
+            if best_d is None or d < best_d:
+                best_d, best_i = d, i
+        chosen = remaining.pop(best_i)
+        ordered.append(chosen)
+        cur = (chosen[2], chosen[3])
+    return ordered
+
+
+def _route_2opt(ordered):
+    """2-opt для TSP-подобной задачи. Работает быстро на 7-10 точках."""
+    if len(ordered) < 3:
+        return ordered
+    improved = True
+    while improved:
+        improved = False
+        for i in range(len(ordered) - 1):
+            for j in range(i + 1, len(ordered)):
+                a = ordered[i]
+                b = ordered[j]
+                prev = ordered[i - 1] if i > 0 else None
+                nxt = ordered[j + 1] if j + 1 < len(ordered) else None
+                delta_old = 0
+                delta_new = 0
+                if prev:
+                    delta_old += _haversine_km(prev[2], prev[3], a[2], a[3])
+                    delta_new += _haversine_km(prev[2], prev[3], b[2], b[3])
+                if nxt:
+                    delta_old += _haversine_km(b[2], b[3], nxt[2], nxt[3])
+                    delta_new += _haversine_km(a[2], a[3], nxt[2], nxt[3])
+                if delta_new < delta_old - 0.01:
+                    ordered[i:j + 1] = reversed(ordered[i:j + 1])
+                    improved = True
+    return ordered
+
+
+def build_route_plan(district=None, n=7, min_overdue_days=3):
+    """Строит маршрут по району. Если district=None — выбирает самый проблемный.
+    Возвращает dict или None."""
+    if not district:
+        # Ищем самый проблемный район
+        all_districts = set()
+        for st in STATIONS:
+            try:
+                dn = _norm_district_name(district_for_station(st[4], st[5]))
+            except Exception:
+                continue
+            if dn:
+                all_districts.add(dn)
+        try:
+            custom = get_custom_stations()
+        except Exception:
+            custom = []
+        for row in custom:
+            try:
+                dn = _norm_district_name(district_for_station(row[4], row[5]))
+            except Exception:
+                continue
+            if dn:
+                all_districts.add(dn)
+
+        best = None
+        for dn in all_districts:
+            total, active, cov, avg_ov = _district_coverage(dn)
+            if total == 0:
+                continue
+            # Острота: низкое покрытие + высокая просрочка
+            sharpness = avg_ov * (1 + (1 - cov / 100.0))
+            if best is None or sharpness > best[1]:
+                best = (dn, sharpness)
+        if not best:
+            return None
+        district = best[0]
+
+    total, active, cov, avg_overdue = _district_coverage(district)
+    if total == 0:
+        return None
+
+    # Все станции района с просрочкой >= min_overdue_days
+    conn = db()
+    try:
+        candidates = []
+        for st in STATIONS:
+            try:
+                dn = _norm_district_name(district_for_station(st[4], st[5]))
+            except Exception:
+                continue
+            if dn != district:
+                continue
+            candidates.append(st)
+        try:
+            for row in get_custom_stations():
+                try:
+                    dn = _norm_district_name(district_for_station(row[4], row[5]))
+                except Exception:
+                    continue
+                if dn == district:
+                    candidates.append(row)
+        except Exception:
+            pass
+
+        sids = [c[0] for c in candidates]
+        if not sids:
+            return None
+        placeholders = ",".join("?" * len(sids))
+        last_rows = conn.execute(
+            f"SELECT station_id, MAX(ts) FROM feed WHERE station_id IN ({placeholders}) GROUP BY station_id",
+            tuple(sids)
+        ).fetchall()
+        last_map = {sid: ts for sid, ts in last_rows}
+    finally:
+        conn.close()
+
+    now = int(time.time())
+    filtered = []
+    for c in candidates:
+        sid, name, net, addr, lat, lng = c[0], c[1], c[2], c[3], c[4], c[5]
+        last_ts = last_map.get(sid, 0)
+        overdue = (now - last_ts) / 86400.0 if last_ts else 999
+        if overdue < min_overdue_days:
+            continue
+        score = _route_score_station(sid, cov)
+        filtered.append({
+            "sid": sid, "name": name, "net": net, "addr": addr or "",
+            "lat": lat, "lng": lng,
+            "overdue": round(overdue, 1),
+            "score": score,
+        })
+
+    if not filtered:
+        return None
+    filtered.sort(key=lambda x: x["score"], reverse=True)
+    top = filtered[:n]
+
+    # Старт — центроид района
+    start_lat = sum(p["lat"] for p in top) / len(top)
+    start_lng = sum(p["lng"] for p in top) / len(top)
+    start = (start_lat, start_lng)
+
+    # TSP
+    points = [(p["sid"], p["name"], p["lat"], p["lng"]) for p in top]
+    ordered = _route_nearest_neighbor(start, points)
+    ordered = _route_2opt(ordered)
+
+    # Считаем длины
+    total_km = 0
+    cur = start
+    for pt in ordered:
+        total_km += _haversine_km(cur[0], cur[1], pt[2], pt[3])
+        cur = (pt[2], pt[3])
+
+    # Возвращаем в формате списка словарей
+    sid_map = {p["sid"]: p for p in filtered}
+    result_points = []
+    for pt in ordered:
+        info = sid_map.get(pt[0], {})
+        result_points.append(info)
+
+    return {
+        "district": district,
+        "total_stations": total,
+        "active_stations": active,
+        "coverage_pct": cov,
+        "avg_overdue_days": avg_overdue,
+        "points": result_points,
+        "total_km": round(total_km, 1),
+        "start": {"lat": round(start_lat, 6), "lng": round(start_lng, 6)},
+    }
+
+
+def route_yandex_url(plan):
+    """Ссылка на Яндекс.Карты с маршрутом (только ~10 точек)."""
+    pts = plan["points"][:10]
+    s = plan.get("start")
+    if s:
+        rtext = f"{s['lat']},{s['lng']}"
+    else:
+        rtext = ""
+    for p in pts:
+        rtext += f"~{p['lat']},{p['lng']}"
+    return "https://yandex.ru/maps/?rtext=" + rtext + "&rtt=auto"
+
+
+def route_gpx(plan):
+    """GPX 1.1 с waypoints и route."""
+    name = "GDEBENZIN route: " + plan["district"]
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<gpx version="1.1" creator="GDEBENZIN" xmlns="http://www.topografix.com/GPX/1/1">',
+             '<metadata><name>' + _xml_escape(name) + '</name></metadata>']
+    for i, p in enumerate(plan["points"], 1):
+        wpt_name = str(i) + ". " + p["name"] + " \u2014 " + (p.get("addr") or "")
+        lines.append(
+            '<wpt lat="' + str(p["lat"]) + '" lon="' + str(p["lng"]) + '">'
+            '<name>' + _xml_escape(wpt_name) + '</name>'
+            '<desc>' + _xml_escape("\u041f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430: " + str(p.get("overdue", "?")) + " \u0434\u043d") + '</desc>'
+            '</wpt>'
+        )
+    lines.append('<rte><name>' + _xml_escape(name) + '</name>')
+    for p in plan["points"]:
+        lines.append('<rtept lat="' + str(p["lat"]) + '" lon="' + str(p["lng"]) + '"><name>' + _xml_escape(p["name"]) + '</name></rtept>')
+    lines.append('</rte></gpx>')
+    return "\n".join(lines)
+
+
+def route_text(plan):
+    """Текст-превью маршрута."""
+    lines = ["\U0001F5FA <b>\u041c\u0430\u0440\u0448\u0440\u0443\u0442 \u00b7 " + plan["district"] + "</b>", ""]
+    lines.append("\u041f\u043e\u043a\u0440\u044b\u0442\u0438\u0435: <b>" + str(plan["coverage_pct"]) + "%</b> \u00b7 \u0441\u0440\u0435\u0434. \u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430: <b>" + str(plan["avg_overdue_days"]) + " \u0434\u043d</b>")
+    lines.append("\u0422\u043e\u0447\u0435\u043a: <b>" + str(len(plan["points"])) + "</b> \u00b7 \u0434\u043b\u0438\u043d\u0430 \u043f\u0443\u0442\u0438: ~<b>" + str(plan["total_km"]) + " \u043a\u043c</b>")
+    lines.append("")
+    for i, p in enumerate(plan["points"], 1):
+        lines.append(str(i) + ". " + p["name"] + " \u2014 " + (p.get("addr") or "\u2014") + " (\u043f\u0440\u043e\u0441\u0440\u043e\u0447\u043a\u0430 " + str(p.get("overdue", "?")) + " \u0434\u043d)")
+    return "\n".join(lines)
+
+
+@dp.message(Command("маршрут"))
+async def on_route_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u0430\u0434\u043c\u0438\u043d\u0430.")
+        return
+    args = (message.text or "").split(maxsplit=1)
+    district = args[1].strip() if len(args) > 1 else None
+    await message.answer("\u0421\u0442\u0440\u043e\u044e \u043c\u0430\u0440\u0448\u0440\u0443\u0442\u2026")
+    try:
+        plan = build_route_plan(district, n=7, min_overdue_days=3)
+    except Exception as e:
+        log.exception("route build failed")
+        await message.answer("\u041e\u0448\u0438\u0431\u043a\u0430: " + str(e))
+        return
+    if not plan:
+        await message.answer("\u041d\u0435 \u043d\u0430\u0448\u0451\u043b \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.")
+        return
+    text = route_text(plan)
+    yandex_url = route_yandex_url(plan)
+    gpx = route_gpx(plan)
+    gpx_bytes = gpx.encode("utf-8")
+    doc = BufferedInputFile(gpx_bytes, filename="gdebenzin_route_" + plan["district"] + ".gpx")
+    kb = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b", url=yandex_url)
+    ]])
+    await message.answer(text, reply_markup=kb)
+    await message.answer_document(doc, caption="\U0001F4E5 GPX \u2014 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043b\u044e\u0431\u043e\u043c \u043d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440\u0435")
 
 
 async def daily_dups_task(bot: Bot):

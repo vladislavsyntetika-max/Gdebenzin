@@ -3037,7 +3037,49 @@ async def _run_stale_notifications(bot: Bot):
     log.info("stale_stations_task: sent=%d", sent_count)
 
 
-
+async def daily_dups_task(bot: Bot):
+    """Раз в сутки в 09:00 МСК сканирует дубли АЗС."""
+    if not ADMIN_ID:
+        return
+    POST_HOUR_UTC = 6
+    POLL_INTERVAL = 3600
+    while True:
+        try:
+            now = datetime.utcnow()
+            if now.hour >= POST_HOUR_UTC:
+                today_str = now.strftime("%Y-%m-%d")
+                if get_state("last_dups_scan_date") != today_str:
+                    plan = build_dup_merge_plan(10)
+                    if plan:
+                        total_drop = sum(len(g["drop"]) for g in plan)
+                        lines = ["\U0001F9F9 <b>\u0410\u0432\u0442\u043e\u0441\u043a\u0430\u043d \u0434\u0443\u0431\u043b\u0435\u0439</b>", ""]
+                        lines.append("\u0413\u0440\u0443\u043f\u043f: <b>" + str(len(plan)) + "</b> \u00b7 \u043a \u0441\u043b\u0438\u044f\u043d\u0438\u044e: <b>" + str(total_drop) + "</b>")
+                        lines.append("")
+                        for g in plan[:10]:
+                            keep = g["keep"]
+                            lines.append("\u2714 <code>" + str(keep["id"]) + "</code> | " + (keep["addr"] or "\u2014"))
+                            for d in g["drop"][:3]:
+                                lines.append("  \u2716 <code>" + str(d["id"]) + "</code> | " + (d["addr"] or "\u2014"))
+                            if len(g["drop"]) > 3:
+                                lines.append("  \u2026 \u0438 \u0435\u0449\u0451 " + str(len(g["drop"]) - 3))
+                        if len(plan) > 10:
+                            lines.append("\u2026 \u0438 \u0435\u0449\u0451 " + str(len(plan) - 10) + " \u0433\u0440\u0443\u043f\u043f")
+                        pairs = [{"keep": g["keep"]["id"], "drop": [d["id"] for d in g["drop"]]} for g in plan]
+                        payload = json.dumps(pairs)
+                        token = "auto_" + str(int(time.time()))
+                        set_state("dupmerge_plan_" + token, payload)
+                        kb = InlineKeyboardMarkup(inline_keyboard=[[
+                            InlineKeyboardButton(text="\u2705 \u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c", callback_data="dupmerge:apply:" + token),
+                            InlineKeyboardButton(text="\u274c \u041e\u0442\u043c\u0435\u043d\u0430", callback_data="dupmerge:cancel")
+                        ]])
+                        try:
+                            await bot.send_message(ADMIN_ID, "\n".join(lines), reply_markup=kb)
+                        except Exception:
+                            log.exception("daily_dups send failed")
+                    set_state("last_dups_scan_date", today_str)
+        except Exception:
+            log.exception("daily_dups_task error")
+        await asyncio.sleep(POLL_INTERVAL)
 
 
 def get_network_weekly_stats():
@@ -3490,6 +3532,7 @@ async def main():
     asyncio.create_task(daily_leaderboard_task(bot))
     asyncio.create_task(weekly_network_task(bot))
     asyncio.create_task(stale_stations_task(bot))
+    asyncio.create_task(daily_dups_task(bot))
 
     await dp.start_polling(bot, request_timeout=15)
 

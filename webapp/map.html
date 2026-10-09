@@ -1190,6 +1190,25 @@
   var effectiveUsername = isTelegramWebApp ? (username || '') : ('веб-гость ' + anonId.slice(4, 10));
 
   var stationsData = [];
+
+  // ============ Аналитика: события клиента ============
+  var _trackRef = null;
+  try {
+    var _p = new URLSearchParams(location.search);
+    _trackRef = _p.get('ref') || null;
+  } catch(e){}
+  function track(event){
+    try {
+      var payload = { event: event, user_id: userId || 0, ref: _trackRef || '' };
+      var body = JSON.stringify(payload);
+      if (navigator.sendBeacon){
+        navigator.sendBeacon('/api/track', new Blob([body], { type: 'application/json' }));
+      } else {
+        fetch('/api/track', { method:'POST', headers:{'Content-Type':'application/json'}, body: body, keepalive: true }).catch(function(){});
+      }
+    } catch(e){}
+  }
+  window._azsTrack = track;
   var lastGlobalStats = { reports_24h: 0, stations_reported: 0 };
   var fuelsData = [];
   var statusesData = [];
@@ -2277,6 +2296,7 @@
     }
   }
   function openSheet(station, auto){
+    try { track(auto ? 'auto_open' : 'open_station'); } catch(e){}
     var blockedUntil = reopenBlockedUntil[station.id] || 0;
     if (auto && Date.now() < blockedUntil) return;
     if (sheetCloseTimer) { clearTimeout(sheetCloseTimer); sheetCloseTimer = null; }
@@ -2430,7 +2450,7 @@
     }
     if (act === 'close-sheet'){ closeSheet(); return; }
     if (act === 'route'){ if (sheetStation) openRoute(sheetStation.lat, sheetStation.lng); return; }
-    if (act === 'photo'){ if (sheetStation) openPhotoSourceChooser(sheetStation.id); return; }
+    if (act === 'photo'){ try { track('photo'); } catch(e){} if (sheetStation) openPhotoSourceChooser(sheetStation.id); return; }
     if (act === 'fav'){
       if (!sheetStation) return;
       toggleFav(sheetStation.id); renderSheet();
@@ -2462,6 +2482,7 @@
   }
 
   function openRoute(lat, lng){
+    try { track('route'); } catch(e){}
     var url = 'https://yandex.ru/maps/?rtext=~' + lat + ',' + lng + '&rtt=auto';
     if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
   }
@@ -2509,6 +2530,7 @@
 
   // ---------- Поделиться (нативная или через копирование) ----------
   function shareProject(district){
+    try { track('share'); } catch(e){}
     var refId;
     var districtTag = '';
     if (district) {
@@ -3585,6 +3607,7 @@
   }
 
   async function saveNewStation(payload){
+    try { track('add_station'); } catch(e){}
     // Запоминаем текущий вид карты, чтобы после сохранения НЕ перескакивать
     var savedCenter = map.getCenter();
     var savedZoom = map.getZoom();
@@ -3712,6 +3735,7 @@
   }
 
   function _openSettingsModal(){
+    try { track('open_settings'); } catch(e){}
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     var isLight = document.documentElement.classList.contains('theme-light');
@@ -3863,6 +3887,7 @@
   });
 
   function openHelpModal(){
+    try { track('open_help'); } catch(e){}
     var bg = document.createElement('div');
     bg.className = 'modal-bg';
     bg.innerHTML = '<div class="modal help-modal">' +
@@ -4023,6 +4048,10 @@
     console.log('[GDEBENZIN] page load count =', _lc + 1);
   } catch(e){}
   try { loadStations(); } catch(e){}
+  try {
+    var _mk = 'azs_tracked_' + new Date().toISOString().slice(0, 10);
+    if (!sessionStorage.getItem(_mk)){ sessionStorage.setItem(_mk, '1'); track('map_open'); }
+  } catch(e){}
 
   // ============ Real-time: чужие отметки ============
   var _rtWs = null;

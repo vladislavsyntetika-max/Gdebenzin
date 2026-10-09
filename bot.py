@@ -3173,6 +3173,113 @@ async def _run_stale_notifications(bot: Bot):
     log.info("stale_stations_task: sent=%d", sent_count)
 
 
+DAILY_EVENT_LABELS = [
+    ("map_open",        "\U0001F5FA \u041e\u0442\u043a\u0440\u044b\u043b\u0438 \u043a\u0430\u0440\u0442\u0443"),
+    ("open_station",    "\u26FD \u041e\u0442\u043a\u0440\u044b\u043b\u0438 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0443 \u0441\u0442\u0430\u043d\u0446\u0438\u0438"),
+    ("open_sheet",      "\U0001F4CB \u041f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u043b\u0438 \u0434\u0435\u0442\u0430\u043b\u0438"),
+    ("route",           "\U0001F9ED \u041f\u043e\u0441\u0442\u0440\u043e\u0438\u043b\u0438 \u043c\u0430\u0440\u0448\u0440\u0443\u0442"),
+    ("add_station",     "\u2795 \u0414\u043e\u0431\u0430\u0432\u0438\u043b\u0438 \u0410\u0417\u0421"),
+    ("share",           "\U0001F4E3 \u041f\u043e\u0434\u0435\u043b\u0438\u043b\u0438\u0441\u044c"),
+    ("photo",           "\U0001F4F7 \u041e\u0442\u043a\u0440\u044b\u043b\u0438 \u0444\u043e\u0442\u043e"),
+    ("open_settings",   "\u2699 \u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438"),
+    ("open_help",       "\u2753 \u041f\u043e\u043c\u043e\u0449\u044c"),
+]
+
+REF_LABELS = {
+    "telegram": "Telegram",
+    "max": "MAX",
+    "vk": "VK",
+    "whatsapp": "WhatsApp",
+    "instagram": "Instagram",
+    "friend": "\u0434\u0440\u0443\u0437\u044c\u044f",
+    "colleague": "\u043a\u043e\u043b\u043b\u0435\u0433\u0438",
+    "formal": "\u043d\u0430 \u0412\u044b",
+    "telegram_stories": "TG Stories",
+    "flyer": "\u043b\u0438\u0441\u0442\u043e\u0432\u043a\u0438",
+}
+
+
+async def daily_report_task(bot: Bot):
+    """Раз в сутки в 21:00 МСК шлёт админу отчёт по движению на карте."""
+    if not ADMIN_ID:
+        return
+    POST_HOUR_UTC = 18
+    POLL_INTERVAL = 1800
+    while True:
+        try:
+            now = datetime.utcnow()
+            if now.hour >= POST_HOUR_UTC:
+                today_str = now.strftime("%Y-%m-%d")
+                if get_state("last_daily_report_date") != today_str:
+                    try:
+                        await _send_daily_report(bot, today_str)
+                    except Exception:
+                        log.exception("send_daily_report failed")
+                    set_state("last_daily_report_date", today_str)
+        except Exception:
+            log.exception("daily_report_task error")
+        await asyncio.sleep(POLL_INTERVAL)
+
+
+async def _send_daily_report(bot: Bot, day_str: str):
+    conn = db()
+    try:
+        counters = {}
+        for key, value in conn.execute(
+            "SELECT key, value FROM metrics_counters WHERE day = ?", (day_str,)
+        ):
+            counters[key] = value or 0
+        users_total = conn.execute(
+            "SELECT COUNT(*) FROM metrics_users_daily WHERE day = ?", (day_str,)
+        ).fetchone()[0]
+        new_stations = conn.execute(
+            "SELECT COUNT(*) FROM custom_stations WHERE date(created_ts, 'unixepoch', '+3 hours') = ?",
+            (day_str,)
+        ).fetchone()[0]
+        new_reports = conn.execute(
+            "SELECT COUNT(*) FROM feed WHERE date(ts, 'unixepoch', '+3 hours') = ?",
+            (day_str,)
+        ).fetchone()[0]
+        new_users = conn.execute(
+            "SELECT COUNT(DISTINCT user_id) FROM feed "
+            "WHERE date(ts, 'unixepoch', '+3 hours') = ? AND user_id > 0",
+            (day_str,)
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    lines = ["\U0001F4C8 <b>\u041e\u0442\u0447\u0451\u0442 \u0437\u0430 " + day_str + "</b>", ""]
+    lines.append("\U0001F465 \u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u043f\u043e\u0441\u0435\u0442\u0438\u0442\u0435\u043b\u0435\u0439: <b>" + str(users_total) + "</b>")
+    lines.append("\u26FD \u041d\u043e\u0432\u044b\u0445 \u043e\u0442\u0447\u0451\u0442\u043e\u0432: <b>" + str(new_reports) + "</b> \u00b7 \u0443\u043d\u0438\u043a. \u0430\u0432\u0442\u043e\u0440\u043e\u0432: <b>" + str(new_users) + "</b>")
+    lines.append("\u2795 \u041d\u043e\u0432\u044b\u0445 \u0410\u0417\u0421: <b>" + str(new_stations) + "</b>")
+    lines.append("")
+    lines.append("<b>\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u043d\u0430 \u043a\u0430\u0440\u0442\u0435</b>")
+    any_ev = False
+    for key, label in DAILY_EVENT_LABELS:
+        cnt = counters.get("ev_" + key, 0)
+        uc = counters.get("ev_user_" + key, 0)
+        if cnt or uc:
+            lines.append("\u2022 " + label + ": <b>" + str(cnt) + "</b> \u00b7 \u0443\u043d\u0438\u043a. <b>" + str(uc) + "</b>")
+            any_ev = True
+    if not any_ev:
+        lines.append("\u2022 \u043d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445")
+    lines.append("")
+
+    # Откуда пришли
+    refs = []
+    for key, value in counters.items():
+        if key.startswith("ref_") and value:
+            ref = key[4:]
+            refs.append((ref, value))
+    if refs:
+        refs.sort(key=lambda x: x[1], reverse=True)
+        lines.append("<b>\U0001F517 \u041e\u0442\u043a\u0443\u0434\u0430 \u043f\u0440\u0438\u0448\u043b\u0438</b>")
+        for ref, value in refs[:10]:
+            lines.append("\u2022 " + REF_LABELS.get(ref, ref) + ": <b>" + str(value) + "</b>")
+
+    await bot.send_message(ADMIN_ID, "\n".join(lines))
+
+
 async def daily_dups_task(bot: Bot):
     """Раз в сутки в 09:00 МСК сканирует дубли АЗС."""
     if not ADMIN_ID:
@@ -3669,6 +3776,7 @@ async def main():
     asyncio.create_task(weekly_network_task(bot))
     asyncio.create_task(stale_stations_task(bot))
     asyncio.create_task(daily_dups_task(bot))
+    asyncio.create_task(daily_report_task(bot))
 
     await dp.start_polling(bot, request_timeout=15)
 

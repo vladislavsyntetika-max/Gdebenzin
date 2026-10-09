@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14171A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Стань разведчиком — ГДЕ БЕНЗИН!?</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Стань разведчиком — ГДЕ БЕНЗИН!?">
+<meta property="og:description" content="Помоги водителям своего района. 10 секунд на отчёт — и сотни людей видят, где есть бензин.">
+<meta property="og:image" content="https://azs-spb-bot-syntetika.amvera.io/icon-512.png">
+<meta property="og:url" content="https://azs-spb-bot-syntetika.amvera.io/scout">
+<meta name="description" content="Разведчик ГДЕ БЕНЗИН!? — помогаешь водителям своего района, получаешь баллы и звания.">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #14171A; color: #E8E6E1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 16px; line-height: 1.55;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 28px 20px 60px; }
+  .hero { text-align: center; margin-bottom: 30px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 76px; height: 76px; border-radius: 22px;
+    background: linear-gradient(135deg, #FFB000, #FF8A00);
+    color: #14171A; font-size: 42px; margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(255,176,0,.35);
+  }
+  h1 { font-size: 30px; margin: 0 0 10px; letter-spacing: -0.5px; font-weight: 800; }
+  .tag { font-size: 15px; color: #B7BBC1; margin: 0 0 4px; }
+  .tag b { color: #FFB000; }
+  .cta-block { display: flex; flex-direction: column; gap: 10px; margin: 26px 0; }
+  .cta {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 17px 20px; border-radius: 14px;
+    font-size: 17px; font-weight: 700; letter-spacing: 0.1px;
+    cursor: pointer; border: none; font-family: inherit;
+    text-decoration: none; color: inherit;
+    transition: transform .1s ease;
+  }
+  .cta:active { transform: scale(0.98); }
+  .cta-primary { background: #FFB000; color: #14171A; box-shadow: 0 4px 16px rgba(255,176,0,.3); }
+  .cta-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
+  h2 {
+    font-size: 20px; font-weight: 800; letter-spacing: -0.3px;
+    margin: 34px 0 14px; padding-top: 20px; border-top: 1px solid #262B31;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2:first-of-type { padding-top: 0; border-top: none; margin-top: 20px; }
+  .step { display: flex; gap: 14px; margin-bottom: 18px; }
+  .step-num {
+    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px;
+    background: #FFB000; color: #14171A; display: flex; align-items: center;
+    justify-content: center; font-weight: 800; font-size: 17px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+  .step-text { font-size: 14px; color: #B7BBC1; margin: 0; }
+  .bonus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .bonus-item {
+    background: #1E2227; border: 1px solid #262B31; border-radius: 12px;
+    padding: 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .bonus-icon { font-size: 26px; line-height: 1; }
+  .bonus-name { font-weight: 700; font-size: 14px; color: #FFB000; }
+  .bonus-desc { font-size: 12px; color: #B7BBC1; line-height: 1.4; }
+  .rank-list { list-style: none; padding: 0; margin: 0; }
+  .rank-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #262B31; font-size: 14px;
+  }
+  .rank-list li:last-child { border-bottom: none; }
+  .rank-list .r-pts { color: #8A8F98; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .quote {
+    background: #1E2227; border-left: 3px solid #FFB000;
+    padding: 14px 16px; border-radius: 8px; margin: 16px 0;
+    font-size: 14px; color: #B7BBC1; font-style: italic;
+  }
+  .footer {
+    text-align: center; color: #8A8F98; font-size: 12px;
+    margin-top: 40px; padding-top: 20px; border-top: 1px solid #262B31;
+  }
+  .footer a { color: #FFB000; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-badge">&#127919;</div>
+    <h1>Стань разведчиком</h1>
+    <p class="tag">Помоги водителям своего района</p>
+    <p class="tag">10 секунд на отчёт &mdash; <b>сотни людей</b> видят, где есть бензин</p>
+  </div>
+
+  <div class="cta-block">
+    <a class="cta cta-primary" href="https://t.me/naidibenzin_bot?start=scout" id="cta-bot">&#9889; Стать разведчиком в Telegram</a>
+    <a class="cta cta-secondary" href="/map" id="cta-map">&#128506; Сначала посмотреть карту</a>
+  </div>
+
+  <h2>&#128161; Как это работает</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Заправляешься или проезжаешь мимо АЗС</div>
+      <p class="step-text">Обычный маршрут — работа, дача, магазин. Ничего специально искать не надо.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Открываешь карту, тапаешь станцию</div>
+      <p class="step-text">Видишь топливо, нажимаешь «Есть» или «Нет». Всё. 10 секунд.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Следующий водитель уже знает</div>
+      <p class="step-text">Твоя отметка обновляет карту мгновенно. Кто-то не поедет на пустую заправку благодаря тебе.</p>
+    </div>
+  </div>
+
+  <h2>&#127942; Что получаешь</h2>
+  <div class="bonus-grid">
+    <div class="bonus-item">
+      <div class="bonus-icon">&#11088;</div>
+      <div class="bonus-name">Баллы за отчёты</div>
+      <div class="bonus-desc">Каждый отчёт &mdash; плюс к рейтингу. На «своих» станциях &times;2.</div>
+    </div>
+    <div class="bonus-item">
+      <div class="bonus-icon">&#127942;</div>
+      <div class="bonus-name">Звания</div>
+      <div class="bonus-desc">От Новичка до Смотрителя района. Видно всем в топе.</div>
+    </div>
+    <div class="bonus-item">
+      <div class="bonus-icon">&#128293;</div>
+      <div class="bonus-name">Стрик</div>
+      <div class="bonus-desc">Отмечаешь несколько дней подряд &mdash; растёт счётчик.</div>
+    </div>
+    <div class="bonus-item">
+      <div class="bonus-icon">&#127873;</div>
+      <div class="bonus-name">Скидки партнёров</div>
+      <div class="bonus-desc">Скоро: обмен баллов на промокоды АЗС и сервисов.</div>
+    </div>
+  </div>
+
+  <h2>&#128293; Уровни разведчика</h2>
+  <ul class="rank-list">
+    <li><span>Новичок</span><span class="r-pts">0+</span></li>
+    <li><span>Заправщик</span><span class="r-pts">50+</span></li>
+    <li><span>Разведчик</span><span class="r-pts">150+</span></li>
+    <li><span>Смотритель района</span><span class="r-pts">301+</span></li>
+    <li><span>Легенда бензина</span><span class="r-pts">1000+</span></li>
+  </ul>
+
+  <h2>&#128172; Почему это важно</h2>
+  <div class="quote">
+    Все видят, что заправка есть. Никто не видит, что на ней пусто. Мы &mdash; видим.
+    Потому что водители отмечают вживую.
+  </div>
+  <p class="tag" style="margin-top:14px;">
+    Это не сервис от компании. Это сообщество водителей.
+    Каждая отметка &mdash; вклад в общую картину.
+  </p>
+
+  <h2>&#128231; Начни сейчас</h2>
+  <div class="cta-block">
+    <a class="cta cta-primary" href="https://t.me/naidibenzin_bot?start=scout">&#9889; Открыть бота</a>
+    <a class="cta cta-secondary" href="/map">&#128506; Открыть карту</a>
+  </div>
+
+  <div class="footer">
+    <a href="/">Главная</a> &middot; <a href="/manual">Как пользоваться</a> &middot; <a href="https://t.me/naidibenzin">Канал</a>
+  </div>
+
+</div>
+<script>
+  (function(){
+    try {
+      var ref = new URLSearchParams(location.search).get('ref');
+      if (!ref) return;
+      var ids = ['cta-bot', 'cta-map'];
+      ids.forEach(function(id){
+        var el = document.getElementById(id);
+        if (!el) return;
+        var href = el.getAttribute('href');
+        var sep = href.indexOf('?') === -1 ? '?' : '&';
+        el.setAttribute('href', href + sep + 'ref=' + encodeURIComponent(ref));
+      });
+    } catch(e){}
+  })();
+</script>
+</body>
+</html>

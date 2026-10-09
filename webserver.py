@@ -266,6 +266,16 @@ async def handle_public_stats(request):
     return resp
 
 
+async def handle_scout(request):
+    """Страница для разведчиков."""
+    _record_ref(request, "scout")
+    try:
+        return web.FileResponse("webapp/scout.html")
+    except Exception as e:
+        core.log.exception("scout.html не прочитан: %s", e)
+        return web.Response(status=500, text="scout template error")
+
+
 async def handle_map(request):
     _record_ref(request, "map")
     resp = web.FileResponse("webapp/map.html")
@@ -1503,6 +1513,7 @@ def build_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware, gzip_middleware])
     app.router.add_get("/", handle_landing)
     app.router.add_get("/map", handle_map)
+    app.router.add_get("/scout", handle_scout)
     app.router.add_get("/ws", handle_ws)
     app.router.add_get(r"/tiles/{z:\d+}/{x:\d+}/{y:\d+}.png", handle_tile)
     app.router.add_get("/leaflet.js", handle_leaflet_js)

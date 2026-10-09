@@ -3994,6 +3994,32 @@ async def on_route_cmd(message: Message):
     await message.answer_document(doc, caption="\U0001F4E5 GPX \u2014 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043b\u044e\u0431\u043e\u043c \u043d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440\u0435")
 
 
+@dp.message(Command("пригласить", "invite"))
+async def on_invite_cmd(message: Message):
+    """Персональная ссылка-приглашение на карту."""
+    uid = message.from_user.id
+    uname = message.from_user.username or message.from_user.first_name or ("id" + str(uid))
+    ref = "scout_" + str(uid)
+    map_url = "https://azs-spb-bot-syntetika.amvera.io/map?ref=" + ref
+    landing_url = "https://azs-spb-bot-syntetika.amvera.io/scout?ref=" + ref
+
+    lines = [
+        "\U0001F3AF <b>\u041f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u0435 \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043a\u0430</b>",
+        "",
+        "\u0422\u0432\u043e\u044f \u043b\u0438\u0447\u043d\u0430\u044f \u0441\u0441\u044b\u043b\u043a\u0430 \u0434\u043b\u044f \u0434\u0440\u0443\u0437\u0435\u0439:",
+        "<code>" + map_url + "</code>",
+        "",
+        "\u041a\u0430\u0436\u0434\u044b\u0439, \u043a\u0442\u043e \u043f\u0440\u0438\u0434\u0451\u0442 \u043f\u043e \u043d\u0435\u0439 \u0438 \u043d\u0430\u0447\u043d\u0451\u0442 \u043e\u0442\u043c\u0435\u0447\u0430\u0442\u044c\u0441\u044f \u2014 \u043f\u0440\u0438\u0431\u0430\u0432\u0438\u0442 \u0442\u0435\u0431\u0435 +10 \u0431\u0430\u043b\u043b\u043e\u0432 \u043a \u0440\u0435\u0439\u0442\u0438\u043d\u0433\u0443.",
+        "",
+        "<b>\u0413\u043e\u0442\u043e\u0432\u044b\u0439 \u0442\u0435\u043a\u0441\u0442 \u0434\u043b\u044f \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438:</b>",
+        "",
+        "<code>\u041f\u0440\u0438\u0432\u0435\u0442! \u0421\u0434\u0435\u043b\u0430\u043b \u043a\u0430\u0440\u0442\u0443 \u0431\u0435\u043d\u0437\u0438\u043d\u0430 \u043f\u043e \u0421\u041f\u0431 \u0438 \u041b\u041e \u2014 \u0432\u043e\u0434\u0438\u0442\u0435\u043b\u0438 \u043e\u0442\u043c\u0435\u0447\u0430\u044e\u0442,\n\u0433\u0434\u0435 \u0441\u0435\u0439\u0447\u0430\u0441 \u0435\u0441\u0442\u044c 92/95/98/\u0414\u0422. \u041d\u0435 \u0433\u0430\u0434\u0430\u0435\u0448\u044c, \u0430 \u0432\u0438\u0434\u0438\u0448\u044c.\n\u0417\u0430\u0439\u0434\u0438: " + map_url + "</code>",
+        "",
+        "\U0001F4CE \u0422\u0430\u043a\u0436\u0435 \u043c\u043e\u0436\u043d\u043e \u043f\u0435\u0440\u0435\u0441\u043b\u0430\u0442\u044c \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0434\u043b\u044f \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043a\u043e\u0432: " + landing_url,
+    ]
+    await message.answer("\n".join(lines), disable_web_page_preview=True)
+
+
 @dp.message(Command("задания", "tasks"))
 async def on_tasks_cmd(message: Message):
     tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=10)

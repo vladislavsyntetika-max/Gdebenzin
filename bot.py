@@ -2061,6 +2061,17 @@ SPB_DISTRICTS = {
 }
 
 
+def _norm_district_name(name):
+    """Убирает служебные суффиксы: 'район', 'ГО'."""
+    if not name:
+        return ""
+    return name.replace(" район", "").replace(" ГО", "").strip()
+
+
+def _is_spb_district(name):
+    return _norm_district_name(name) in SPB_DISTRICTS
+
+
 @dp.message(Command("районы", "districts"))
 async def on_districts_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:
@@ -2166,9 +2177,9 @@ async def on_districts_cmd(message: Message):
         await message.answer("Нет данных.")
         return
 
-    # Сводка
-    spb_keys = [k for k in district_stats.keys() if k in SPB_DISTRICTS]
-    lo_keys = [k for k in district_stats.keys() if k not in SPB_DISTRICTS]
+    # Сводка: классификация по нормализованному имени
+    spb_keys = [k for k in district_stats.keys() if _is_spb_district(k)]
+    lo_keys = [k for k in district_stats.keys() if not _is_spb_district(k)]
     spb_rep = sum(district_stats[k]["reports"] for k in spb_keys)
     lo_rep = sum(district_stats[k]["reports"] for k in lo_keys)
     spb_st = sum(district_stats[k]["total_stations"] for k in spb_keys)
@@ -2176,19 +2187,22 @@ async def on_districts_cmd(message: Message):
     total_rep = spb_rep + lo_rep
     total_st = spb_st + lo_st
 
+    # Разделяем районы на «с отчётами» и «пустые»
+    active_districts = {k: v for k, v in district_stats.items() if v["reports"] > 0}
+    empty_districts = {k: v for k, v in district_stats.items() if v["reports"] == 0}
+
     lines = ["\U0001F5FA <b>\u0420\u0430\u0439\u043e\u043d\u044b \u00b7 7 \u0434\u043d\u0435\u0439</b>", ""]
     lines.append("<b>\u0421\u041f\u0431:</b> " + str(spb_rep) + " \u043e\u0442\u0447 \u00b7 " + str(spb_st) + " \u0410\u0417\u0421")
     lines.append("<b>\u041b\u041e:</b> " + str(lo_rep) + " \u043e\u0442\u0447 \u00b7 " + str(lo_st) + " \u0410\u0417\u0421")
     lines.append("\u0412\u0441\u0435\u0433\u043e: " + str(total_rep) + " \u043e\u0442\u0447 \u00b7 " + str(total_st) + " \u0410\u0417\u0421")
     lines.append("")
 
-    # Все районы, отсортированные по отчётам
-    ranked = sorted(district_stats.items(), key=lambda kv: kv[1]["reports"], reverse=True)
+    # Активные районы, отсортированные по отчётам
+    ranked = sorted(active_districts.items(), key=lambda kv: kv[1]["reports"], reverse=True)
     for i, (_dn, _ds) in enumerate(ranked):
         total_d = _ds["total_stations"]
         active_d = len(_ds["active_stations"])
         coverage = round(active_d / total_d * 100) if total_d else 0
-        # Определяем лидера по дефициту
         d_info = deficit.get(_dn, {})
         worst = None
         for fk, (ok_c, none_c) in d_info.items():
@@ -2198,19 +2212,27 @@ async def on_districts_cmd(message: Message):
             pct = round(none_c / tot * 100)
             if worst is None or pct > worst[1]:
                 worst = (fk, pct)
-        fuel_short = FUEL_SHORT
         worst_str = ""
         if worst and worst[1] >= 40:
-            worst_str = " \u26a0 " + fuel_short.get(worst[0], worst[0]) + " " + str(worst[1]) + "% \u043d\u0435\u0442"
+            worst_str = " \u26a0 " + FUEL_SHORT.get(worst[0], worst[0]) + " " + str(worst[1]) + "% \u043d\u0435\u0442"
 
-        lines.append("<b>" + str(i + 1) + ". " + _dn + "</b>")
+        region = "\u0421\u041f\u0431" if _is_spb_district(_dn) else "\u041b\u041e"
+        lines.append("<b>" + str(i + 1) + ". " + _dn + "</b> <i>(" + region + ")</i>")
         lines.append("  " + str(_ds["reports"]) + " \u043e\u0442\u0447 \u00b7 " + str(active_d) + "/" + str(total_d) + " \u0410\u0417\u0421 (" + str(coverage) + "%)" + worst_str)
-
-        # Топ-3 станции в районе
         _ds["top_stations"].sort(reverse=True)
         for _cnt, _name, _sid in _ds["top_stations"][:3]:
             lines.append("    \u2022 " + _name + " \u2014 " + str(_cnt))
         lines.append("")
+
+    # Пустые районы — одной строкой
+    if empty_districts:
+        empty_st = sum(v["total_stations"] for v in empty_districts.values())
+        names = sorted(empty_districts.keys())
+        lines.append("<b>\U0001F4A4 \u0411\u0435\u0437 \u043e\u0442\u0447\u0451\u0442\u043e\u0432 \u0437\u0430 7\u0434:</b> " + str(len(names)) + " \u0440\u0430\u0439\u043e\u043d\u043e\u0432, " + str(empty_st) + " \u0410\u0417\u0421")
+        for _n in names:
+            _vs = empty_districts[_n]
+            _reg = "\u0421\u041f\u0431" if _is_spb_district(_n) else "\u041b\u041e"
+            lines.append("  \u2022 " + _n + " (" + _reg + ", " + str(_vs["total_stations"]) + ")")
 
     await message.answer("\n".join(lines))
 

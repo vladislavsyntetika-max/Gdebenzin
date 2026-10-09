@@ -1154,6 +1154,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="/leaflet.js"></script>
+<script src="/leaflet-heat.js"></script>
 <script src="/leaflet.markercluster.js"></script>
 <script>
 (function(){
@@ -3892,47 +3893,80 @@
 
   function _hmBuild(){
     if (_hmLayer){ map.removeLayer(_hmLayer); _hmLayer = null; }
-    _hmLayer = L.layerGroup().addTo(map);
 
-    // Предрасчёт для density
-    if (_hmMode === 'density'){
-      // Считаем отчёты за 7д на станцию из глобального счётчика
-      // (используем данные, которые уже приходят от API — reports_24h нам не хватит,
-      // поэтому считаем «reported» по числу известных топлив как прокси)
-      stationsData.forEach(function(s){
-        var cnt = 0;
+    var pts = [];
+    stationsData.forEach(function(s){
+      var weight = 0.1;
+      if (_hmMode === 'fresh'){
+        var newest = 0;
         if (s.fuels){
           for (var k in s.fuels){
             var f = s.fuels[k];
-            if (f && f.status && f.status !== 'unknown' && f.fresh_level !== 'gone') cnt++;
+            if (f && f.ts && f.ts > newest) newest = f.ts;
           }
         }
-        // Масштабируем на 10 — чтобы покрыть диапазон heatmap
-        s._hmCnt = cnt * 4;
+        if (!newest){ weight = 0.05; }
+        else {
+          var age = Math.floor(Date.now()/1000) - newest;
+          if (age < 3600) weight = 1.0;
+          else if (age < 3 * 3600) weight = 0.9;
+          else if (age < 8 * 3600) weight = 0.75;
+          else if (age < 24 * 3600) weight = 0.6;
+          else if (age < 48 * 3600) weight = 0.45;
+          else if (age < 4 * 86400) weight = 0.30;
+          else if (age < 7 * 86400) weight = 0.18;
+          else weight = 0.10;
+        }
+      } else if (_hmMode === 'density'){
+        var cnt = 0;
+        if (s.fuels){
+          for (var k2 in s.fuels){
+            var f2 = s.fuels[k2];
+            if (f2 && f2.status && f2.status !== 'unknown' && f2.fresh_level !== 'gone') cnt++;
+          }
+        }
+        weight = cnt / 4;
+      } else if (_hmMode === 'deficit'){
+        var noneCount = 0;
+        if (s.fuels){
+          for (var k3 in s.fuels){
+            var f3 = s.fuels[k3];
+            if (f3 && f3.status === 'none' && f3.fresh_level !== 'gone') noneCount++;
+          }
+        }
+        weight = noneCount / 4;
+      }
+      var sigma = 0.0035;
+      pts.push([s.lat, s.lng, weight]);
+      var k8 = [[1,0],[-1,0],[0,1],[0,-1],[0.7,0.7],[0.7,-0.7],[-0.7,0.7],[-0.7,-0.7]];
+      k8.forEach(function(off){
+        var dx = off[1] * sigma * 1.3;
+        var dy = off[0] * sigma * 0.7;
+        pts.push([s.lat + dy, s.lng + dx, weight * 0.55]);
       });
+    });
+
+    var gradient;
+    if (_hmMode === 'fresh'){
+      gradient = {0.0:'#9C27B0',0.15:'#B71C1C',0.30:'#F44336',0.45:'#FF9800',0.60:'#FFEB3B',0.75:'#C6FF00',0.90:'#76FF03',1.00:'#00E676'};
+    } else if (_hmMode === 'density'){
+      gradient = {0.0:'#E3F2FD',0.3:'#90CAF9',0.5:'#42A5F5',0.7:'#1E88E5',1.0:'#0D47A1'};
+    } else {
+      gradient = {0.0:'#00E676',0.3:'#C6FF00',0.55:'#FF9800',0.8:'#F44336',1.0:'#9C27B0'};
     }
 
-    // Рисуем точки
-    stationsData.forEach(function(s){
-      var color = _hmStationColor(s);
-      var opacity = _hmOpacity(s);
-      var circle = L.circleMarker([s.lat, s.lng], {
-        radius: 30, stroke: false, fill: true,
-        fillColor: color, fillOpacity: opacity,
-        interactive: true, bubblingMouseEvents: false,
-      });
-      circle.on('click', function(e){
-        L.DomEvent.stopPropagation(e);
-        openSheet(s, false);
-      });
-      _hmLayer.addLayer(circle);
+    _hmLayer = L.heatLayer(pts, {
+      radius: 32, blur: 24, maxZoom: 15, max: 1.0, minOpacity: 0.35, gradient: gradient
     });
+    _hmLayer.addTo(map);
 
-    // Затемнение обычных маркеров
     Object.keys(markers).forEach(function(sid){
       var m = markers[sid];
-      if (m) m.setOpacity(0.05);
+      if (m) m.setOpacity(0);
     });
+    if (markerCluster) {
+      try { markerCluster.eachLayer(function(l){ l.setOpacity(0); }); } catch(e){}
+    }
   }
 
   function _hmSetMode(mode){
@@ -3953,11 +3987,11 @@
     if (_hmActive){
       if (btn) btn.classList.add('active');
       if (legend) legend.classList.add('show');
-      if (typeof markerCluster !== 'undefined' && markerCluster && markerCluster.disableClustering){
-        try { markerCluster.disableClustering(); } catch(e){}
+      if (typeof markerCluster !== 'undefined' && markerCluster){
+        try { map.removeLayer(markerCluster); } catch(e){}
       }
       _hmBuild();
-      _hmSetMode(_hmMode); // обновит подпись
+      _hmSetMode(_hmMode);
     } else {
       if (btn) btn.classList.remove('active');
       if (legend) legend.classList.remove('show');
@@ -3967,9 +4001,10 @@
         var m = markers[sid];
         if (m) m.setOpacity(1);
       });
-      if (typeof markerCluster !== 'undefined' && markerCluster && markerCluster.enableClustering){
-        try { markerCluster.enableClustering(); } catch(e){}
+      if (typeof markerCluster !== 'undefined' && markerCluster){
+        try { map.addLayer(markerCluster); } catch(e){}
       }
+      renderMarkers();
     }
   }
 

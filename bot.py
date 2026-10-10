@@ -4208,17 +4208,18 @@ async def cb_route_task(cq: CallbackQuery):
             await cq.answer("\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0443\u0436\u0435 \u0432\u0437\u044f\u0442\u043e \u043a\u0435\u043c-\u0442\u043e \u0434\u0440\u0443\u0433\u0438\u043c", show_alert=True)
             return
         await cq.answer("\u2705 \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0437\u044f\u0442\u043e!")
-        # Обновить сообщение на деталь задания
         tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
         task = next((t for t in tasks if t["id"] == tid), None)
         if task:
             text = route_task_text(task)
             kb_rows = _route_kb_rows(task.get("plan") or {})
             kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
+            kb_rows.append([InlineKeyboardButton(text="\u274c \u041e\u0442\u043a\u0430\u0437\u0430\u0442\u044c\u0441\u044f", callback_data="rt:release:" + tid)])
             try:
-                await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+                await cq.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
             except Exception:
-                pass
+                log.exception("send taken card failed")
+                await cq.message.answer("\u2705 \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0437\u044f\u0442\u043e. \u041e\u0442\u043a\u0440\u043e\u0439 /\u0437\u0430\u0434\u0430\u043d\u0438\u044f \u2014 \u0437\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0432\u0435\u0440\u0445\u0443.")
         return
 
     if action == "release" and len(parts) == 3:

@@ -82,6 +82,46 @@
     padding: 14px 16px; border-radius: 8px; margin: 16px 0;
     font-size: 14px; color: #B7BBC1; font-style: italic;
   }
+  .live-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+  .lc-item { background: #1E2227; border: 1px solid #262B31; border-radius: 12px; padding: 14px 8px; text-align: center; }
+  .lc-num { display: block; font-size: 26px; font-weight: 800; color: #FFB000; line-height: 1; margin-bottom: 4px; }
+  .lc-label { font-size: 11px; color: #8A8F98; }
+  .tasks-grid { display: flex; flex-direction: column; gap: 10px; }
+  .task-card {
+    background: #1E2227; border: 1px solid #262B31; border-radius: 12px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    text-decoration: none; color: inherit; transition: border-color .15s ease;
+  }
+  .task-card:hover { border-color: #FFB000; }
+  .task-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .task-name { font-weight: 700; font-size: 15px; color: #E8E6E1; }
+  .task-km { font-size: 13px; color: #FFB000; font-weight: 700; white-space: nowrap; }
+  .task-meta { font-size: 12px; color: #B7BBC1; display: flex; gap: 10px; flex-wrap: wrap; }
+  .task-meta b { color: #FFB000; }
+  .task-cta {
+    display: inline-block; margin-top: 4px; padding: 9px 16px;
+    background: #FFB000; color: #14171A; border-radius: 9px;
+    font-weight: 700; font-size: 14px; text-align: center;
+    align-self: flex-start;
+  }
+  .leaders-list { list-style: none; padding: 0; margin: 0; counter-reset: leader; }
+  .leaders-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-bottom: 1px solid #262B31; font-size: 14px;
+  }
+  .leaders-list li:last-child { border-bottom: none; }
+  .leaders-list li::before {
+    counter-increment: leader; content: counter(leader);
+    width: 26px; height: 26px; border-radius: 8px;
+    background: #232830; color: #8A8F98;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px;
+  }
+  .leaders-list li:nth-child(1)::before { background: #FFB000; color: #14171A; }
+  .leaders-list li:nth-child(2)::before { background: #B0B0B2; color: #14171A; }
+  .leaders-list li:nth-child(3)::before { background: #8A5A2B; color: #FFFFFF; }
+  .leader-name { flex: 1; font-weight: 600; }
+  .leader-pts { color: #FFB000; font-weight: 700; font-variant-numeric: tabular-nums; }
   .footer {
     text-align: center; color: #8A8F98; font-size: 12px;
     margin-top: 40px; padding-top: 20px; border-top: 1px solid #262B31;
@@ -103,6 +143,19 @@
     <a class="cta cta-primary" href="https://t.me/naidibenzin_bot?start=scout" id="cta-bot">&#9889; Стать разведчиком в Telegram</a>
     <a class="cta cta-secondary" href="/map" id="cta-map">&#128506; Сначала посмотреть карту</a>
   </div>
+
+  <h2 id="live-section" style="display:none;">&#128293; Сейчас открыто</h2>
+  <div id="live-stats" style="display:none;">
+    <div class="live-counters">
+      <div class="lc-item"><span class="lc-num" id="lc-open">0</span><span class="lc-label">открытых</span></div>
+      <div class="lc-item"><span class="lc-num" id="lc-active">0</span><span class="lc-label">в работе</span></div>
+      <div class="lc-item"><span class="lc-num" id="lc-done">0</span><span class="lc-label">закрыто за 7д</span></div>
+    </div>
+    <div class="tasks-grid" id="tasks-grid"></div>
+  </div>
+
+  <h2 id="leaders-section" style="display:none;">&#127942; Топ разведчиков недели</h2>
+  <ol class="leaders-list" id="leaders-list" style="display:none;"></ol>
 
   <h2>&#128161; Как это работает</h2>
 
@@ -183,6 +236,7 @@
 
 </div>
 <script>
+  // ===== Ref param =====
   (function(){
     try {
       var ref = new URLSearchParams(location.search).get('ref');
@@ -196,6 +250,76 @@
         el.setAttribute('href', href + sep + 'ref=' + encodeURIComponent(ref));
       });
     } catch(e){}
+  })();
+
+  // ===== Live stats =====
+  (function(){
+    var BOT_URL = 'https://t.me/naidibenzin_bot?start=task_';
+
+    function esc(t){
+      return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+      });
+    }
+
+    function renderTasks(tasks){
+      var grid = document.getElementById('tasks-grid');
+      if (!grid) return;
+      if (!tasks.length){
+        grid.innerHTML = '<div style="text-align:center;color:#8A8F98;padding:20px;font-size:14px;">Открытых заданий нет. Новые появятся в 09:00.</div>';
+        return;
+      }
+      var html = '';
+      tasks.forEach(function(t){
+        html += '<a class="task-card" href="' + BOT_URL + encodeURIComponent(t.id) + '">' +
+          '<div class="task-head"><span class="task-name">' + esc(t.district) + '</span>' +
+          '<span class="task-km">~' + (t.total_km || 0) + ' км</span></div>' +
+          '<div class="task-meta">' +
+          '<span>Точек: <b>' + t.points_count + '</b></span>' +
+          '<span>Покрытие: <b>' + (t.coverage_pct || 0) + '%</b></span>' +
+          '<span>Просрочка: <b>' + (t.avg_overdue_days || 0) + ' дн</b></span>' +
+          '</div>' +
+          '<span class="task-cta">Взять в боте</span>' +
+          '</a>';
+      });
+      grid.innerHTML = html;
+    }
+
+    function renderLeaders(leaders){
+      var list = document.getElementById('leaders-list');
+      if (!list) return;
+      if (!leaders.length){
+        document.getElementById('leaders-section').style.display = 'none';
+        return;
+      }
+      var html = '';
+      leaders.forEach(function(l){
+        html += '<li><span class="leader-name">' + esc(l.name) + '</span>' +
+                '<span class="leader-pts">' + l.points + ' балл.</span></li>';
+      });
+      list.innerHTML = html;
+      document.getElementById('leaders-section').style.display = 'flex';
+      list.style.display = 'block';
+    }
+
+    function loadStats(){
+      fetch('/api/scout-stats', { cache: 'no-store' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || typeof d.total_open !== 'number') return;
+          document.getElementById('lc-open').textContent = d.total_open;
+          document.getElementById('lc-active').textContent = d.total_active;
+          document.getElementById('lc-done').textContent = d.total_done_7d;
+          document.getElementById('live-section').style.display = 'flex';
+          document.getElementById('live-stats').style.display = 'block';
+          renderTasks(d.tasks || []);
+          renderLeaders(d.leaders || []);
+        })
+        .catch(function(){});
+    }
+
+    loadStats();
+    setInterval(loadStats, 60000);
   })();
 </script>
 </body>

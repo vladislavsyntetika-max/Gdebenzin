@@ -2646,6 +2646,50 @@ async def on_stats_cmd(message: Message):
             s_ = srcs[name]
             lines.append(f"• <b>{name}</b>: лендинг {s_['landing']}, карта {s_['map']}")
 
+    # Источники трафика за последние сутки (по UTC)
+    now_utc_hour = time.gmtime().tm_hour
+    if now_utc_hour < 12:
+        target_day = time.strftime("%Y-%m-%d", time.gmtime(int(time.time()) - 86400))
+        day_label = "\u0432\u0447\u0435\u0440\u0430"
+    else:
+        target_day = time.strftime("%Y-%m-%d", time.gmtime())
+        day_label = "\u0441\u0435\u0433\u043e\u0434\u043d\u044f"
+    conn = db()
+    try:
+        d_rows = conn.execute(
+            "SELECT key, value FROM metrics_counters WHERE day = ? "
+            "AND (key LIKE 'ref_%' OR key IN ('landing_view','map_view'))",
+            (target_day,)
+        ).fetchall()
+    finally:
+        conn.close()
+    d_refs = {k: v for k, v in d_rows}
+    d_landing = d_refs.get("landing_view", 0)
+    d_map = d_refs.get("map_view", 0)
+    if d_landing or d_map or any(k.startswith("ref_") for k in d_refs):
+        lines.append("")
+        lines.append(f"<b>\U0001F4E5 \u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438 (\u0437\u0430 \u0441\u0443\u0442\u043a\u0438 \u00b7 {day_label})</b>")
+        lines.append(f"\u041b\u0435\u043d\u0434\u0438\u043d\u0433: <b>{d_landing}</b>  \u00b7  \u041a\u0430\u0440\u0442\u0430: <b>{d_map}</b>")
+        d_cm = d_refs.get("landing_click_map", 0)
+        d_ct = d_refs.get("landing_click_tg", 0)
+        if d_landing and (d_cm or d_ct):
+            pm = round(d_cm / d_landing * 100) if d_landing else 0
+            pt = round(d_ct / d_landing * 100) if d_landing else 0
+            lines.append(f"\u041a\u043b\u0438\u043a\u0438: \u043a\u0430\u0440\u0442\u0430 <b>{d_cm}</b> ({pm}%)  \u00b7  TG <b>{d_ct}</b> ({pt}%)")
+        d_srcs = {}
+        for k, v in d_refs.items():
+            if k.startswith("ref_landing_"):
+                name = k[len("ref_landing_"):]
+                d_srcs.setdefault(name, {"landing": 0, "map": 0})
+                d_srcs[name]["landing"] = v
+            elif k.startswith("ref_map_"):
+                name = k[len("ref_map_"):]
+                d_srcs.setdefault(name, {"landing": 0, "map": 0})
+                d_srcs[name]["map"] = v
+        for name in sorted(d_srcs, key=lambda n: -(d_srcs[n]["landing"] + d_srcs[n]["map"])):
+            s_ = d_srcs[name]
+            lines.append(f"\u2022 <b>{name}</b>: \u043b\u0435\u043d\u0434\u0438\u043d\u0433 {s_['landing']}, \u043a\u0430\u0440\u0442\u0430 {s_['map']}")
+
     await message.answer("\n".join(lines), reply_markup=kb_main())
 @dp.message(Command("смотрители", "районы"))
 async def on_ambassadors_cmd(message: Message):

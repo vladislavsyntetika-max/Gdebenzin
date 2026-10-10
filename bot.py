@@ -3611,7 +3611,21 @@ def route_task_text(task):
         lines.append("\u2b50 \u0417\u0430 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u0435 \u0432\u0441\u0435\u0445 \u0442\u043e\u0447\u0435\u043a: <b>+50 \u0431\u0430\u043b\u043b\u043e\u0432</b>")
         lines.append("\u26a1 \u041a\u0430\u0436\u0434\u044b\u0439 \u043e\u0442\u0447\u0451\u0442 \u043d\u0430 \u0441\u0442\u0430\u043d\u0446\u0438\u0438 \u0438\u0437 \u0437\u0430\u0434\u0430\u043d\u0438\u044f: <b>x3 \u0431\u0430\u043b\u043b\u0430</b>")
         lines.append("")
-        lines.append("\U0001F4CB <b>\u041a\u0430\u043a \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0442\u044c</b> (\u0432\u0441\u0451 \u0437\u0430\u0439\u043c\u0451\u0442 ~30 \u043c\u0438\u043d \u0432 \u0434\u043e\u0440\u043e\u0433\u0435):")
+        try:
+            _km = float(km) if km not in (None, "?", "") else 0.0
+        except Exception:
+            _km = 0.0
+        if _km > 0:
+            _mins = int(round(_km / 40.0 * 60))
+            if _mins < 60:
+                _time_str = "~" + str(_mins) + " \u043c\u0438\u043d \u0432 \u0434\u043e\u0440\u043e\u0433\u0435"
+            else:
+                _h = _mins // 60
+                _m = _mins % 60
+                _time_str = "~" + str(_h) + " \u0447 " + (str(_m) + " \u043c\u0438\u043d" if _m else "") + " \u0432 \u0434\u043e\u0440\u043e\u0433\u0435"
+            lines.append("\U0001F4CB <b>\u041a\u0430\u043a \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0442\u044c</b> (" + _time_str + ", \u0431\u0435\u0437 \u0443\u0447\u0451\u0442\u0430 \u043e\u0442\u043c\u0435\u0442\u043e\u043a):")
+        else:
+            lines.append("\U0001F4CB <b>\u041a\u0430\u043a \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0442\u044c:</b>")
         lines.append("")
         lines.append("<b>1.</b> \u0416\u043c\u0438 \u00ab\u0412\u0437\u044f\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435\u00bb.")
         lines.append("<b>2.</b> \u041e\u0442\u043a\u0440\u043e\u0439 \u043c\u0430\u0440\u0448\u0440\u0443\u0442 \u2014 Google \u0438\u043b\u0438 \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b, \u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438 \u0443\u0436\u0435 \u0432\u043d\u0443\u0442\u0440\u0438.")
@@ -4055,20 +4069,29 @@ async def on_invite_cmd(message: Message):
 def _route_kb_rows(plan):
     """Собирает строки кнопок маршрутов для карточки задания."""
     rows = []
-    if not plan or not plan.get("points"):
+    if not plan:
         return rows
-    try:
-        g = route_google_url(plan)
-        y = route_yandex_url(plan)
-        n = route_navi_url(plan)
-    except Exception:
+    points = plan.get("points") or []
+    if not points:
         return rows
-    if g:
-        rows.append([InlineKeyboardButton(text="\U0001F5FA Google Maps (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=g)])
-    if y:
-        rows.append([InlineKeyboardButton(text="\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=y)])
-    if n:
-        rows.append([InlineKeyboardButton(text="\U0001F9ED \u042f\u043d\u0434\u0435\u043a\u0441.\u041d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440", url=n)])
+    # Отфильтровать точки без валидных координат
+    clean = [p for p in points if isinstance(p, dict) and p.get("lat") and p.get("lng")]
+    if len(clean) < 1:
+        return rows
+    safe_plan = dict(plan)
+    safe_plan["points"] = clean
+    for label, fn in (
+        ("\U0001F5FA Google Maps \u2014 \u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438", route_google_url),
+        ("\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b \u2014 \u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438", route_yandex_url),
+        ("\U0001F9ED \u042f\u043d\u0434\u0435\u043a\u0441.\u041d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440", route_navi_url),
+    ):
+        try:
+            url = fn(safe_plan)
+        except Exception:
+            log.exception("route url build failed for %s", label)
+            url = None
+        if url:
+            rows.append([InlineKeyboardButton(text=label, url=url)])
     return rows
 
 
@@ -4207,19 +4230,23 @@ async def cb_route_task(cq: CallbackQuery):
         if not ok:
             await cq.answer("\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0443\u0436\u0435 \u0432\u0437\u044f\u0442\u043e \u043a\u0435\u043c-\u0442\u043e \u0434\u0440\u0443\u0433\u0438\u043c", show_alert=True)
             return
-        await cq.answer("\u2705 \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0437\u044f\u0442\u043e!")
-        tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
-        task = next((t for t in tasks if t["id"] == tid), None)
-        if task:
+        await cq.answer("\u2705 \u0412\u0437\u044f\u0442\u043e")
+        try:
+            tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=50)
+            task = next((t for t in tasks if t["id"] == tid), None)
+            if not task:
+                await cq.message.answer("\u2705 \u0412\u0437\u044f\u0442\u043e. \u041e\u0442\u043a\u0440\u043e\u0439 /\u0437\u0430\u0434\u0430\u043d\u0438\u044f \u2014 \u0442\u0430\u043c \u0432\u0441\u0451 \u0431\u0443\u0434\u0435\u0442.")
+                return
+            plan = task.get("plan") or {}
             text = route_task_text(task)
-            kb_rows = _route_kb_rows(task.get("plan") or {})
+            kb_rows = _route_kb_rows(plan)
+            kb_rows.append([InlineKeyboardButton(text="\U0001F4CD \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043a\u0430\u0440\u0442\u0443", url="https://azs-spb-bot-syntetika.amvera.io/map")])
             kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
             kb_rows.append([InlineKeyboardButton(text="\u274c \u041e\u0442\u043a\u0430\u0437\u0430\u0442\u044c\u0441\u044f", callback_data="rt:release:" + tid)])
-            try:
-                await cq.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
-            except Exception:
-                log.exception("send taken card failed")
-                await cq.message.answer("\u2705 \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0437\u044f\u0442\u043e. \u041e\u0442\u043a\u0440\u043e\u0439 /\u0437\u0430\u0434\u0430\u043d\u0438\u044f \u2014 \u0437\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0432\u0435\u0440\u0445\u0443.")
+            await cq.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+        except Exception:
+            log.exception("post-take flow failed")
+            await cq.message.answer("\u2705 \u0412\u0437\u044f\u0442\u043e. \u041e\u0442\u043a\u0440\u043e\u0439 /\u0437\u0430\u0434\u0430\u043d\u0438\u044f.")
         return
 
     if action == "release" and len(parts) == 3:

@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14171A">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Стань разведчиком — ГДЕ БЕНЗИН!?</title>
+<title>Стать разведчиком — ГДЕ БЕНЗИН!?</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Стань разведчиком — ГДЕ БЕНЗИН!?">
+<meta property="og:title" content="Стать разведчиком — ГДЕ БЕНЗИН!?">
 <meta property="og:description" content="Помоги водителям своего района. 3 секунды на отчёт — и сотни людей видят, где есть бензин.">
 <meta property="og:image" content="https://azs-spb-bot-syntetika.amvera.io/icon-512.png">
 <meta property="og:url" content="https://azs-spb-bot-syntetika.amvera.io/scout">
-<meta name="description" content="Разведчик ГДЕ БЕНЗИН!? — помогаешь водителям своего района, получаешь баллы и звания.">
+<meta name="description" content="Стань разведчиком ГДЕ БЕНЗИН!? — помогаешь водителям своего района, получаешь баллы и звания.">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <style>
@@ -24,64 +24,73 @@
     font-size: 16px; line-height: 1.55;
   }
   .wrap { max-width: 640px; margin: 0 auto; padding: 28px 20px 60px; }
-  .hero { text-align: center; margin-bottom: 30px; }
+  .hero { text-align: center; margin-bottom: 26px; }
   .hero-badge {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 76px; height: 76px; border-radius: 22px;
+    width: 80px; height: 80px; border-radius: 22px;
     background: linear-gradient(135deg, #FFB000, #FF8A00);
-    color: #14171A; font-size: 42px; margin-bottom: 14px;
-    box-shadow: 0 8px 24px rgba(255,176,0,.35);
+    color: #14171A; font-size: 44px; margin-bottom: 14px;
+    box-shadow: 0 8px 24px rgba(255,176,0,.4);
   }
-  h1 { font-size: 30px; margin: 0 0 10px; letter-spacing: -0.5px; font-weight: 800; }
+  h1 { font-size: 32px; margin: 0 0 10px; letter-spacing: -0.6px; font-weight: 800; }
   .tag { font-size: 15px; color: #B7BBC1; margin: 0 0 4px; }
   .tag b { color: #FFB000; }
-  .cta-block { display: flex; flex-direction: column; gap: 10px; margin: 26px 0; }
+
+  .cta-block { display: flex; flex-direction: column; gap: 10px; margin: 24px 0; }
   .cta {
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 17px 20px; border-radius: 14px;
-    font-size: 17px; font-weight: 700; letter-spacing: 0.1px;
+    padding: 18px 20px; border-radius: 14px;
+    font-size: 17px; font-weight: 800; letter-spacing: 0.1px;
     cursor: pointer; border: none; font-family: inherit;
     text-decoration: none; color: inherit;
     transition: transform .1s ease;
   }
   .cta:active { transform: scale(0.98); }
-  .cta-primary { background: #FFB000; color: #14171A; box-shadow: 0 4px 16px rgba(255,176,0,.3); }
+  .cta-primary { background: #FFB000; color: #14171A; box-shadow: 0 4px 16px rgba(255,176,0,.35); }
   .cta-secondary { background: #1E2227; color: #E8E6E1; border: 1px solid #2B3036; }
+  .cta-hero { font-size: 18px; padding: 20px; }
+
   h2 {
-    font-size: 20px; font-weight: 800; letter-spacing: -0.3px;
-    margin: 34px 0 14px; padding-top: 20px; border-top: 1px solid #262B31;
+    font-size: 21px; font-weight: 800; letter-spacing: -0.3px;
+    margin: 40px 0 16px; padding-top: 24px; border-top: 1px solid #262B31;
     display: flex; align-items: center; gap: 8px;
   }
   h2:first-of-type { padding-top: 0; border-top: none; margin-top: 20px; }
-  .step { display: flex; gap: 14px; margin-bottom: 18px; }
+
+  .step { display: flex; gap: 14px; margin-bottom: 20px; }
   .step-num {
-    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px;
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 11px;
     background: #FFB000; color: #14171A; display: flex; align-items: center;
-    justify-content: center; font-weight: 800; font-size: 17px;
+    justify-content: center; font-weight: 800; font-size: 18px;
   }
   .step-body { flex: 1; }
-  .step-title { font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+  .step-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
   .step-text { font-size: 14px; color: #B7BBC1; margin: 0; }
+
   .bonus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
   .bonus-item {
     background: #1E2227; border: 1px solid #262B31; border-radius: 12px;
     padding: 14px; display: flex; flex-direction: column; gap: 6px;
   }
-  .bonus-icon { font-size: 26px; line-height: 1; }
+  .bonus-item.wide { grid-column: 1 / -1; }
+  .bonus-icon { font-size: 28px; line-height: 1; }
   .bonus-name { font-weight: 700; font-size: 14px; color: #FFB000; }
-  .bonus-desc { font-size: 12px; color: #B7BBC1; line-height: 1.4; }
+  .bonus-desc { font-size: 12px; color: #B7BBC1; line-height: 1.45; }
+
   .rank-list { list-style: none; padding: 0; margin: 0; }
   .rank-list li {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid #262B31; font-size: 14px;
+    padding: 11px 0; border-bottom: 1px solid #262B31; font-size: 14px;
   }
   .rank-list li:last-child { border-bottom: none; }
   .rank-list .r-pts { color: #8A8F98; font-size: 13px; font-variant-numeric: tabular-nums; }
+
   .quote {
     background: #1E2227; border-left: 3px solid #FFB000;
-    padding: 14px 16px; border-radius: 8px; margin: 16px 0;
-    font-size: 14px; color: #B7BBC1; font-style: italic;
+    padding: 16px 18px; border-radius: 8px; margin: 16px 0;
+    font-size: 15px; color: #B7BBC1; font-style: italic;
   }
+
   .live-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
   .lc-item { background: #1E2227; border: 1px solid #262B31; border-radius: 12px; padding: 14px 8px; text-align: center; }
   .lc-num { display: block; font-size: 26px; font-weight: 800; color: #FFB000; line-height: 1; margin-bottom: 4px; }
@@ -99,9 +108,9 @@
   .task-meta { font-size: 12px; color: #B7BBC1; display: flex; gap: 10px; flex-wrap: wrap; }
   .task-meta b { color: #FFB000; }
   .task-cta {
-    display: inline-block; margin-top: 4px; padding: 9px 16px;
+    display: inline-block; margin-top: 4px; padding: 10px 16px;
     background: #FFB000; color: #14171A; border-radius: 9px;
-    font-weight: 700; font-size: 14px; text-align: center;
+    font-weight: 800; font-size: 14px; text-align: center;
     align-self: flex-start;
   }
   .leaders-list { list-style: none; padding: 0; margin: 0; counter-reset: leader; }
@@ -122,6 +131,52 @@
   .leaders-list li:nth-child(3)::before { background: #8A5A2B; color: #FFFFFF; }
   .leader-name { flex: 1; font-weight: 600; }
   .leader-pts { color: #FFB000; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .sticker-block {
+    background: linear-gradient(135deg, #1E2227, #232830);
+    border: 2px solid #FFB000; border-radius: 16px;
+    padding: 20px; margin-top: 12px; text-align: center;
+  }
+  .sticker-visual {
+    display: inline-block; width: 140px; height: 90px;
+    background: #FFB000; color: #14171A;
+    border-radius: 10px; margin-bottom: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px; letter-spacing: 0.5px;
+    box-shadow: 0 6px 20px rgba(255,176,0,.4);
+    transform: rotate(-3deg);
+  }
+  .sticker-title { font-size: 17px; font-weight: 800; color: #FFB000; margin-bottom: 6px; }
+  .sticker-desc { font-size: 13px; color: #B7BBC1; line-height: 1.5; }
+
+  .faq { display: flex; flex-direction: column; gap: 10px; }
+  .faq details {
+    background: #1E2227; border: 1px solid #262B31; border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .faq summary {
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    list-style: none; color: #E8E6E1;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: '  +'; color: #FFB000; float: right; font-weight: 800; }
+  .faq details[open] summary::after { content: '  \2013'; }
+  .faq .faq-body { margin-top: 8px; font-size: 13px; color: #B7BBC1; line-height: 1.5; }
+
+  .final-cta {
+    background: linear-gradient(135deg, #FFB000, #FF8A00);
+    border-radius: 18px; padding: 26px 20px; margin-top: 30px;
+    text-align: center; color: #14171A;
+  }
+  .final-cta h3 { margin: 0 0 8px; font-size: 22px; font-weight: 900; letter-spacing: -0.3px; }
+  .final-cta p { margin: 0 0 18px; font-size: 14px; opacity: 0.85; }
+  .final-cta a {
+    display: block; padding: 17px 22px; border-radius: 13px;
+    background: #14171A; color: #FFB000;
+    font-size: 17px; font-weight: 800; text-decoration: none;
+    margin-top: 10px;
+  }
+
   .footer {
     text-align: center; color: #8A8F98; font-size: 12px;
     margin-top: 40px; padding-top: 20px; border-top: 1px solid #262B31;
@@ -134,14 +189,43 @@
 
   <div class="hero">
     <div class="hero-badge">&#127919;</div>
-    <h1>Стань разведчиком</h1>
+    <h1>Стать разведчиком</h1>
     <p class="tag">Помоги водителям своего района</p>
-    <p class="tag">3 секунды на полный отчёт &mdash; <b>сотни людей</b> видят, где есть бензин</p>
+    <p class="tag">3 секунды на отчёт &mdash; <b>сотни людей</b> знают, где есть бензин</p>
   </div>
 
   <div class="cta-block">
-    <a class="cta cta-primary" href="https://t.me/naidibenzin_bot?start=scout" id="cta-bot">&#9889; Стать разведчиком в Telegram</a>
+    <a class="cta cta-primary cta-hero" href="#final" id="cta-hero">&#9889; Стать разведчиком</a>
     <a class="cta cta-secondary" href="/map" id="cta-map">&#128506; Сначала посмотреть карту</a>
+  </div>
+
+  <div class="quote">
+    Все видят, что заправка есть. Никто не видит, что на ней пусто.
+    Мы &mdash; видим. Потому что водители отмечают вживую.
+  </div>
+
+  <h2>&#128161; Как это работает</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Карточка АЗС всплывает сама при подъезде</div>
+      <p class="step-text">Ничего искать не надо. Просто едешь — GPS ведёт карту, и когда ты рядом с заправкой, снизу сама открывается её карточка.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">3 секунды — и карточка заполнена</div>
+      <p class="step-text">Нажимаешь «Есть» или «Нет» напротив 92, 95, ДТ или 98. Очередь, бензовоз и фото — по желанию. Три секунды — и данные на карте.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Следующий водитель уже знает</div>
+      <p class="step-text">Твоя отметка видна мгновенно. Кто-то не поедет на пустую заправку благодаря тебе.</p>
+    </div>
   </div>
 
   <h2 id="live-section" style="display:none;">&#128293; Сейчас открыто</h2>
@@ -157,51 +241,32 @@
   <h2 id="leaders-section" style="display:none;">&#127942; Топ разведчиков недели</h2>
   <ol class="leaders-list" id="leaders-list" style="display:none;"></ol>
 
-  <h2>&#128161; Как это работает</h2>
-
-  <div class="step">
-    <div class="step-num">1</div>
-    <div class="step-body">
-      <div class="step-title">Карточка АЗС всплывает сама при подъезде</div>
-      <p class="step-text">Ничего искать не надо. Просто едешь — GPS ведёт карту, и когда ты рядом с заправкой, снизу сама открывается её карточка.</p>
-    </div>
-  </div>
-  <div class="step">
-    <div class="step-num">2</div>
-    <div class="step-body">
-      <div class="step-title">3 секунды — и карточка заполнена</div>
-      <p class="step-text">Нажимаешь «Есть» или «Нет» напротив 92, 95, ДТ или 98. Про очередь, бензовоз и фото — по желанию. Всего три секунды — и данные ушли на карту.</p>
-    </div>
-  </div>
-  <div class="step">
-    <div class="step-num">3</div>
-    <div class="step-body">
-      <div class="step-title">Следующий водитель уже знает</div>
-      <p class="step-text">Твоя отметка видна на карте мгновенно. И другие пользователи видят в реальном времени, что данные обновились. Кто-то не поедет на пустую заправку благодаря тебе.</p>
-    </div>
-  </div>
-
-  <h2>&#127942; Что получаешь</h2>
+  <h2>&#127873; Что получаешь</h2>
   <div class="bonus-grid">
     <div class="bonus-item">
       <div class="bonus-icon">&#11088;</div>
       <div class="bonus-name">Баллы за отчёты</div>
-      <div class="bonus-desc">Каждый отчёт &mdash; плюс к рейтингу. На «своих» станциях &times;2.</div>
+      <div class="bonus-desc">Каждый отчёт — плюс к рейтингу. На «своих» станциях ×2.</div>
     </div>
     <div class="bonus-item">
       <div class="bonus-icon">&#127942;</div>
       <div class="bonus-name">Звания</div>
-      <div class="bonus-desc">От Новичка до Смотрителя района. Видно всем в топе.</div>
+      <div class="bonus-desc">От Новичка до Смотрителя района. Видно в топе.</div>
     </div>
     <div class="bonus-item">
       <div class="bonus-icon">&#128293;</div>
       <div class="bonus-name">Стрик</div>
-      <div class="bonus-desc">Отмечаешь несколько дней подряд &mdash; растёт счётчик.</div>
+      <div class="bonus-desc">Отмечаешь несколько дней подряд — растёт счётчик.</div>
     </div>
     <div class="bonus-item">
       <div class="bonus-icon">&#127873;</div>
       <div class="bonus-name">Скидки партнёров</div>
-      <div class="bonus-desc">Скоро: обмен баллов на промокоды АЗС и сервисов.</div>
+      <div class="bonus-desc">Скоро: обмен баллов на промокоды АЗС.</div>
+    </div>
+    <div class="bonus-item wide">
+      <div class="bonus-icon">&#128663;</div>
+      <div class="bonus-name">Наклейка на машину</div>
+      <div class="bonus-desc">Разведчикам с 10+ отчётами — наклейка ГДЕ БЕНЗИН!? на кузов. Покажи, что ты за честную карту.</div>
     </div>
   </div>
 
@@ -214,54 +279,69 @@
     <li><span>Легенда бензина</span><span class="r-pts">1000+</span></li>
   </ul>
 
-  <h2>&#128172; Почему это важно</h2>
-  <div class="quote">
-    Все видят, что заправка есть. Никто не видит, что на ней пусто. Мы &mdash; видим.
-    Потому что водители отмечают вживую.
+  <h2>&#128663; Наклейка разведчика</h2>
+  <div class="sticker-block">
+    <div class="sticker-visual">ГДЕ БЕНЗИН!?</div>
+    <div class="sticker-title">10+ отчётов — получаешь наклейку</div>
+    <div class="sticker-desc">Отмечайся на АЗС, копи баллы. С 10 отчётами пришлём наклейку на машину. Ограниченный тираж, только для активных.</div>
   </div>
-  <p class="tag" style="margin-top:14px;">
-    Это не сервис от компании. Это сообщество водителей.
-    Каждая отметка &mdash; вклад в общую картину.
-  </p>
 
-  <h2>&#128231; Начни сейчас</h2>
-  <div class="cta-block">
-    <a class="cta cta-primary" href="https://t.me/naidibenzin_bot?start=scout">&#9889; Открыть бота</a>
-    <a class="cta cta-secondary" href="/map">&#128506; Открыть карту</a>
+  <h2>&#10067; Частые вопросы</h2>
+  <div class="faq">
+    <details><summary>Сколько времени это занимает?</summary>
+      <div class="faq-body">Один отчёт — 3 секунды. Обычно ты всё равно останавливаешься на заправке — просто тапни пару кнопок.</div>
+    </details>
+    <details><summary>А если я не в СПб и ЛО?</summary>
+      <div class="faq-body">Карта работает по Санкт-Петербургу и Ленинградской области. Если ты там живёшь или ездишь — ты в деле.</div>
+    </details>
+    <details><summary>Это платно?</summary>
+      <div class="faq-body">Нет. Всё бесплатно. Карта и бот живут на поддержке сообщества и партнёров.</div>
+    </details>
+    <details><summary>Что за баллы и зачем они?</summary>
+      <div class="faq-body">Баллы = твой вклад. Копишь — открываются звания, наклейка, а скоро обменяем на скидки у АЗС-партнёров.</div>
+    </details>
+    <details><summary>А карту кто-то ещё ведёт?</summary>
+      <div class="faq-body">Это краудсорсинг. Данные собирают сами водители. Никаких корпораций и рекламных бюджетов.</div>
+    </details>
+  </div>
+
+  <div class="final-cta" id="final">
+    <h3>Хочешь, чтобы карта была честной?</h3>
+    <p>Один отчёт — 3 секунды. Начни сейчас.</p>
+    <a href="https://t.me/naidibenzin_bot?start=scout" id="cta-bot">&#9889; СТАТЬ РАЗВЕДЧИКОМ</a>
+    <a href="/map" style="background:transparent;color:#14171A;border:2px solid #14171A;margin-top:8px;" id="cta-map2">&#128506; Открыть карту</a>
   </div>
 
   <div class="footer">
-    <a href="/">Главная</a> &middot; <a href="/manual">Как пользоваться</a> &middot; <a href="https://t.me/naidibenzin">Канал</a>
+    <a href="/">Главная</a> · <a href="/manual">Как пользоваться</a> · <a href="https://t.me/naidibenzin">Канал</a>
   </div>
 
 </div>
 <script>
-  // ===== Ref param =====
+  // Ref param
   (function(){
     try {
       var ref = new URLSearchParams(location.search).get('ref');
       if (!ref) return;
-      var ids = ['cta-bot', 'cta-map'];
-      ids.forEach(function(id){
+      ['cta-bot','cta-map','cta-map2'].forEach(function(id){
         var el = document.getElementById(id);
         if (!el) return;
         var href = el.getAttribute('href');
+        if (href.charAt(0) === '#') return;
         var sep = href.indexOf('?') === -1 ? '?' : '&';
         el.setAttribute('href', href + sep + 'ref=' + encodeURIComponent(ref));
       });
     } catch(e){}
   })();
 
-  // ===== Live stats =====
+  // Live stats
   (function(){
     var BOT_URL = 'https://t.me/naidibenzin_bot?start=task_';
-
     function esc(t){
       return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
         return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
       });
     }
-
     function renderTasks(tasks){
       var grid = document.getElementById('tasks-grid');
       if (!grid) return;
@@ -284,7 +364,6 @@
       });
       grid.innerHTML = html;
     }
-
     function renderLeaders(leaders){
       var list = document.getElementById('leaders-list');
       if (!list) return;
@@ -301,7 +380,6 @@
       document.getElementById('leaders-section').style.display = 'flex';
       list.style.display = 'block';
     }
-
     function loadStats(){
       fetch('/api/scout-stats', { cache: 'no-store' })
         .then(function(r){ return r.json(); })
@@ -317,7 +395,6 @@
         })
         .catch(function(){});
     }
-
     loadStats();
     setInterval(loadStats, 60000);
   })();

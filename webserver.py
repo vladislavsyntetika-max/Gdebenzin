@@ -266,6 +266,66 @@ async def handle_public_stats(request):
     return resp
 
 
+async def handle_scout_stats(request):
+    """GET /api/scout-stats — открытые задания, счётчики, топ недели."""
+    try:
+        tasks = core.get_route_tasks(status_filter=("open",), limit=6)
+    except Exception:
+        tasks = []
+
+    # Счётчики
+    conn = core.db()
+    try:
+        now = int(time.time())
+        d7 = now - 7 * 86400
+        total_open = conn.execute(
+            "SELECT COUNT(*) FROM route_tasks WHERE status='open'"
+        ).fetchone()[0]
+        total_active = conn.execute(
+            "SELECT COUNT(*) FROM route_tasks WHERE status='in_progress'"
+        ).fetchone()[0]
+        total_done_7d = conn.execute(
+            "SELECT COUNT(*) FROM route_tasks WHERE status='done' AND closed_ts > ?",
+            (d7,)
+        ).fetchone()[0]
+
+        # Топ разведчиков недели (по закрытым задачам + баллам)
+        rows = conn.execute(
+            "SELECT p.user_id, COALESCE(u.username, 'id' || p.user_id), SUM(p.points) "
+            "FROM points_log p LEFT JOIN user_points u ON u.user_id = p.user_id "
+            "WHERE p.ts > ? GROUP BY p.user_id ORDER BY SUM(p.points) DESC LIMIT 5",
+            (d7,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    task_list = []
+    for t in tasks:
+        plan = t.get("plan") or {}
+        points = plan.get("points") or []
+        task_list.append({
+            "id": t["id"],
+            "district": t["district"],
+            "points_count": len(points),
+            "coverage_pct": plan.get("coverage_pct", 0),
+            "avg_overdue_days": plan.get("avg_overdue_days", 0),
+            "total_km": plan.get("total_km", 0),
+        })
+
+    leaders = []
+    for i, (uid, uname, pts) in enumerate(rows, 1):
+        name = core.format_display(uname, uid)
+        leaders.append({"rank": i, "name": name, "points": int(pts or 0)})
+
+    return web.json_response({
+        "total_open": total_open,
+        "total_active": total_active,
+        "total_done_7d": total_done_7d,
+        "tasks": task_list,
+        "leaders": leaders,
+    })
+
+
 async def handle_scout(request):
     """Страница для разведчиков."""
     _record_ref(request, "scout")
@@ -1542,6 +1602,7 @@ def build_app() -> web.Application:
     app.router.add_get("/api/user-stats", handle_user_stats)
     app.router.add_get("/api/delivery/{station_id}", handle_delivery_history)
     app.router.add_get("/api/my-stations/{user_id}", handle_my_stations)
+    app.router.add_get("/api/scout-stats", handle_scout_stats)
     app.router.add_post("/api/report", handle_report)
     app.router.add_post("/api/report-batch", handle_report_batch)
     app.router.add_post("/api/track", handle_track)

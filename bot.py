@@ -3397,18 +3397,33 @@ def get_route_tasks(status_filter=("open", "in_progress"), limit=20):
 
 
 def take_route_task(task_id, user_id, username):
-    """Пробует взять задание. Возвращает True если успех."""
+    """Пробует взять задание. Пересчитывает план от позиции юзера. True если успех."""
     now = int(time.time())
     conn = db()
     try:
         row = conn.execute(
-            "SELECT status FROM route_tasks WHERE id = ?", (task_id,)
+            "SELECT status, plan_json FROM route_tasks WHERE id = ?", (task_id,)
         ).fetchone()
         if not row or row[0] != "open":
             return False
+
+        # Пересчитать от позиции юзера, если есть
+        new_plan_json = row[1]
+        user_loc = get_user_location(user_id)
+        if user_loc:
+            try:
+                old_plan = _json.loads(row[1] or "{}")
+                district = old_plan.get("district")
+                if district:
+                    new_plan = build_route_plan(district, n=7, min_overdue_days=3, start_latlng=user_loc)
+                    if new_plan and new_plan.get("points"):
+                        new_plan_json = _json.dumps(new_plan, ensure_ascii=False)
+            except Exception:
+                log.exception("recalc plan for user failed")
+
         conn.execute(
-            "UPDATE route_tasks SET status='in_progress', assigned_to=?, assigned_username=?, assigned_ts=? WHERE id=? AND status='open'",
-            (user_id, username, now, task_id)
+            "UPDATE route_tasks SET status='in_progress', assigned_to=?, assigned_username=?, assigned_ts=?, plan_json=? WHERE id=? AND status='open'",
+            (user_id, username, now, new_plan_json, task_id)
         )
         conn.commit()
         return True
@@ -3941,6 +3956,26 @@ async def on_invite_cmd(message: Message):
     await message.answer("\n".join(lines), disable_web_page_preview=True)
 
 
+def _route_kb_rows(plan):
+    """Собирает строки кнопок маршрутов для карточки задания."""
+    rows = []
+    if not plan or not plan.get("points"):
+        return rows
+    try:
+        g = route_google_url(plan)
+        y = route_yandex_url(plan)
+        n = route_navi_url(plan)
+    except Exception:
+        return rows
+    if g:
+        rows.append([InlineKeyboardButton(text="\U0001F5FA Google Maps (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=g)])
+    if y:
+        rows.append([InlineKeyboardButton(text="\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=y)])
+    if n:
+        rows.append([InlineKeyboardButton(text="\U0001F9ED \u042f\u043d\u0434\u0435\u043a\u0441.\u041d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440", url=n)])
+    return rows
+
+
 @dp.message(Command("задания", "tasks"))
 async def on_tasks_cmd(message: Message):
     tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=10)
@@ -3988,6 +4023,7 @@ async def cb_route_task(cq: CallbackQuery):
         if task["status"] == "open":
             kb_rows.append([InlineKeyboardButton(text="\U0001F3AF \u0412\u0437\u044f\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:take:" + tid)])
         elif task["status"] == "in_progress" and task["assigned_to"] == cq.from_user.id:
+            kb_rows.extend(_route_kb_rows(task.get("plan") or {}))
             kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
         kb_rows.append([InlineKeyboardButton(text="\u2b05\uFE0F \u041a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="rt:list")])
         try:
@@ -4038,7 +4074,8 @@ async def cb_route_task(cq: CallbackQuery):
         task = next((t for t in tasks if t["id"] == tid), None)
         if task:
             text = route_task_text(task)
-            kb_rows = [[InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)]]
+            kb_rows = _route_kb_rows(task.get("plan") or {})
+            kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
             try:
                 await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
             except Exception:

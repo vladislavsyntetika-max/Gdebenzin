@@ -3998,6 +3998,21 @@ def _route_kb_rows(plan):
     return rows
 
 
+@dp.message(Command("создать_задания", "gen_tasks"))
+async def on_gen_tasks_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("Команда только для админа.")
+        return
+    await message.answer("Генерирую 3 задания по самым острым районам…")
+    try:
+        await _generate_and_send_daily_tasks(message.bot)
+    except Exception as e:
+        log.exception("manual gen_tasks failed")
+        await message.answer("Ошибка: " + str(e))
+        return
+    await message.answer("Готово. Список: /задания")
+
+
 @dp.message(Command("прогресс", "progress"))
 async def on_progress_cmd(message: Message):
     if not ADMIN_ID or message.from_user.id != ADMIN_ID:

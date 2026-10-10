@@ -3786,7 +3786,7 @@ def _route_2opt(ordered):
     return ordered
 
 
-def build_route_plan(district=None, n=7, min_overdue_days=3):
+def build_route_plan(district=None, n=7, min_overdue_days=3, start_latlng=None):
     """Строит маршрут по району. Если district=None — выбирает самый проблемный.
     Возвращает dict или None."""
     if not district:
@@ -3884,10 +3884,13 @@ def build_route_plan(district=None, n=7, min_overdue_days=3):
     filtered.sort(key=lambda x: x["score"], reverse=True)
     top = filtered[:n]
 
-    # Старт — центроид района
-    start_lat = sum(p["lat"] for p in top) / len(top)
-    start_lng = sum(p["lng"] for p in top) / len(top)
-    start = (start_lat, start_lng)
+    # Старт — либо переданная координата (позиция разведчика), либо центроид
+    if start_latlng:
+        start = (float(start_latlng[0]), float(start_latlng[1]))
+    else:
+        start_lat = sum(p["lat"] for p in top) / len(top)
+        start_lng = sum(p["lng"] for p in top) / len(top)
+        start = (start_lat, start_lng)
 
     # TSP
     points = [(p["sid"], p["name"], p["lat"], p["lng"]) for p in top]
@@ -3916,7 +3919,7 @@ def build_route_plan(district=None, n=7, min_overdue_days=3):
         "avg_overdue_days": avg_overdue,
         "points": result_points,
         "total_km": round(total_km, 1),
-        "start": {"lat": round(start_lat, 6), "lng": round(start_lng, 6)},
+        "start": {"lat": round(start[0], 6), "lng": round(start[1], 6)},
     }
 
 
@@ -3931,6 +3934,32 @@ def route_yandex_url(plan):
     for p in pts:
         rtext += f"~{p['lat']},{p['lng']}"
     return "https://yandex.ru/maps/?rtext=" + rtext + "&rtt=auto"
+
+
+def route_google_url(plan):
+    """Google Maps с мульти-маршрутом: origin + waypoints + destination."""
+    pts = plan["points"]
+    if len(pts) < 2:
+        return None
+    s_start = plan.get("start") or {}
+    origin = f"{s_start.get('lat')},{s_start.get('lng')}"
+    dest = pts[-1]
+    waypoints = pts[:-1]
+    wp_str = "|".join(str(p["lat"]) + "," + str(p["lng"]) for p in waypoints)
+    return ("https://www.google.com/maps/dir/?api=1"
+            "&origin=" + origin +
+            "&destination=" + str(dest["lat"]) + "," + str(dest["lng"]) +
+            "&waypoints=" + wp_str +
+            "&travelmode=driving")
+
+
+def route_navi_url(plan):
+    """Открыть Яндекс.Навигатор на первой точке (single dest)."""
+    pts = plan["points"]
+    if not pts:
+        return None
+    p0 = pts[0]
+    return "yandexnavi://build_route_on_map?lat_to=" + str(p0["lat"]) + "&lon_to=" + str(p0["lng"])
 
 
 def route_gpx(plan):
@@ -3983,13 +4012,19 @@ async def on_route_cmd(message: Message):
         await message.answer("\u041d\u0435 \u043d\u0430\u0448\u0451\u043b \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 \u0441\u0442\u0430\u043d\u0446\u0438\u0439.")
         return
     text = route_text(plan)
+    google_url = route_google_url(plan)
     yandex_url = route_yandex_url(plan)
+    navi_url = route_navi_url(plan)
     gpx = route_gpx(plan)
     gpx_bytes = gpx.encode("utf-8")
     doc = BufferedInputFile(gpx_bytes, filename="gdebenzin_route_" + plan["district"] + ".gpx")
-    kb = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b", url=yandex_url)
-    ]])
+    kb_rows = []
+    if google_url:
+        kb_rows.append([InlineKeyboardButton(text="\U0001F5FA Google Maps (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=google_url)])
+    kb_rows.append([InlineKeyboardButton(text="\U0001F5FA \u042f\u043d\u0434\u0435\u043a\u0441.\u041a\u0430\u0440\u0442\u044b (\u0432\u0441\u0435 \u0442\u043e\u0447\u043a\u0438)", url=yandex_url)])
+    if navi_url:
+        kb_rows.append([InlineKeyboardButton(text="\U0001F9ED \u042f\u043d\u0434\u0435\u043a\u0441.\u041d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440 (\u043f\u0435\u0440\u0432\u0430\u044f)", url=navi_url)])
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     await message.answer(text, reply_markup=kb)
     await message.answer_document(doc, caption="\U0001F4E5 GPX \u2014 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u043b\u044e\u0431\u043e\u043c \u043d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440\u0435")
 

@@ -3434,6 +3434,28 @@ def take_route_task(task_id, user_id, username):
         conn.close()
 
 
+def release_route_task(task_id, user_id):
+    """Отказ от задания. Возвращает True если успех (только для того, кто взял)."""
+    conn = db()
+    try:
+        row = conn.execute(
+            "SELECT assigned_to, status FROM route_tasks WHERE id = ?", (task_id,)
+        ).fetchone()
+        if not row or row[0] != user_id or row[1] != "in_progress":
+            return False
+        conn.execute(
+            "UPDATE route_tasks SET status='open', assigned_to=NULL, assigned_username=NULL, assigned_ts=NULL, completed_json='[]' WHERE id=?",
+            (task_id,)
+        )
+        conn.commit()
+        return True
+    except Exception:
+        log.exception("release_route_task failed")
+        return False
+    finally:
+        conn.close()
+
+
 def get_user_active_task(user_id):
     """Задание, которое сейчас в работе у юзера. Или None."""
     conn = db()
@@ -3976,6 +3998,33 @@ def _route_kb_rows(plan):
     return rows
 
 
+@dp.message(Command("прогресс", "progress"))
+async def on_progress_cmd(message: Message):
+    if not ADMIN_ID or message.from_user.id != ADMIN_ID:
+        await message.answer("\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u0430\u0434\u043c\u0438\u043d\u0430.")
+        return
+    tasks = get_route_tasks(status_filter=("in_progress", "done"), limit=30)
+    if not tasks:
+        await message.answer("\u041d\u0435\u0442 \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0438\u043b\u0438 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d\u043d\u044b\u0445 \u0437\u0430\u0434\u0430\u043d\u0438\u0439.")
+        return
+    lines = ["\U0001F4CA <b>\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u043f\u043e \u0437\u0430\u0434\u0430\u043d\u0438\u044f\u043c</b>", ""]
+    for t in tasks:
+        plan = t.get("plan") or {}
+        total = len(plan.get("points") or [])
+        done = len(t.get("completed") or [])
+        if t["status"] == "done":
+            mark = "\u2705"
+        else:
+            mark = "\U0001F513"
+        who = t.get("assigned_username") or ("id" + str(t.get("assigned_to") or "")) or "?"
+        bar_len = 10
+        filled = int(bar_len * done / total) if total else 0
+        bar = "\u2588" * filled + "\u2591" * (bar_len - filled)
+        lines.append(mark + " <b>" + t["district"] + "</b>")
+        lines.append("   " + who + " \u2014 <b>" + str(done) + "/" + str(total) + "</b> " + bar)
+    await message.answer("\n".join(lines))
+
+
 @dp.message(Command("задания", "tasks"))
 async def on_tasks_cmd(message: Message):
     tasks = get_route_tasks(status_filter=("open", "in_progress"), limit=10)
@@ -4025,6 +4074,7 @@ async def cb_route_task(cq: CallbackQuery):
         elif task["status"] == "in_progress" and task["assigned_to"] == cq.from_user.id:
             kb_rows.extend(_route_kb_rows(task.get("plan") or {}))
             kb_rows.append([InlineKeyboardButton(text="\u2705 \u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435", callback_data="rt:close:" + tid)])
+            kb_rows.append([InlineKeyboardButton(text="\u274c \u041e\u0442\u043a\u0430\u0437\u0430\u0442\u044c\u0441\u044f", callback_data="rt:release:" + tid)])
         kb_rows.append([InlineKeyboardButton(text="\u2b05\uFE0F \u041a \u0441\u043f\u0438\u0441\u043a\u0443", callback_data="rt:list")])
         try:
             await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
@@ -4080,6 +4130,23 @@ async def cb_route_task(cq: CallbackQuery):
                 await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
             except Exception:
                 pass
+        return
+
+    if action == "release" and len(parts) == 3:
+        tid = parts[2]
+        uid = cq.from_user.id
+        ok = release_route_task(tid, uid)
+        if not ok:
+            await cq.answer("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0430\u0437\u0430\u0442\u044c\u0441\u044f", show_alert=True)
+            return
+        await cq.answer("\u274c \u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0435\u0440\u043d\u0443\u043b\u043e\u0441\u044c \u0432 \u0441\u043f\u0438\u0441\u043e\u043a")
+        try:
+            await cq.message.edit_text(
+                "\u274c <b>\u0417\u0430\u0434\u0430\u043d\u0438\u0435 \u0432\u0435\u0440\u043d\u0443\u043b\u043e\u0441\u044c \u0432 \u043e\u0431\u0449\u0438\u0439 \u0441\u043f\u0438\u0441\u043e\u043a.</b>\n\n\u0415\u0433\u043e \u043c\u043e\u0436\u0435\u0442 \u0432\u0437\u044f\u0442\u044c \u043a\u0442\u043e \u0443\u0433\u043e\u0434\u043d\u043e.",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
         return
 
     if action == "close" and len(parts) == 3:
